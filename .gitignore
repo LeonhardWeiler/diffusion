@@ -38,3 +38,9 @@ google-services.json
 .kotlin/
 
 jniLibs/
+
+# Claude Code
+CLAUDE.md
+CLAUDE.local.md
+.claude/
+.claude*/
