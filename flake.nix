@@ -15,7 +15,16 @@
     }:
     let
       system = "x86_64-linux";
-      overlays = [ (import rust-overlay) ];
+      overlays = [
+        (import rust-overlay)
+        # The android build tools list 32 bit libs for autoPatchelf. All of them
+        # come from the binary cache, except ncurses5, which is an override and
+        # would have to be built locally, which needs 32 bit kernel support.
+        # Nothing shipped in build tools 36/37 is 32 bit, so plain ncurses does.
+        (_final: prev: prev.lib.optionalAttrs prev.stdenv.hostPlatform.is32bit {
+          ncurses5 = prev.ncurses;
+        })
+      ];
       pkgs = import nixpkgs {
         inherit system overlays;
         config.allowUnfree = true;
