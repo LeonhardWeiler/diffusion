@@ -24,6 +24,8 @@ import io.github.wiiznokes.gitnote.ui.viewmodel.viewModelFactory
 import io.github.wiiznokes.gitnote.utils.endsWith
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -48,6 +50,8 @@ class EditException(
 
 private const val TAG = "TextVM"
 
+private const val DRAFT_SAVE_DEBOUNCE_MS = 500L
+
 open class TextVM() : ViewModel() {
 
     lateinit var editType: EditType
@@ -56,7 +60,8 @@ open class TextVM() : ViewModel() {
     lateinit var previousNote: Note
         private set
 
-    lateinit var name: MutableState<TextFieldValue>
+    private val _name = mutableStateOf(TextFieldValue())
+    val name: State<TextFieldValue> get() = _name
 
     private val _content = mutableStateOf(TextFieldValue())
     val content: State<TextFieldValue> get() = _content
@@ -85,8 +90,8 @@ open class TextVM() : ViewModel() {
         this.editType = editType
         this.previousNote = previousNote
 
-        this.name = previousNote.nameWithoutExtension().let {
-            mutableStateOf(TextFieldValue(it, selection = TextRange(it.length)))
+        _name.value = previousNote.nameWithoutExtension().let {
+            TextFieldValue(it, selection = TextRange(it.length))
         }
 
         val textFieldValue = TextFieldValue(
@@ -111,7 +116,7 @@ open class TextVM() : ViewModel() {
 
         this.editType = editType
         this.previousNote = previousNote
-        this.name = mutableStateOf(TextFieldValue(name, selection = TextRange(name.length)))
+        _name.value = TextFieldValue(name, selection = TextRange(name.length))
         val textFieldValue = TextFieldValue(
             content,
             selection = TextRange(0)
@@ -236,6 +241,13 @@ open class TextVM() : ViewModel() {
                 )
             )
         }
+
+        scheduleDraftSave()
+    }
+
+    fun onNameChange(v: TextFieldValue) {
+        _name.value = v
+        scheduleDraftSave()
     }
 
 
@@ -250,6 +262,7 @@ open class TextVM() : ViewModel() {
             )
         }
         _content.value = history[historyManager.index - 1].v.copy()
+        scheduleDraftSave()
     }
 
     fun redo() {
@@ -263,6 +276,7 @@ open class TextVM() : ViewModel() {
             )
         }
         _content.value = history[historyManager.index + 1].v.copy()
+        scheduleDraftSave()
     }
 
     fun setReadOnlyMode(value: Boolean) {
@@ -275,6 +289,7 @@ open class TextVM() : ViewModel() {
 
     private val storageManager: StorageManager = MyApp.appModule.storageManager
     private val uiHelper: UiHelper = MyApp.appModule.uiHelper
+    private val noteSaver: NoteSaver = MyApp.appModule.noteSaver
     val prefs = MyApp.appModule.appPreferences
 
     fun save(onSuccess: () -> Unit = {}) {
@@ -421,14 +436,43 @@ open class TextVM() : ViewModel() {
         previousNote.nameWithoutExtension() == NameValidation.removeEndingWhiteSpace(name.value.text)
                 && previousNote.content == content.value.text
 
-    override fun onCleared() {
-        NoteSaver.save(
+    private var draftSaveJob: Job? = null
+
+    /**
+     * [onCleared] alone is not enough: it is not called when the app is killed,
+     * so an edit that was never written to disk would be lost
+     */
+    private fun scheduleDraftSave() {
+        draftSaveJob?.cancel()
+        draftSaveJob = viewModelScope.launch {
+            delay(DRAFT_SAVE_DEBOUNCE_MS)
+            writeDraft()
+        }
+    }
+
+    fun saveDraftNow() {
+        draftSaveJob?.cancel()
+        writeDraft()
+    }
+
+    fun discardDraft() {
+        shouldSaveWhenQuitting = false
+        draftSaveJob?.cancel()
+        noteSaver.clear()
+    }
+
+    private fun writeDraft() {
+        noteSaver.save(
             shouldSave = shouldSaveWhenQuitting && !isPreviousNoteTheSame(),
             name = name.value.text,
             content = content.value.text,
             previousNote = previousNote,
             editType = editType
         )
+    }
+
+    override fun onCleared() {
+        saveDraftNow()
     }
 }
 

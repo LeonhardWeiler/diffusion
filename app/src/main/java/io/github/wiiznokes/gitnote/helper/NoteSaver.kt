@@ -1,96 +1,25 @@
 package io.github.wiiznokes.gitnote.helper
 
-import android.content.Context
 import android.util.Log
-import io.github.wiiznokes.gitnote.MyApp
 import io.github.wiiznokes.gitnote.data.room.Note
 import io.github.wiiznokes.gitnote.ui.model.EditType
+import java.io.File
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
 import java.io.Serializable
 
 private const val TAG = "NoteSaver"
 
-private const val EDIT_IS_UNSAVED = "EDIT_IS_UNSAVED"
+private const val DRAFT = "edit_draft"
+private const val DRAFT_TMP = "edit_draft.tmp"
 
-private const val EDIT_EDIT_TYPE = "EDIT_EDIT_TYPE"
-private const val EDIT_PREVIOUS_NOTE = "EDIT_PREVIOUS_NOTE"
-private const val EDIT_NAME = "EDIT_NAME"
-private const val EDIT_CONTENT = "EDIT_CONTENT"
-
-
-class NoteSaver {
-    companion object {
-
-        fun save(
-            shouldSave: Boolean,
-            name: String,
-            content: String,
-            previousNote: Note,
-            editType: EditType
-        ) {
-            try {
-                if (shouldSave) {
-                    Log.d(TAG, "EDIT_IS_UNSAVED")
-                    writeObj(EDIT_IS_UNSAVED, true)
-                    writeObj(EDIT_NAME, name)
-                    writeObj(EDIT_CONTENT, content)
-                    writeObj(EDIT_PREVIOUS_NOTE, previousNote)
-                    writeObj(EDIT_EDIT_TYPE, editType)
-                } else {
-                    writeObj(EDIT_IS_UNSAVED, false)
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-
-        fun getSaveState(): SaveInfo? {
-            return try {
-                SaveInfo(
-                    editType = readObj(EDIT_EDIT_TYPE),
-                    previousNote = readObj(EDIT_PREVIOUS_NOTE),
-                    name = readObj(EDIT_NAME),
-                    content = readObj(EDIT_CONTENT),
-                )
-            } catch (e: Exception) {
-                e.printStackTrace()
-                null
-            }
-        }
-
-
-        fun isEditUnsaved(): Boolean {
-            return try {
-                readObj(EDIT_IS_UNSAVED)
-            } catch (_: Exception) {
-                false
-            }
-        }
-    }
-}
-
-fun save(
-    shouldSave: Boolean,
-    name: String,
-    content: String,
-    previousNote: Note,
-    editType: EditType
-) {
-    try {
-        if (shouldSave) {
-            writeObj(EDIT_IS_UNSAVED, true)
-            writeObj(EDIT_NAME, name)
-            writeObj(EDIT_CONTENT, content)
-            writeObj(EDIT_PREVIOUS_NOTE, previousNote)
-            writeObj(EDIT_EDIT_TYPE, editType)
-        } else {
-            writeObj(EDIT_IS_UNSAVED, false)
-        }
-    } catch (e: Exception) {
-        e.printStackTrace()
-    }
-}
+private val LEGACY_FILES = listOf(
+    "EDIT_IS_UNSAVED",
+    "EDIT_EDIT_TYPE",
+    "EDIT_PREVIOUS_NOTE",
+    "EDIT_NAME",
+    "EDIT_CONTENT",
+)
 
 data class SaveInfo(
     val name: String,
@@ -99,22 +28,98 @@ data class SaveInfo(
     val editType: EditType
 )
 
+// the note is stored field by field, so that a change to the Note entity does
+// not make the drafts written by an older version unreadable
+private data class StoredDraft(
+    val name: String,
+    val content: String,
+    val editType: EditType,
+    val noteRelativePath: String,
+    val noteContent: String,
+    val noteLastModifiedTimeMillis: Long,
+    val noteId: Int,
+) : Serializable
 
-private fun <T : Serializable> writeObj(path: String, obj: T) {
-    val fileOutputStream =
-        MyApp.appModule.context.openFileOutput(path, Context.MODE_PRIVATE)
-    val objectOutputStream = ObjectOutputStream(fileOutputStream)
-    objectOutputStream.writeObject(obj)
-    objectOutputStream.close()
-    fileOutputStream.close()
-}
+/**
+ * The draft is written to a temporary file and renamed, so a draft on disk is
+ * never partial, even if the process dies during a write.
+ */
+class NoteSaver(private val dir: File) {
 
+    fun save(
+        shouldSave: Boolean,
+        name: String,
+        content: String,
+        previousNote: Note,
+        editType: EditType
+    ) {
+        if (!shouldSave) {
+            clear()
+            return
+        }
 
-private fun <T> readObj(path: String): T {
-    val fileInputStream = MyApp.appModule.context.openFileInput(path)
-    val objectInputStream = ObjectInputStream(fileInputStream)
-    @Suppress("UNCHECKED_CAST") val res = objectInputStream.readObject() as T
-    objectInputStream.close()
-    fileInputStream.close()
-    return res
+        val draft = StoredDraft(
+            name = name,
+            content = content,
+            editType = editType,
+            noteRelativePath = previousNote.relativePath,
+            noteContent = previousNote.content,
+            noteLastModifiedTimeMillis = previousNote.lastModifiedTimeMillis,
+            noteId = previousNote.id,
+        )
+
+        try {
+            val tmp = file(DRAFT_TMP)
+            tmp.outputStream().use { out ->
+                ObjectOutputStream(out).use { it.writeObject(draft) }
+            }
+            if (!tmp.renameTo(file(DRAFT))) {
+                tmp.delete()
+                Log.e(TAG, "can't rename ${tmp.path}")
+                return
+            }
+            Log.d(TAG, "draft saved")
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    fun clear() {
+        file(DRAFT_TMP).delete()
+        if (file(DRAFT).delete()) {
+            Log.d(TAG, "draft cleared")
+        }
+    }
+
+    fun getSaveState(): SaveInfo? {
+        val draftFile = file(DRAFT)
+        if (!draftFile.exists()) return null
+
+        return try {
+            val draft = draftFile.inputStream().use { input ->
+                ObjectInputStream(input).use { it.readObject() as StoredDraft }
+            }
+            SaveInfo(
+                name = draft.name,
+                content = draft.content,
+                previousNote = Note(
+                    relativePath = draft.noteRelativePath,
+                    content = draft.noteContent,
+                    lastModifiedTimeMillis = draft.noteLastModifiedTimeMillis,
+                    id = draft.noteId,
+                ),
+                editType = draft.editType,
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
+            draftFile.delete()
+            null
+        }
+    }
+
+    fun deleteLegacyFiles() {
+        LEGACY_FILES.forEach { file(it).delete() }
+    }
+
+    private fun file(name: String): File = File(dir, name)
 }

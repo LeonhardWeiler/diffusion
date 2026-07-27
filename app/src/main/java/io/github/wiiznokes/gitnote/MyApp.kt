@@ -2,6 +2,7 @@ package io.github.wiiznokes.gitnote
 
 import android.app.Application
 import android.util.Log
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 
@@ -22,6 +23,10 @@ class MyApp : Application() {
 
         scope.launch {
             appModule.appPreferences.preload()
+        }
+
+        scope.launch(Dispatchers.IO) {
+            appModule.noteSaver.deleteLegacyFiles()
         }
     }
 }

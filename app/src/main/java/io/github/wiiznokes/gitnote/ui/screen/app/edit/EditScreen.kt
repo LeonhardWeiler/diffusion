@@ -42,6 +42,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import io.github.wiiznokes.gitnote.R
 import io.github.wiiznokes.gitnote.manager.ExtensionType
 import io.github.wiiznokes.gitnote.manager.extensionType
@@ -82,14 +84,18 @@ fun EditScreen(
         expanded = showShouldQuitDialog,
         text = stringResource(R.string.confirmation_quit_edit_dialog),
         onConfirmation = {
-            vm.shouldSaveWhenQuitting = false
+            vm.discardDraft()
             onFinished()
         }
     )
 
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
+        vm.saveDraftNow()
+    }
+
     BackHandler {
         if (vm.isPreviousNoteTheSame()) {
-            vm.shouldSaveWhenQuitting = false
+            vm.discardDraft()
             onFinished()
         } else {
             showShouldQuitDialog.value = true
@@ -126,7 +132,7 @@ fun EditScreen(
                     IconButton(
                         onClick = {
                             if (vm.isPreviousNoteTheSame()) {
-                                vm.shouldSaveWhenQuitting = false
+                                vm.discardDraft()
                                 onFinished()
                             } else {
                                 showShouldQuitDialog.value = true
@@ -147,7 +153,7 @@ fun EditScreen(
                             .focusRequester(nameFocusRequester),
                         value = vm.name.value,
                         onValueChange = {
-                            vm.name.value = it
+                            vm.onNameChange(it)
                         },
                         readOnly = isReadOnlyModeActive,
                         singleLine = true,

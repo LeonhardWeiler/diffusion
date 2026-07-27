@@ -12,7 +12,7 @@ import dev.olshevski.navigation.reimagined.NavTransitionSpec
 import dev.olshevski.navigation.reimagined.navigate
 import dev.olshevski.navigation.reimagined.pop
 import dev.olshevski.navigation.reimagined.rememberNavController
-import io.github.wiiznokes.gitnote.helper.NoteSaver
+import io.github.wiiznokes.gitnote.MyApp
 import io.github.wiiznokes.gitnote.ui.destination.AppDestination
 import io.github.wiiznokes.gitnote.ui.destination.EditParams
 import io.github.wiiznokes.gitnote.ui.destination.SettingsDestination
@@ -35,23 +35,18 @@ fun AppScreen(
         buildList {
             add(appDestination)
 
-            if (NoteSaver.isEditUnsaved()) {
-                val saveInfo = NoteSaver.getSaveState()
-                if (saveInfo == null) {
-                    Log.d(TAG, "can't retrieve the last saved note state")
-                } else {
-                    Log.d(TAG, "launch as EDIT_IS_UNSAVED")
-                    add(
-                        AppDestination.Edit(
-                            EditParams.Saved(
-                                note = saveInfo.previousNote,
-                                editType = saveInfo.editType,
-                                name = saveInfo.name,
-                                content = saveInfo.content
-                            )
+            MyApp.appModule.noteSaver.getSaveState()?.let { saveInfo ->
+                Log.d(TAG, "restoring an unsaved edit")
+                add(
+                    AppDestination.Edit(
+                        EditParams.Saved(
+                            note = saveInfo.previousNote,
+                            editType = saveInfo.editType,
+                            name = saveInfo.name,
+                            content = saveInfo.content
                         )
                     )
-                }
+                )
             }
         }
     }
