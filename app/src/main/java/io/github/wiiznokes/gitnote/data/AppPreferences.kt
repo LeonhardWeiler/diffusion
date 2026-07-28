@@ -45,13 +45,6 @@ class AppPreferences(
     fun repoPathBlocking(): String = runBlocking { repoPath() }
 
 
-    fun repoPathSafely(): String {
-        return try {
-            repoPathBlocking()
-        } catch (e: Exception) {
-            ""
-        }
-    }
 
     val remoteUrl = stringPreference("remoteUrl", "")
 

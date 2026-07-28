@@ -1,6 +1,7 @@
 package io.github.wiiznokes.gitnote.ui.screen.setup
 
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -24,6 +25,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import io.github.wiiznokes.gitnote.MyApp
 import io.github.wiiznokes.gitnote.R
+import io.github.wiiznokes.gitnote.data.platform.pickedFolderPath
+import io.github.wiiznokes.gitnote.data.platform.primaryStorageUri
 import io.github.wiiznokes.gitnote.helper.StoragePermissionHelper
 import io.github.wiiznokes.gitnote.ui.component.AppPage
 import io.github.wiiznokes.gitnote.ui.destination.NewRepoMethod
@@ -40,7 +43,6 @@ fun NewRepoMethodScreen(
     createLocalRepo: (StorageConfiguration, () -> Unit) -> Unit,
     openRepo: (StorageConfiguration, () -> Unit) -> Unit,
     makeToast: (String) -> Unit,
-    repoPath: String,
     navigate: (SetupDestination) -> Unit,
     onSetupSuccess: () -> Unit
 ) {
@@ -56,17 +58,39 @@ fun NewRepoMethodScreen(
     }
     val (contract, permissionName) = storagePermissionHelper.permissionContract()
 
+    // The system picker only says which folder was chosen; reading and writing it
+    // is what the storage permission is for, so both are still needed.
+    val folderPicker =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+            if (uri == null) return@rememberLauncherForActivityResult
+
+            val path = pickedFolderPath(uri)
+            if (path == null) {
+                makeToast(MyApp.appModule.context.getString(R.string.error_folder_not_on_device))
+                return@rememberLauncherForActivityResult
+            }
+
+            val storageConfig = StorageConfiguration.Device(path)
+            when (newRepoMethod.value!!) {
+                NewRepoMethod.Create -> createLocalRepo(storageConfig, onSetupSuccess)
+                NewRepoMethod.Open -> openRepo(storageConfig, onSetupSuccess)
+                NewRepoMethod.Clone -> navigate(SetupDestination.Remote(storageConfig))
+            }
+        }
+
     val permissionLauncher = rememberLauncherForActivityResult(contract = contract) {
         if (it) {
-            val newRepoMethod = newRepoMethod.value!!
-            navigate(
-                SetupDestination.FileExplorer(
-                    path = repoPath,
-                    newRepoMethod = newRepoMethod,
-                )
-            )
+            folderPicker.launch(primaryStorageUri())
         } else {
             makeToast(MyApp.appModule.context.getString(R.string.error_need_storage_permission))
+        }
+    }
+
+    fun pickFolder() {
+        if (StoragePermissionHelper.isPermissionGranted()) {
+            folderPicker.launch(primaryStorageUri())
+        } else {
+            permissionLauncher.launch(permissionName)
         }
     }
 
@@ -91,18 +115,7 @@ fun NewRepoMethodScreen(
         Button(
             onClick = {
                 newRepoMethod.value = NewRepoMethod.Open
-                val newRepoMethod = newRepoMethod.value!!
-
-                if (!StoragePermissionHelper.isPermissionGranted()) {
-                    permissionLauncher.launch(permissionName)
-                } else {
-                    navigate(
-                        SetupDestination.FileExplorer(
-                            path = repoPath,
-                            newRepoMethod = newRepoMethod,
-                        )
-                    )
-                }
+                pickFolder()
             }
         ) {
             Text(
@@ -175,18 +188,7 @@ fun NewRepoMethodScreen(
                         .fillMaxWidth(),
                     onClick = {
                         closeSheet()
-
-                        if (!StoragePermissionHelper.isPermissionGranted()) {
-                            permissionLauncher.launch(permissionName)
-                        } else {
-                            val newRepoMethod = newRepoMethod.value!!
-                            navigate(
-                                SetupDestination.FileExplorer(
-                                    path = repoPath,
-                                    newRepoMethod = newRepoMethod,
-                                )
-                            )
-                        }
+                        pickFolder()
                     }
                 ) {
                     Text(text = stringResource(R.string.use_device_storage))
@@ -214,7 +216,6 @@ private fun NewRepoMethodScreenPreview() {
         createLocalRepo = { _, _ -> },
         openRepo = { _, _ -> },
         makeToast = {},
-        repoPath = "test",
         navigate = {},
         onSetupSuccess = {}
     )
