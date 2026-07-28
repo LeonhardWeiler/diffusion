@@ -45,6 +45,7 @@ import io.github.wiiznokes.gitnote.ui.model.EditType
 import io.github.wiiznokes.gitnote.ui.model.FolderModel
 import io.github.wiiznokes.gitnote.ui.model.GridItem
 import io.github.wiiznokes.gitnote.ui.model.GridNote
+import io.github.wiiznokes.gitnote.ui.model.NoteHeader
 import io.github.wiiznokes.gitnote.ui.viewmodel.GridViewModel
 import java.text.DateFormat
 import java.util.Date
@@ -62,7 +63,7 @@ internal fun NoteListView(
     topSpacerHeight: Dp,
     listState: LazyListState,
     modifier: Modifier = Modifier,
-    selectedNotes: List<Note>,
+    selectedNotes: List<NoteHeader>,
     onEditClick: (Note, EditType) -> Unit,
     onFolderClick: (String) -> Unit,
     onFolderDelete: (NoteFolder) -> Unit,
@@ -228,7 +229,7 @@ private fun NoteListRow(
     gridNote: GridNote,
     vm: GridViewModel,
     onEditClick: (Note, EditType) -> Unit,
-    selectedNotes: List<Note>,
+    selectedNotes: List<NoteHeader>,
 ) {
     val dropDownExpanded = remember { mutableStateOf(false) }
     val clickPosition = remember { mutableStateOf(Offset.Zero) }
@@ -256,7 +257,7 @@ private fun NoteListRow(
                 onLongClick = { dropDownExpanded.value = true },
                 onClick = {
                     if (selectedNotes.isEmpty()) {
-                        onEditClick(gridNote.note, EditType.Update)
+                        vm.openNote(gridNote.note) { onEditClick(it, EditType.Update) }
                     } else {
                         vm.selectNote(gridNote.note, add = !gridNote.selected)
                     }

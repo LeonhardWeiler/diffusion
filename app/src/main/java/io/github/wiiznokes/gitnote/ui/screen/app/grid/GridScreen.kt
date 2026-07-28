@@ -50,6 +50,7 @@ import io.github.wiiznokes.gitnote.ui.component.CustomDropDown
 import io.github.wiiznokes.gitnote.ui.component.CustomDropDownModel
 import io.github.wiiznokes.gitnote.ui.model.EditType
 import io.github.wiiznokes.gitnote.ui.model.GridNote
+import io.github.wiiznokes.gitnote.ui.model.NoteHeader
 import io.github.wiiznokes.gitnote.ui.viewmodel.GridViewModel
 import io.github.wiiznokes.gitnote.utils.getParentPath
 
@@ -144,7 +145,7 @@ private fun GridView(
     vm: GridViewModel,
     nestedScrollConnection: NestedScrollConnection,
     onEditClick: (Note, EditType) -> Unit,
-    selectedNotes: List<Note>,
+    selectedNotes: List<NoteHeader>,
     topSpacerHeight: Dp,
     padding: PaddingValues,
 ) {
@@ -203,7 +204,7 @@ private fun GridView(
 internal fun NoteActionsDropdown(
     vm: GridViewModel,
     gridNote: GridNote,
-    selectedNotes: List<Note>,
+    selectedNotes: List<NoteHeader>,
     dropDownExpanded: MutableState<Boolean>,
     clickPosition: MutableState<Offset>,
 ) {

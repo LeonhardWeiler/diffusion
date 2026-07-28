@@ -14,6 +14,7 @@ import io.github.wiiznokes.gitnote.data.platform.NodeFs
 import io.github.wiiznokes.gitnote.manager.Progress
 import io.github.wiiznokes.gitnote.manager.isExtensionSupportedLib
 import io.github.wiiznokes.gitnote.ui.model.GridNote
+import io.github.wiiznokes.gitnote.ui.model.NoteHeader
 import io.github.wiiznokes.gitnote.ui.model.SortOrder
 import io.github.wiiznokes.gitnote.ui.model.FolderModel
 import io.requery.android.database.sqlite.SQLiteDatabase
@@ -130,9 +131,10 @@ interface RepoDatabaseDao {
         }
 
         // parentPath and fileName are stored columns with an index, so neither the
-        // filter nor the partition has to be computed for every row.
+        // filter nor the partition has to be computed for every row. content is
+        // named out of the projection on purpose — see NoteHeader.
         val sql = """
-            SELECT *,
+            SELECT relativePath, lastModifiedTimeMillis, id, fileName,
                    CASE
                        WHEN COUNT(*) OVER (PARTITION BY fileName) = 1 THEN 1
                        ELSE 0
@@ -176,7 +178,9 @@ interface RepoDatabaseDao {
 
         val sql = """
             WITH notes_with_filename AS (
-                SELECT Notes.*, rank(matchinfo(NotesFts, 'pcx')) AS score
+                SELECT Notes.relativePath, Notes.lastModifiedTimeMillis, Notes.id,
+                       Notes.fileName,
+                       rank(matchinfo(NotesFts, 'pcx')) AS score
                 FROM Notes
                 JOIN NotesFts ON NotesFts.rowid = Notes.rowid
                 WHERE
@@ -184,7 +188,7 @@ interface RepoDatabaseDao {
                     AND
                     NotesFts MATCH :query
             )
-            SELECT *,
+            SELECT relativePath, lastModifiedTimeMillis, id, fileName,
                    CASE 
                        WHEN COUNT(*) OVER (PARTITION BY fileName) = 1 THEN 1
                        ELSE 0
@@ -257,6 +261,15 @@ interface RepoDatabaseDao {
 
     @Delete
     suspend fun removeNote(note: Note)
+
+    /**
+     * The note behind a row of the list, which only carries a [NoteHeader].
+     */
+    @Query("SELECT * FROM Notes WHERE relativePath = :relativePath")
+    suspend fun note(relativePath: String): Note?
+
+    @Query("DELETE FROM Notes WHERE relativePath = :relativePath")
+    suspend fun removeNoteAt(relativePath: String)
 
     @Query("DELETE  FROM NoteFolders")
     fun removeAllNoteFolder()

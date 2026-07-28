@@ -19,6 +19,7 @@ import io.github.wiiznokes.gitnote.helper.NameValidation
 import io.github.wiiznokes.gitnote.manager.StorageManager
 import io.github.wiiznokes.gitnote.ui.model.FileExtension
 import io.github.wiiznokes.gitnote.ui.model.GridItem
+import io.github.wiiznokes.gitnote.ui.model.NoteHeader
 import io.github.wiiznokes.gitnote.ui.model.SortOrder
 import io.github.wiiznokes.gitnote.utils.getParentPath
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -71,9 +72,10 @@ class GridViewModel : ViewModel() {
         get() = _currentNoteFolderRelativePath.asStateFlow()
 
 
-    private val _selectedNotes: MutableStateFlow<List<Note>> = MutableStateFlow(emptyList())
+    private val _selectedNotes: MutableStateFlow<List<NoteHeader>> =
+        MutableStateFlow(emptyList())
 
-    val selectedNotes: StateFlow<List<Note>>
+    val selectedNotes: StateFlow<List<NoteHeader>>
         get() = _selectedNotes.asStateFlow()
 
 
@@ -152,7 +154,7 @@ class GridViewModel : ViewModel() {
     /**
      * @param add true if the note must be selected, false otherwise
      */
-    fun selectNote(note: Note, add: Boolean) = viewModelScope.launch {
+    fun selectNote(note: NoteHeader, add: Boolean) = viewModelScope.launch {
         if (add) {
             selectedNotes.value.plus(note)
         } else {
@@ -170,14 +172,28 @@ class GridViewModel : ViewModel() {
         appScope.launch {
             val currentSelectedNotes = selectedNotes.value
             unselectAllNotes()
-            storageManager.deleteNotes(currentSelectedNotes)
+            storageManager.deleteNotes(currentSelectedNotes.map { it.relativePath })
         }
     }
 
-    fun deleteNote(note: Note) {
+    fun deleteNote(note: NoteHeader) {
         appScope.launch {
-            storageManager.deleteNote(note)
+            storageManager.deleteNote(note.relativePath)
         }
+    }
+
+    /**
+     * Reads the note behind a row of the list, which carries no content, and
+     * hands it to the editor. A note that is gone by the time it is tapped —
+     * deleted outside the app, say — says so instead of opening empty.
+     */
+    fun openNote(note: NoteHeader, onLoaded: (Note) -> Unit) = viewModelScope.launch {
+        val loaded = dao.note(note.relativePath)
+        if (loaded == null) {
+            uiHelper.makeToast(uiHelper.getString(R.string.error_note_not_found))
+            return@launch
+        }
+        onLoaded(loaded)
     }
 
     fun deleteFolder(noteFolder: NoteFolder) {

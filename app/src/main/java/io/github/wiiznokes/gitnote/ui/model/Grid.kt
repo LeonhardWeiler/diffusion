@@ -1,7 +1,6 @@
 package io.github.wiiznokes.gitnote.ui.model
 
 import androidx.room.Embedded
-import io.github.wiiznokes.gitnote.data.room.Note
 import io.github.wiiznokes.gitnote.data.room.NoteFolder
 
 enum class SortOrder {
@@ -17,9 +16,33 @@ data class FolderModel(
     val noteCount: Int,
 )
 
+/**
+ * A note as the list knows it. Deliberately without the content: the list shows
+ * a name and a date, and a note that is only listed should not carry its whole
+ * text through every loaded page. The editor reads the note itself when it
+ * opens one.
+ */
+data class NoteHeader(
+    val relativePath: String,
+    val lastModifiedTimeMillis: Long,
+    val id: Int,
+    val fileName: String,
+) {
+    fun nameWithoutExtension(): String =
+        fileName.substringBeforeLast(".", missingDelimiterValue = fileName)
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other == null || this::class != other::class) return false
+        return id == (other as NoteHeader).id
+    }
+
+    override fun hashCode(): Int = id
+}
+
 data class GridNote(
     @Embedded
-    val note: Note,
+    val note: NoteHeader,
     val isUnique: Boolean,
     val selected: Boolean = false,
 )

@@ -5,6 +5,7 @@ import androidx.room.withTransaction
 import io.github.wiiznokes.gitnote.MyApp
 import io.github.wiiznokes.gitnote.R
 import io.github.wiiznokes.gitnote.data.AppPreferences
+import io.github.wiiznokes.gitnote.data.platform.NodeFs
 import io.github.wiiznokes.gitnote.data.room.Note
 import io.github.wiiznokes.gitnote.data.room.NoteFolder
 import io.github.wiiznokes.gitnote.data.room.RepoDatabase
@@ -214,13 +215,17 @@ class StorageManager {
     }
 
 
-    suspend fun deleteNote(note: Note): Result<Unit> = locker.withLock {
+    /**
+     * Takes the path rather than the note, because deleting needs nothing else
+     * and the list only holds a [io.github.wiiznokes.gitnote.ui.model.NoteHeader].
+     */
+    suspend fun deleteNote(relativePath: String): Result<Unit> = locker.withLock {
 
-        Log.d(TAG, "deleteNote: $note")
+        Log.d(TAG, "deleteNote: $relativePath")
         update {
-            dao.removeNote(note)
+            dao.removeNoteAt(relativePath)
 
-            val file = note.toFileFs(prefs.repoPath())
+            val file = NodeFs.File.fromPath(prefs.repoPath(), relativePath)
             file.delete().onFailure {
                 val message = uiHelper.getString(R.string.error_delete_file, file.path, it.message)
                 Log.e(TAG, message)
@@ -230,20 +235,21 @@ class StorageManager {
         }
     }
 
-    suspend fun deleteNotes(notes: List<Note>): Result<Unit> = locker.withLock {
-        Log.d(TAG, "deleteNotes: ${notes.size}")
+    suspend fun deleteNotes(relativePaths: List<String>): Result<Unit> = locker.withLock {
+        Log.d(TAG, "deleteNotes: ${relativePaths.size}")
 
         update {
-            // optimization because we only see the db state on screen
-            notes.forEach { note ->
-                dao.removeNote(note)
+            // the rows go first, all of them: the screen shows the database, so
+            // the whole selection disappears at once instead of note by note
+            relativePaths.forEach { relativePath ->
+                dao.removeNoteAt(relativePath)
             }
 
             val repoPath = prefs.repoPath()
-            notes.forEach { note ->
+            relativePaths.forEach { relativePath ->
 
-                Log.d(TAG, "deleting $note")
-                val file = note.toFileFs(repoPath)
+                Log.d(TAG, "deleting $relativePath")
+                val file = NodeFs.File.fromPath(repoPath, relativePath)
 
                 file.delete().onFailure {
                     val message =
