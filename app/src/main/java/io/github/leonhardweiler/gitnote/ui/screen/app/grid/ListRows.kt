@@ -85,19 +85,29 @@ internal fun ParentFolderRow(
 @Composable
 internal fun FolderRow(
     folder: FolderModel,
+    selected: Boolean,
+    isSelecting: Boolean,
     onClick: () -> Unit,
+    onSelect: (Boolean) -> Unit,
     onDelete: () -> Unit,
 ) {
     val dropDownExpanded = remember { mutableStateOf(false) }
     val clickPosition = remember { mutableStateOf(Offset.Zero) }
 
+    val rowBackground =
+        if (selected) MaterialTheme.colorScheme.surfaceColorAtElevation(6.dp)
+        else MaterialTheme.colorScheme.surface
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
+            .background(rowBackground)
             .combinedClickable(
                 onLongClick = { dropDownExpanded.value = true },
-                onClick = onClick
+                // while something is selected, tapping a row is how the
+                // selection is changed — opening the folder would take the list
+                // out from under what was marked
+                onClick = { if (isSelecting) onSelect(!selected) else onClick() }
             )
             .pointerInteropFilter {
                 clickPosition.value = Offset(it.x, it.y)
@@ -110,11 +120,15 @@ internal fun FolderRow(
                 if (dropDownExpanded.value) CustomDropDown(
                     expanded = dropDownExpanded,
                     shape = MaterialTheme.shapes.medium,
-                    options = listOf(
+                    options = listOfNotNull(
                         CustomDropDownModel(
                             text = stringResource(R.string.delete_this_folder),
                             onClick = onDelete
                         ),
+                        if (!isSelecting) CustomDropDownModel(
+                            text = stringResource(R.string.select_multiple_notes),
+                            onClick = { onSelect(true) }
+                        ) else null,
                     ),
                     clickPosition = clickPosition
                 )
@@ -161,11 +175,17 @@ internal fun NoteListRow(
     vm: GridViewModel,
     onEditClick: (Note, EditType) -> Unit,
     selectedNotes: List<NoteHeader>,
+    isSelecting: Boolean,
     isSearching: Boolean,
     dateFormat: DateFormat,
 ) {
     val dropDownExpanded = remember { mutableStateOf(false) }
     val clickPosition = remember { mutableStateOf(Offset.Zero) }
+
+    // Asked of the selection here rather than folded into the row by the view
+    // model: a PagingData may be collected once, and combining the selection
+    // into the paged list re-wrapped a stream that had already been read.
+    val selected = selectedNotes.contains(gridNote.note)
 
     val formattedDate = remember(gridNote.note.lastModifiedTimeMillis) {
         dateFormat.format(Date(gridNote.note.lastModifiedTimeMillis))
@@ -180,7 +200,7 @@ internal fun NoteListRow(
     }
 
     val rowBackground =
-        if (gridNote.selected) MaterialTheme.colorScheme.surfaceColorAtElevation(6.dp)
+        if (selected) MaterialTheme.colorScheme.surfaceColorAtElevation(6.dp)
         else MaterialTheme.colorScheme.surface
 
     Column(
@@ -190,10 +210,10 @@ internal fun NoteListRow(
             .combinedClickable(
                 onLongClick = { dropDownExpanded.value = true },
                 onClick = {
-                    if (selectedNotes.isEmpty()) {
-                        vm.openNote(gridNote.note) { onEditClick(it, EditType.Update) }
+                    if (isSelecting) {
+                        vm.selectNote(gridNote.note, add = !selected)
                     } else {
-                        vm.selectNote(gridNote.note, add = !gridNote.selected)
+                        vm.openNote(gridNote.note) { onEditClick(it, EditType.Update) }
                     }
                 }
             )
@@ -206,7 +226,7 @@ internal fun NoteListRow(
             NoteActionsDropdown(
                 vm = vm,
                 gridNote = gridNote,
-                selectedNotes = selectedNotes,
+                isSelecting = isSelecting,
                 dropDownExpanded = dropDownExpanded,
                 clickPosition = clickPosition
             )

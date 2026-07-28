@@ -31,12 +31,16 @@ internal fun NoteListView(
     listState: LazyListState,
     modifier: Modifier = Modifier,
     selectedNotes: List<NoteHeader>,
+    selectedFolders: List<NoteFolder>,
     onEditClick: (Note, EditType) -> Unit,
     onFolderClick: (String) -> Unit,
     onFolderDelete: (NoteFolder) -> Unit,
     isSearching: Boolean,
     vm: GridViewModel,
 ) {
+
+    /** While anything is marked, a tap marks rather than opens. */
+    val isSelecting = selectedNotes.isNotEmpty() || selectedFolders.isNotEmpty()
 
     // one formatter for the whole list rather than one per row
     val dateFormat = remember { DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT) }
@@ -63,7 +67,10 @@ internal fun NoteListView(
 
                 is GridItem.Folder -> FolderRow(
                     folder = gridItem.folder,
+                    selected = selectedFolders.contains(gridItem.folder.noteFolder),
+                    isSelecting = isSelecting,
                     onClick = { onFolderClick(gridItem.folder.noteFolder.relativePath) },
+                    onSelect = { add -> vm.selectFolder(gridItem.folder.noteFolder, add) },
                     onDelete = { onFolderDelete(gridItem.folder.noteFolder) },
                 )
 
@@ -72,6 +79,7 @@ internal fun NoteListView(
                     vm = vm,
                     onEditClick = onEditClick,
                     selectedNotes = selectedNotes,
+                    isSelecting = isSelecting,
                     isSearching = isSearching,
                     dateFormat = dateFormat,
                 )

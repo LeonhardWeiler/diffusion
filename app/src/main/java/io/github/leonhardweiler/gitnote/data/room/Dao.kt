@@ -146,16 +146,14 @@ interface RepoDatabaseDao {
     )
     suspend fun isNoteExist(relativePath: String): Boolean
 
-    @RawQuery(observedEntities = [Note::class])
-    fun gridNotesRaw(query: SupportSQLiteQuery): PagingSource<Int, GridNote>
-
-    fun gridNotes(
+    /**
+     * The notes of one folder. parentPath is a stored column with an index, so
+     * the filter does not have to be computed for every row.
+     */
+    private fun gridNotesQuery(
         currentNoteFolderRelativePath: String,
         sortOrder: SortOrder,
-    ): PagingSource<Int, GridNote> {
-
-        // parentPath is a stored column with an index, so the filter does not
-        // have to be computed for every row
+    ): SupportSQLiteQuery {
         val sql = """
             SELECT $NOTE_HEADER_COLUMNS
             FROM Notes
@@ -163,16 +161,15 @@ interface RepoDatabaseDao {
             ORDER BY ${sortOrder.orderBy("fileName", "lastModifiedTimeMillis")}
         """.trimIndent()
 
-        return gridNotesRaw(SimpleSQLiteQuery(sql, arrayOf(currentNoteFolderRelativePath)))
+        return SimpleSQLiteQuery(sql, arrayOf(currentNoteFolderRelativePath))
     }
 
     /** The search, which unlike the list reaches into subfolders and the text. */
-    fun gridNotesWithQuery(
+    private fun gridNotesWithQueryQuery(
         currentNoteFolderRelativePath: String,
         sortOrder: SortOrder,
         query: String,
-    ): PagingSource<Int, GridNote> {
-
+    ): SupportSQLiteQuery {
         val sql = """
             WITH matches AS (
                 SELECT Notes.relativePath, Notes.lastModifiedTimeMillis, Notes.id,
@@ -187,19 +184,51 @@ interface RepoDatabaseDao {
             ORDER BY score DESC, ${sortOrder.orderBy("fileName", "lastModifiedTimeMillis")}
         """.trimIndent()
 
-        return gridNotesRaw(
-            SimpleSQLiteQuery(sql, arrayOf(currentNoteFolderRelativePath, ftsEscape(query)))
+        return SimpleSQLiteQuery(
+            sql,
+            arrayOf(currentNoteFolderRelativePath, ftsEscape(query))
         )
     }
 
-    @RawQuery(observedEntities = [Note::class, NoteFolder::class])
-    fun foldersRaw(query: SupportSQLiteQuery): Flow<List<FolderModel>>
+    @RawQuery(observedEntities = [Note::class])
+    fun gridNotesRaw(query: SupportSQLiteQuery): PagingSource<Int, GridNote>
 
-    fun folders(
+    /**
+     * The same rows the list is paging through, all at once. Only "select all"
+     * asks for this — everything else has no business holding the whole folder.
+     */
+    @RawQuery
+    suspend fun gridNoteListRaw(query: SupportSQLiteQuery): List<GridNote>
+
+    fun gridNotes(
         currentNoteFolderRelativePath: String,
         sortOrder: SortOrder,
-    ): Flow<List<FolderModel>> {
+    ): PagingSource<Int, GridNote> =
+        gridNotesRaw(gridNotesQuery(currentNoteFolderRelativePath, sortOrder))
 
+    fun gridNotesWithQuery(
+        currentNoteFolderRelativePath: String,
+        sortOrder: SortOrder,
+        query: String,
+    ): PagingSource<Int, GridNote> =
+        gridNotesRaw(gridNotesWithQueryQuery(currentNoteFolderRelativePath, sortOrder, query))
+
+    suspend fun gridNoteList(
+        currentNoteFolderRelativePath: String,
+        sortOrder: SortOrder,
+        query: String,
+    ): List<GridNote> = gridNoteListRaw(
+        if (query.isEmpty()) {
+            gridNotesQuery(currentNoteFolderRelativePath, sortOrder)
+        } else {
+            gridNotesWithQueryQuery(currentNoteFolderRelativePath, sortOrder, query)
+        }
+    )
+
+    private fun foldersQuery(
+        currentNoteFolderRelativePath: String,
+        sortOrder: SortOrder,
+    ): SupportSQLiteQuery {
         val sql = """
             SELECT f.relativePath, f.id, COUNT(n.relativePath) as noteCount,
                    fullName(f.relativePath) as folderName
@@ -210,17 +239,42 @@ interface RepoDatabaseDao {
             ORDER BY ${sortOrder.orderBy("folderName", "MAX(n.lastModifiedTimeMillis)")}
         """.trimIndent()
 
-        return foldersRaw(SimpleSQLiteQuery(sql, arrayOf(currentNoteFolderRelativePath)))
+        return SimpleSQLiteQuery(sql, arrayOf(currentNoteFolderRelativePath))
     }
+
+    @RawQuery(observedEntities = [Note::class, NoteFolder::class])
+    fun foldersRaw(query: SupportSQLiteQuery): Flow<List<FolderModel>>
+
+    @RawQuery
+    suspend fun folderListRaw(query: SupportSQLiteQuery): List<FolderModel>
+
+    fun folders(
+        currentNoteFolderRelativePath: String,
+        sortOrder: SortOrder,
+    ): Flow<List<FolderModel>> =
+        foldersRaw(foldersQuery(currentNoteFolderRelativePath, sortOrder))
+
+    suspend fun folderList(
+        currentNoteFolderRelativePath: String,
+        sortOrder: SortOrder,
+    ): List<FolderModel> =
+        folderListRaw(foldersQuery(currentNoteFolderRelativePath, sortOrder))
 
     @Upsert
     suspend fun insertNoteFolder(noteFolder: NoteFolder)
 
     /**
-     * Delete all notes inside the note folder, and the note folder
+     * Delete all notes inside the note folder, its subfolders, and the note
+     * folder itself.
+     *
+     * The subfolders matter: the directory goes recursively on disk, and a row
+     * left behind for one of them is a folder in the list that no longer has
+     * anything to open.
      */
+    @Transaction
     suspend fun deleteNoteFolder(noteFolder: NoteFolder) {
         internalDeleteNotesIn(noteFolder.relativePath + '/')
+        internalDeleteFoldersIn(noteFolder.relativePath + '/')
         internalDeleteNoteFolder(noteFolder)
     }
 
@@ -230,6 +284,13 @@ interface RepoDatabaseDao {
      */
     @Query("DELETE FROM Notes WHERE relativePath LIKE :relativePath || '%'")
     suspend fun internalDeleteNotesIn(relativePath: String)
+
+    /**
+     * Private
+     * Note: always add a '/' at the end of relativePath param
+     */
+    @Query("DELETE FROM NoteFolders WHERE relativePath LIKE :relativePath || '%'")
+    suspend fun internalDeleteFoldersIn(relativePath: String)
 
     /**
      * Private

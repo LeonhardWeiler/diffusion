@@ -43,6 +43,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.paging.compose.collectAsLazyPagingItems
 import io.github.leonhardweiler.gitnote.R
 import io.github.leonhardweiler.gitnote.data.room.Note
+import io.github.leonhardweiler.gitnote.data.room.NoteFolder
 import io.github.leonhardweiler.gitnote.ui.component.CustomDropDown
 import io.github.leonhardweiler.gitnote.ui.component.CustomDropDownModel
 import io.github.leonhardweiler.gitnote.ui.model.EditType
@@ -66,11 +67,13 @@ fun GridScreen(
     val vm: GridViewModel = viewModel()
 
     val selectedNotes by vm.selectedNotes.collectAsState()
+    val selectedFolders by vm.selectedFolders.collectAsState()
+    val selectionSize by vm.selectionSize.collectAsState()
     val currentFolderPath by vm.currentNoteFolderRelativePath.collectAsState()
 
-    if (selectedNotes.isNotEmpty()) {
+    if (selectionSize > 0) {
         BackHandler {
-            vm.unselectAllNotes()
+            vm.unselectAll()
         }
     } else if (currentFolderPath.isNotEmpty()) {
         BackHandler {
@@ -89,7 +92,7 @@ fun GridScreen(
         containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
 
-            if (selectedNotes.isEmpty()) {
+            if (selectionSize == 0) {
                 FloatingActionButtons(
                     vm = vm,
                     onEditClick = onEditClick,
@@ -105,13 +108,14 @@ fun GridScreen(
             topSpacerHeight = topSpacerHeight,
             onEditClick = onEditClick,
             selectedNotes = selectedNotes,
+            selectedFolders = selectedFolders,
             nestedScrollConnection = nestedScrollConnection,
             padding = padding,
         )
 
         TopBar(
             modifier = Modifier.onSizeChanged { topBarSize = it },
-            selectedNotesNumber = selectedNotes.size,
+            selectionSize = selectionSize,
             onSettingsClick = onSettingsClick,
             searchFocusRequester = searchFocusRequester,
             padding = padding,
@@ -126,8 +130,9 @@ fun GridScreen(
             onSyncClick = vm::syncWithRemote,
             isReadOnlyModeActive = vm.prefs.isReadOnlyModeActive.getAsState().value,
             updateSettings = vm::updateSettings,
-            unselectAllNotes = vm::unselectAllNotes,
-            deleteSelectedNotes = vm::deleteSelectedNotes,
+            unselectAll = vm::unselectAll,
+            selectAll = vm::selectAll,
+            deleteSelection = vm::deleteSelection,
         )
     }
 }
@@ -144,6 +149,7 @@ private fun GridView(
     nestedScrollConnection: NestedScrollConnection,
     onEditClick: (Note, EditType) -> Unit,
     selectedNotes: List<NoteHeader>,
+    selectedFolders: List<NoteFolder>,
     topSpacerHeight: Dp,
     padding: PaddingValues,
 ) {
@@ -165,6 +171,7 @@ private fun GridView(
             .fillMaxSize()
             .nestedScroll(nestedScrollConnection),
         selectedNotes = selectedNotes,
+        selectedFolders = selectedFolders,
         onEditClick = onEditClick,
         onFolderClick = vm::openFolder,
         onFolderDelete = vm::deleteFolder,
@@ -178,7 +185,7 @@ private fun GridView(
 internal fun NoteActionsDropdown(
     vm: GridViewModel,
     gridNote: GridNote,
-    selectedNotes: List<NoteHeader>,
+    isSelecting: Boolean,
     dropDownExpanded: MutableState<Boolean>,
     clickPosition: MutableState<Offset>,
 ) {
@@ -196,7 +203,7 @@ internal fun NoteActionsDropdown(
                 CustomDropDownModel(
                     text = stringResource(R.string.delete_this_note),
                     onClick = { vm.deleteNote(gridNote.note) }),
-                if (selectedNotes.isEmpty()) CustomDropDownModel(
+                if (!isSelecting) CustomDropDownModel(
                     text = stringResource(R.string.select_multiple_notes),
                     onClick = { vm.selectNote(gridNote.note, true) }) else null,
             ),

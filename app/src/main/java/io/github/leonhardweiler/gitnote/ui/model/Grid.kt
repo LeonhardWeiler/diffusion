@@ -40,11 +40,20 @@ data class NoteHeader(
     override fun hashCode(): Int = id
 }
 
+/**
+ * A note plus the one thing the row needs that the note itself cannot say:
+ * whether its file name is enough to tell it apart from the others.
+ *
+ * Whether it is selected is deliberately not in here. It used to be, folded in
+ * by combining the selection into the paged list — and a PagingData may be
+ * collected exactly once, so every change of the selection re-wrapped a stream
+ * that had already been read and the app died on the second tap. The row asks
+ * the selection itself now.
+ */
 data class GridNote(
     @Embedded
     val note: NoteHeader,
     val isUnique: Boolean,
-    val selected: Boolean = false,
 )
 
 /**

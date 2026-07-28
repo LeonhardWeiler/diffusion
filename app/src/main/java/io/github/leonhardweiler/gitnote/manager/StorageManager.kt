@@ -344,14 +344,27 @@ class StorageManager {
         }
     }
 
-    suspend fun deleteNoteFolder(noteFolder: NoteFolder): Result<Unit> = locker.withLock {
-        Log.d(TAG, "deleteNoteFolder: $noteFolder")
+    suspend fun deleteNoteFolder(noteFolder: NoteFolder): Result<Unit> =
+        deleteNoteFolders(listOf(noteFolder))
+
+    /**
+     * Takes a whole selection at once rather than one folder per call: each
+     * call takes the lock and rebuilds what the database owes the files, and
+     * doing that per row made deleting five folders five times the work.
+     */
+    suspend fun deleteNoteFolders(noteFolders: List<NoteFolder>): Result<Unit> = locker.withLock {
+        Log.d(TAG, "deleteNoteFolders: ${noteFolders.size}")
 
         update {
-            dao.deleteNoteFolder(noteFolder)
+            // the rows go first, all of them, so that the list loses the whole
+            // selection at once instead of folder by folder
+            noteFolders.forEach { dao.deleteNoteFolder(it) }
 
-            val folder = noteFolder.toFolderFs(prefs.repoPath())
-            folder.delete().orComplain(R.string.error_delete_folder)
+            val repoPath = prefs.repoPath()
+            noteFolders.forEach { noteFolder ->
+                val folder = noteFolder.toFolderFs(repoPath)
+                folder.delete().orComplain(R.string.error_delete_folder)
+            }
 
             success(Unit)
         }

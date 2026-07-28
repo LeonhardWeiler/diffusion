@@ -34,9 +34,10 @@ import io.github.leonhardweiler.gitnote.ui.component.SimpleIcon
 @Composable
 internal fun SelectableTopBar(
     padding: PaddingValues,
-    selectedNotesNumber: Int,
-    unselectAllNotes: () -> Unit,
-    deleteSelectedNotes: () -> Unit,
+    selectionSize: Int,
+    unselectAll: () -> Unit,
+    selectAll: () -> Unit,
+    deleteSelection: () -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -63,7 +64,7 @@ internal fun SelectableTopBar(
             ) {
                 IconButton(
                     onClick = {
-                        unselectAllNotes()
+                        unselectAll()
                     }
                 ) {
                     SimpleIcon(
@@ -74,7 +75,7 @@ internal fun SelectableTopBar(
                 }
 
                 Text(
-                    text = selectedNotesNumber.toString(),
+                    text = selectionSize.toString(),
                     color = MaterialTheme.colorScheme.onSurface
                 )
             }
@@ -101,11 +102,17 @@ internal fun SelectableTopBar(
                         expanded = expanded,
                         options = listOf(
                             CustomDropDownModel(
+                                text = stringResource(R.string.select_all),
+                                onClick = { selectAll() }
+                            ),
+                            CustomDropDownModel(
+                                // a selected folder takes everything in it, the
+                                // same way deleting one from its own row does
                                 text = pluralStringResource(
                                     R.plurals.delete_selected_notes,
-                                    selectedNotesNumber
+                                    selectionSize
                                 ),
-                                onClick = { deleteSelectedNotes() }
+                                onClick = { deleteSelection() }
                             )
                         )
                     )

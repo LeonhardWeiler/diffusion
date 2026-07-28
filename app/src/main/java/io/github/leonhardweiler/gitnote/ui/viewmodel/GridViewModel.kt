@@ -19,6 +19,7 @@ import io.github.leonhardweiler.gitnote.helper.NameValidation
 import io.github.leonhardweiler.gitnote.manager.StorageManager
 import io.github.leonhardweiler.gitnote.ui.model.FileExtension
 import io.github.leonhardweiler.gitnote.ui.model.GridItem
+import io.github.leonhardweiler.gitnote.ui.model.GridNote
 import io.github.leonhardweiler.gitnote.ui.model.NoteHeader
 import io.github.leonhardweiler.gitnote.ui.model.SortOrder
 import io.github.leonhardweiler.gitnote.utils.getParentPath
@@ -27,8 +28,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class GridViewModel : ViewModel() {
@@ -82,18 +87,36 @@ class GridViewModel : ViewModel() {
     val selectedNotes: StateFlow<List<NoteHeader>>
         get() = _selectedNotes.asStateFlow()
 
+    private val _selectedFolders: MutableStateFlow<List<NoteFolder>> =
+        MutableStateFlow(emptyList())
+
+    /**
+     * Folders can be selected alongside notes. Deleting one takes everything
+     * inside it, which is what a folder row already did on its own — the
+     * selection only makes it possible to do that to several at once.
+     */
+    val selectedFolders: StateFlow<List<NoteFolder>>
+        get() = _selectedFolders.asStateFlow()
+
+    /** How many rows are marked, notes and folders together. */
+    val selectionSize: StateFlow<Int> =
+        combine(selectedNotes, selectedFolders) { notes, folders -> notes.size + folders.size }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+
 
     init {
         Log.d(TAG, "init")
     }
 
     /** Drops from the selection whatever is no longer in the database. */
-    private suspend fun refreshSelectedNotes() {
-        selectedNotes.value.filter { selectedNote ->
-            dao.isNoteExist(selectedNote.relativePath)
-        }.let { newSelectedNotes ->
-            _selectedNotes.emit(newSelectedNotes)
-        }
+    private suspend fun refreshSelection() {
+        _selectedNotes.emit(
+            selectedNotes.value.filter { dao.isNoteExist(it.relativePath) }
+        )
+
+        val folders = dao.folderList(currentNoteFolderRelativePath.value, FOLDER_SORT_ORDER)
+            .map { it.noteFolder }
+        _selectedFolders.emit(selectedFolders.value.filter { folders.contains(it) })
     }
 
 
@@ -157,15 +180,61 @@ class GridViewModel : ViewModel() {
         }
     }
 
-    fun unselectAllNotes() = viewModelScope.launch {
-        _selectedNotes.emit(emptyList())
+    fun selectFolder(folder: NoteFolder, add: Boolean) = viewModelScope.launch {
+        if (add) {
+            selectedFolders.value.plus(folder)
+        } else {
+            selectedFolders.value.minus(folder)
+        }.let {
+            _selectedFolders.emit(it)
+        }
     }
 
-    fun deleteSelectedNotes() {
+    /**
+     * Everything the list is showing, which during a search is the results and
+     * otherwise the folder being looked at with its subfolders. Not the way
+     * out of the folder — ".." is not a thing that can be deleted.
+     */
+    fun selectAll() = viewModelScope.launch {
+        val folderPath = currentNoteFolderRelativePath.value
+        val currentQuery = query.value
+
+        _selectedNotes.emit(
+            dao.gridNoteList(folderPath, NOTE_SORT_ORDER, currentQuery).map { it.note }
+        )
+
+        // a search spans subfolders, so the folders of the one being looked at
+        // are not among what it found — the list does not show them either
+        _selectedFolders.emit(
+            if (currentQuery.isEmpty()) {
+                dao.folderList(folderPath, FOLDER_SORT_ORDER).map { it.noteFolder }
+            } else {
+                emptyList()
+            }
+        )
+    }
+
+    fun unselectAll() = viewModelScope.launch {
+        _selectedNotes.emit(emptyList())
+        _selectedFolders.emit(emptyList())
+    }
+
+    fun deleteSelection() {
         appScope.launch {
-            val currentSelectedNotes = selectedNotes.value
-            unselectAllNotes()
-            storageManager.deleteNotes(currentSelectedNotes.map { it.relativePath })
+            val folders = selectedFolders.value
+            val notes = selectedNotes.value
+            unselectAll()
+
+            // A note that stands in a folder that is going anyway is already
+            // gone by the time its own turn comes, and deleting a file that is
+            // not there says so out loud.
+            val insideDeletedFolder = folders.map { "${it.relativePath}/" }
+            val paths = notes
+                .map { it.relativePath }
+                .filterNot { path -> insideDeletedFolder.any(path::startsWith) }
+
+            if (folders.isNotEmpty()) storageManager.deleteNoteFolders(folders)
+            if (paths.isNotEmpty()) storageManager.deleteNotes(paths)
         }
     }
 
@@ -218,75 +287,88 @@ class GridViewModel : ViewModel() {
         val query: String,
     )
 
-    /**
-     * The whole list: the way out of the folder, its subfolders and its notes.
-     * The folders ride along in the [PagingData] instead of being a list of
-     * their own, so opening a folder swaps the list in one go.
-     *
-     * cachedIn comes last, after the folders have been folded in, and there is
-     * no stateIn behind it. Both matter: leaving the list for the editor throws
-     * the collector away, and coming back collects the same flow again. Only
-     * what cachedIn covers survives that — anything transformed after it is
-     * replayed over an event stream that has nothing left to say, which is how
-     * the folder rows used to go missing until the database was reloaded.
-     */
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val gridItems: Flow<PagingData<GridItem>> = combine(
+    private val gridQuery: Flow<GridQuery> = combine(
         currentNoteFolderRelativePath,
         query,
     ) { folderPath, query ->
         GridQuery(folderPath, query)
-    }.flatMapLatest { gridQuery ->
+    }
 
-        val notes = Pager(
-            config = PagingConfig(pageSize = 50),
-            pagingSourceFactory = {
-                if (gridQuery.query.isEmpty()) {
-                    dao.gridNotes(gridQuery.folderPath, NOTE_SORT_ORDER)
-                } else {
-                    dao.gridNotesWithQuery(
-                        gridQuery.folderPath,
-                        NOTE_SORT_ORDER,
-                        gridQuery.query
-                    )
+    /**
+     * The notes of the folder being looked at, or what a search found.
+     *
+     * Nothing may be combined into this before [cachedIn]. A [PagingData] can
+     * be collected exactly once, and combining means re-emitting the one that
+     * arrived last whenever the other side changes — which hands cachedIn a
+     * stream that has already been read, and that is an outright crash
+     * ("Attempt to collect twice from pageEventFlow"). It was the selection
+     * that used to be combined in here, so the app died on the second tap of a
+     * multiple selection.
+     *
+     * After cachedIn it is safe, and that is the whole point of cachedIn: what
+     * it holds is multicast, so a later collector — the one that comes back
+     * from the editor, or the one below that folds the folder rows in — gets
+     * the same pages again instead of an empty stream.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val pagedNotes: Flow<PagingData<GridItem>> = gridQuery
+        .flatMapLatest { gridQuery ->
+            Pager(
+                config = PagingConfig(pageSize = 50),
+                pagingSourceFactory = {
+                    if (gridQuery.query.isEmpty()) {
+                        dao.gridNotes(gridQuery.folderPath, NOTE_SORT_ORDER)
+                    } else {
+                        dao.gridNotesWithQuery(
+                            gridQuery.folderPath,
+                            NOTE_SORT_ORDER,
+                            gridQuery.query
+                        )
+                    }
                 }
-            }
-        ).flow
+            ).flow
+        }
+        .map { pagingData -> pagingData.map<GridNote, GridItem> { GridItem.Note(it) } }
+        .cachedIn(viewModelScope)
 
-        combine(
-            notes,
-            dao.folders(gridQuery.folderPath, FOLDER_SORT_ORDER),
-            selectedNotes,
-        ) { pagingData, folders, selectedNotes ->
+    /**
+     * The rows above the notes: the way out of the folder and its subfolders.
+     *
+     * A search shows neither. It reaches into the subfolders, so the folders of
+     * the one being looked at are not what was asked for — and the way out of
+     * it would sit above results that come from inside it.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val folderRows: Flow<List<GridItem>> = gridQuery.flatMapLatest { gridQuery ->
+        if (gridQuery.query.isNotEmpty()) return@flatMapLatest flowOf(emptyList())
 
-            var items: PagingData<GridItem> = pagingData.map { gridNote ->
-                GridItem.Note(
-                    gridNote.copy(
-                        selected = selectedNotes.contains(gridNote.note)
-                    )
-                )
-            }
-
-            // A search reaches into the subfolders, so the folders of the one
-            // being looked at are not what was asked for — and the way out of it
-            // would sit above results that come from inside it.
-            if (gridQuery.query.isEmpty()) {
-
-                // every header goes to the very front, so the last one inserted wins
-                folders.asReversed().forEach { folder ->
-                    items = items.insertHeaderItem(item = GridItem.Folder(folder))
-                }
-
+        dao.folders(gridQuery.folderPath, FOLDER_SORT_ORDER).map { folders ->
+            buildList {
                 if (gridQuery.folderPath.isNotEmpty()) {
-                    items = items.insertHeaderItem(
-                        item = GridItem.ParentFolder(getParentPath(gridQuery.folderPath))
-                    )
+                    add(GridItem.ParentFolder(getParentPath(gridQuery.folderPath)))
                 }
+                folders.forEach { add(GridItem.Folder(it)) }
+            }
+        }
+    }
+
+    /**
+     * The whole list: the way out of the folder, its subfolders and its notes.
+     * The folders ride along in the [PagingData] instead of being a list of
+     * their own, so opening a folder swaps the list in one go rather than
+     * rebuilding the layout twice.
+     */
+    val gridItems: Flow<PagingData<GridItem>> =
+        combine(pagedNotes, folderRows) { pagingData, headers ->
+            var items = pagingData
+
+            // every header goes to the very front, so the last one inserted wins
+            headers.asReversed().forEach { header ->
+                items = items.insertHeaderItem(item = header)
             }
 
             items
         }
-    }.cachedIn(viewModelScope)
 
     /**
      * Reads the files back into the database, which catches whatever changed
@@ -298,7 +380,7 @@ class GridViewModel : ViewModel() {
             storageManager.updateDatabase(force = true).onFailure {
                 uiHelper.makeToast("$it")
             }
-            refreshSelectedNotes()
+            refreshSelection()
         }
     }
 }

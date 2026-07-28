@@ -31,7 +31,7 @@ private val BarBottomPadding = 8.dp
 fun TopBar(
     modifier: Modifier = Modifier,
     padding: PaddingValues,
-    selectedNotesNumber: Int,
+    selectionSize: Int,
     onSettingsClick: () -> Unit,
     searchFocusRequester: FocusRequester,
     onReloadDatabase: () -> Unit,
@@ -43,8 +43,9 @@ fun TopBar(
     onSyncClick: () -> Unit,
     isReadOnlyModeActive: Boolean,
     updateSettings: (suspend AppPreferences.() -> Unit) -> Unit,
-    unselectAllNotes: () -> Unit,
-    deleteSelectedNotes: () -> Unit,
+    unselectAll: () -> Unit,
+    selectAll: () -> Unit,
+    deleteSelection: () -> Unit,
 ) {
 
     AnimatedContent(
@@ -53,7 +54,7 @@ fun TopBar(
         modifier = modifier
             .background(MaterialTheme.colorScheme.background)
             .padding(bottom = BarBottomPadding),
-        targetState = selectedNotesNumber == 0,
+        targetState = selectionSize == 0,
         label = "",
     ) { shouldShowSearchBar ->
         if (shouldShowSearchBar) {
@@ -77,9 +78,10 @@ fun TopBar(
         } else {
             SelectableTopBar(
                 padding = padding,
-                selectedNotesNumber = selectedNotesNumber,
-                unselectAllNotes = unselectAllNotes,
-                deleteSelectedNotes = deleteSelectedNotes,
+                selectionSize = selectionSize,
+                unselectAll = unselectAll,
+                selectAll = selectAll,
+                deleteSelection = deleteSelection,
             )
         }
     }
@@ -101,8 +103,9 @@ private fun TopBarPreview() {
         onSyncClick = {},
         isReadOnlyModeActive = true,
         updateSettings = { },
-        selectedNotesNumber = 0,
-        unselectAllNotes = { },
-        deleteSelectedNotes = {}
+        selectionSize = 0,
+        unselectAll = { },
+        selectAll = { },
+        deleteSelection = {}
     )
 }
