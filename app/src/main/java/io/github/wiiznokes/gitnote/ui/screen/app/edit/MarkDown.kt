@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -49,6 +50,9 @@ import io.github.wiiznokes.gitnote.ui.viewmodel.edit.MarkDownVM
 
 private val CheckBoxSize = 20.dp
 
+/** Between the box and the words belonging to it, which otherwise touch. */
+private val CheckBoxTextGap = 8.dp
+
 @Composable
 fun MarkDownContent(
     vm: MarkDownVM,
@@ -90,7 +94,11 @@ fun MarkDownContent(
                             .contains('x', ignoreCase = true)
 
                         Checkbox(
-                            modifier = Modifier.size(CheckBoxSize),
+                            // padding before size: the other way round the gap
+                            // would be taken out of the box instead of beside it
+                            modifier = Modifier
+                                .padding(end = CheckBoxTextGap)
+                                .size(CheckBoxSize),
                             checked = ticked[node.startOffset] ?: asParsed,
                             onCheckedChange = { checked ->
                                 ticked[node.startOffset] = checked
