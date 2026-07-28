@@ -26,6 +26,11 @@ private const val TAG = "StorageManager"
  */
 private const val REMOTE_SYNC_DEBOUNCE_MS = 3_000L
 
+/**
+ * Placed in a newly created folder so that git has something to track.
+ */
+private const val GIT_KEEP = ".gitkeep"
+
 sealed interface SyncState {
 
     data class Ok(val isConsumed: Boolean) : SyncState
@@ -280,6 +285,12 @@ class StorageManager {
                 val message = uiHelper.getString(R.string.error_create_folder, it.message)
                 Log.e(TAG, message)
                 uiHelper.makeToast(message)
+            }
+
+            // Git has no concept of an empty directory, so without a file in it the
+            // folder would produce no commit content and never reach another device.
+            folder.createFile(GIT_KEEP).onFailure {
+                Log.e(TAG, "could not create $GIT_KEEP in ${folder.path}: ${it.message}")
             }
 
             success(Unit)
