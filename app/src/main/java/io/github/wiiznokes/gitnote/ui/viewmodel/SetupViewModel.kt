@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private const val TAG = "SetupViewModel"
 
@@ -131,7 +132,7 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
 
             storageManager.updateDatabase()
 
-            onSuccess()
+            finishSetup(onSuccess)
         }
 
     }
@@ -155,9 +156,20 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
 
             storageManager.updateDatabaseAndRepo()
 
-            onSuccess()
+            finishSetup(onSuccess)
         }
 
+    }
+
+    /**
+     * The callback leaves the setup and changes the navigation backstack, which
+     * is compose snapshot state. All the callers run on [Dispatchers.IO], so it
+     * has to be handed back to the main thread first.
+     */
+    private suspend fun finishSetup(onSuccess: () -> Unit) {
+        withContext(Dispatchers.Main) {
+            onSuccess()
+        }
     }
 
 
@@ -276,7 +288,7 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
             }
         )
 
-        onSuccess()
+        finishSetup(onSuccess)
 
     }
 
