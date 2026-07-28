@@ -1,7 +1,6 @@
 package io.github.wiiznokes.gitnote.ui.screen.app.edit
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
@@ -10,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -104,7 +104,7 @@ fun EditScreen(
     }
 
     // survives the switch between reading and editing, and process death
-    val readScrollState = rememberSaveable(saver = ScrollState.Saver) { ScrollState(0) }
+    val readScrollState = rememberLazyListState()
 
     val nameFocusRequester = remember { FocusRequester() }
     val textFocusRequester = remember { FocusRequester() }
