@@ -156,7 +156,9 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
             prefs.applyGitAuthorDefaults(userInfo, gitManager.currentSignature())
             prefs.initRepo(storageConfig)
 
-            storageManager.updateDatabaseAndRepo()
+            // the repo has just been opened or cloned, so the database is built
+            // from whatever is on disk, committed or not
+            storageManager.updateDatabase(force = true)
 
             finishSetup(onSuccess)
         }

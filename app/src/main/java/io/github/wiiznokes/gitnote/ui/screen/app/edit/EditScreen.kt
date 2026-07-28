@@ -8,17 +8,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.TextFormat
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -48,7 +45,6 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import io.github.wiiznokes.gitnote.R
 import io.github.wiiznokes.gitnote.manager.ExtensionType
 import io.github.wiiznokes.gitnote.manager.extensionType
-import io.github.wiiznokes.gitnote.ui.component.RequestConfirmationDialog
 import io.github.wiiznokes.gitnote.ui.component.SimpleIcon
 import io.github.wiiznokes.gitnote.ui.destination.EditParams
 import io.github.wiiznokes.gitnote.ui.model.EditType
@@ -77,30 +73,18 @@ fun EditScreen(
         null -> throw Exception("file extension not supported, but present in the database?? $extension")
     }
 
-    val showShouldQuitDialog = rememberSaveable {
-        mutableStateOf(false)
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
+        vm.saveNow()
     }
 
-    RequestConfirmationDialog(
-        expanded = showShouldQuitDialog,
-        text = stringResource(R.string.confirmation_quit_edit_dialog),
-        onConfirmation = {
-            vm.discardDraft()
-            onFinished()
-        }
-    )
-
-    LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
-        vm.saveDraftNow()
+    // there is no save button: leaving the editor is what ends an edit
+    fun finish() {
+        vm.saveNow()
+        onFinished()
     }
 
     BackHandler {
-        if (vm.isPreviousNoteTheSame()) {
-            vm.discardDraft()
-            onFinished()
-        } else {
-            showShouldQuitDialog.value = true
-        }
+        finish()
     }
 
     // survives the switch between reading and editing, and process death
@@ -134,14 +118,7 @@ fun EditScreen(
                 ),
                 navigationIcon = {
                     IconButton(
-                        onClick = {
-                            if (vm.isPreviousNoteTheSame()) {
-                                vm.discardDraft()
-                                onFinished()
-                            } else {
-                                showShouldQuitDialog.value = true
-                            }
-                        },
+                        onClick = { finish() },
                     ) {
                         SimpleIcon(
                             imageVector = Icons.AutoMirrored.Default.ArrowBack,
@@ -205,27 +182,6 @@ fun EditScreen(
                     }
                 }
             )
-        },
-        floatingActionButton = {
-            // bug: https://issuetracker.google.com/issues/224005027
-            //AnimatedVisibility(visible = currentNoteFolderRelativePath.isNotEmpty()) {
-            if (!isReadOnlyModeActive && vm.name.value.text.isNotEmpty()) {
-                FloatingActionButton(
-                    modifier = Modifier
-                        .padding(bottom = bottomBarHeight),
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    shape = RoundedCornerShape(20.dp),
-                    onClick = {
-                        vm.save(onSuccess = onFinished)
-                    }
-                ) {
-                    SimpleIcon(
-                        imageVector = Icons.Default.Done,
-                        contentDescription = stringResource(R.string.save),
-                        tint = MaterialTheme.colorScheme.onPrimary
-                    )
-                }
-            }
         }
     ) { paddingValues ->
 
@@ -246,7 +202,6 @@ fun EditScreen(
                         MarkDownContent(
                             vm = vm,
                             textFocusRequester = textFocusRequester,
-                            onFinished = onFinished,
                             isReadOnlyModeActive = isReadOnlyModeActive,
                             textContent = textContent,
                             scrollState = readScrollState,
@@ -257,7 +212,6 @@ fun EditScreen(
                         GenericTextField(
                             vm = vm,
                             textFocusRequester = textFocusRequester,
-                            onFinished = onFinished,
                             isReadOnlyModeActive = isReadOnlyModeActive,
                             textContent = textContent
                         )
@@ -308,7 +262,6 @@ fun EditScreen(
 fun GenericTextField(
     vm: TextVM,
     textFocusRequester: FocusRequester,
-    onFinished: () -> Unit,
     isReadOnlyModeActive: Boolean = false,
     textContent: TextFieldValue,
 ) {
@@ -327,7 +280,7 @@ fun GenericTextField(
             unfocusedIndicatorColor = Color.Transparent,
         ),
         keyboardActions = KeyboardActions(
-            onDone = { vm.save(onSuccess = onFinished) }
+            onDone = { vm.saveNow() }
         ),
         readOnly = isReadOnlyModeActive
     )

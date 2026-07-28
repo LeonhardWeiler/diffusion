@@ -8,11 +8,8 @@ import io.github.wiiznokes.gitnote.data.AppPreferences
 import io.github.wiiznokes.gitnote.data.room.Note
 import io.github.wiiznokes.gitnote.data.room.NoteFolder
 import io.github.wiiznokes.gitnote.data.room.RepoDatabase
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.Result.Companion.failure
@@ -21,25 +18,22 @@ import kotlin.Result.Companion.success
 private const val TAG = "StorageManager"
 
 /**
- * How long a local change waits for the next one before the repo is synced with
- * the remote. Ticking a row of checkboxes should cost one sync, not one per tick.
- */
-private const val REMOTE_SYNC_DEBOUNCE_MS = 3_000L
-
-/**
  * Placed in a newly created folder so that git has something to track.
  */
 private const val GIT_KEEP = ".gitkeep"
 
 sealed interface SyncState {
 
-    data class Ok(val isConsumed: Boolean) : SyncState
+    /** Nothing has been synced in this session yet. */
+    data object Idle : SyncState
+
+    data object Ok : SyncState
 
     data class Error(val msg: String?) : SyncState
 
-    object Pull : SyncState
+    data object Pull : SyncState
 
-    object Push : SyncState
+    data object Push : SyncState
 
     fun isLoading(): Boolean {
         return this is Pull || this is Push
@@ -48,7 +42,8 @@ sealed interface SyncState {
     fun message(): String {
         return when (this) {
             is Error -> this.msg ?: "Unknow Error"
-            is Ok -> "Sync done"
+            Idle -> "Sync with the remote"
+            Ok -> "Sync done"
             Pull -> "Pulling"
             Push -> "Pushing"
         }
@@ -75,30 +70,21 @@ class StorageManager {
 
     private val locker = Mutex()
 
-    private val appScope = MyApp.appModule.appScope
-
-    /**
-     * The sync that is waiting for the debounce to run out, if any.
-     */
-    private var pendingRemoteSync: Job? = null
-
-    private val _syncState: MutableStateFlow<SyncState> = MutableStateFlow(SyncState.Ok(true))
+    private val _syncState: MutableStateFlow<SyncState> = MutableStateFlow(SyncState.Idle)
     val syncState: StateFlow<SyncState> = _syncState
 
 
     /**
-     * Syncs with the remote right away instead of waiting for the debounce, and
-     * therefore also covers whatever [scheduleRemoteSync] still had queued.
-     * Used on start up and for pull to refresh.
+     * Commits everything that has been written since the last sync and exchanges
+     * it with the remote. This is the only thing that reaches the network, and
+     * it only ever runs because the user asked for it.
      */
-    suspend fun updateDatabaseAndRepo(): Result<Unit> = locker.withLock {
-        Log.d(TAG, "updateDatabaseAndRepo")
-
-        pendingRemoteSync?.cancel()
+    suspend fun syncWithRemote(): Result<Unit> = locker.withLock {
+        Log.d(TAG, "syncWithRemote")
 
         gitManager.commitAll(
             prefs.gitAuthor(),
-            "commit from gitnote to update the repo of the app"
+            "commit from gitnote"
         ).onFailure { err ->
             err.message?.let { Log.e(TAG, it) }
             _syncState.emit(SyncState.Error(err.message))
@@ -163,9 +149,7 @@ class StorageManager {
         Log.d(TAG, "updateNote: previous = $previous")
         Log.d(TAG, "updateNote: new = $new")
 
-        update(
-            commitMessage = "gitnote modified ${previous.relativePath}"
-        ) {
+        update {
             dao.removeNote(previous)
             dao.insertNote(new)
 
@@ -203,9 +187,7 @@ class StorageManager {
     suspend fun createNote(note: Note): Result<Unit> = locker.withLock {
         Log.d(TAG, "createNote: $note")
 
-        update(
-            commitMessage = "gitnote created ${note.relativePath}"
-        ) {
+        update {
             dao.insertNote(note)
 
             val file = note.toFileFs(prefs.repoPath())
@@ -229,9 +211,7 @@ class StorageManager {
     suspend fun deleteNote(note: Note): Result<Unit> = locker.withLock {
 
         Log.d(TAG, "deleteNote: $note")
-        update(
-            commitMessage = "gitnote deleted ${note.relativePath}"
-        ) {
+        update {
             dao.removeNote(note)
 
             val file = note.toFileFs(prefs.repoPath())
@@ -247,9 +227,7 @@ class StorageManager {
     suspend fun deleteNotes(notes: List<Note>): Result<Unit> = locker.withLock {
         Log.d(TAG, "deleteNotes: ${notes.size}")
 
-        update(
-            commitMessage = "gitnote deleted ${notes.size} notes"
-        ) {
+        update {
             // optimization because we only see the db state on screen
             notes.forEach { note ->
                 dao.removeNote(note)
@@ -275,9 +253,7 @@ class StorageManager {
     suspend fun createNoteFolder(noteFolder: NoteFolder): Result<Unit> = locker.withLock {
         Log.d(TAG, "createNoteFolder: $noteFolder")
 
-        update(
-            commitMessage = "gitnote created folder ${noteFolder.relativePath}"
-        ) {
+        update {
             dao.insertNoteFolder(noteFolder)
 
             val folder = noteFolder.toFolderFs(prefs.repoPath())
@@ -300,9 +276,7 @@ class StorageManager {
     suspend fun deleteNoteFolder(noteFolder: NoteFolder): Result<Unit> = locker.withLock {
         Log.d(TAG, "deleteNoteFolder: $noteFolder")
 
-        update(
-            commitMessage = "gitnote deleted folder ${noteFolder.relativePath}"
-        ) {
+        update {
             dao.deleteNoteFolder(noteFolder)
 
             val folder = noteFolder.toFolderFs(prefs.repoPath())
@@ -317,7 +291,6 @@ class StorageManager {
     }
 
     suspend fun closeRepo() = locker.withLock {
-        pendingRemoteSync?.cancel()
         prefs.closeRepo()
         gitManager.closeRepo()
         dao.clearDatabase()
@@ -325,29 +298,13 @@ class StorageManager {
 
 
     /**
-     * Applies a change and commits it locally. Committing is cheap and stays
-     * on the caller's path, so the files on disk and the repo never drift apart.
-     *
-     * Talking to the remote is not part of this: it is handed to
-     * [scheduleRemoteSync], which bundles the changes that follow shortly after.
-     * Otherwise every saved note, every deleted file and every ticked checkbox
-     * would be a full network roundtrip while the mutex is held.
+     * Applies a change to the files and to the database. Nothing is committed
+     * here: the working tree carries the change until the user asks for a sync,
+     * which is what [syncWithRemote] then commits and pushes in one go.
      */
     private suspend fun <T> update(
-        commitMessage: String,
         f: suspend () -> Result<T>
     ): Result<T> {
-
-        val author = prefs.gitAuthor()
-
-        gitManager.commitAll(
-            author,
-            "commit from gitnote, before doing a change"
-        ).onFailure { err ->
-            err.message?.let { Log.e(TAG, it) }
-            _syncState.emit(SyncState.Error(err.message))
-            return failure(err)
-        }
 
         updateDatabaseWithoutLocker().onFailure { err ->
             err.message?.let { Log.e(TAG, it) }
@@ -355,47 +312,9 @@ class StorageManager {
             return failure(err)
         }
 
-        val payload = f().fold(
-            onFailure = { err ->
-                err.message?.let { Log.e(TAG, it) }
-                return failure(err)
-            },
-            onSuccess = {
-                it
-            }
-        )
-
-        gitManager.commitAll(author, commitMessage).onFailure { err ->
+        return f().onFailure { err ->
             err.message?.let { Log.e(TAG, it) }
-            _syncState.emit(SyncState.Error(err.message))
-            return failure(err)
         }
-
-        prefs.databaseCommit.update(gitManager.lastCommit())
-
-        scheduleRemoteSync()
-
-        return success(payload)
-    }
-
-    /**
-     * Queues a sync with the remote, replacing one that has not run yet. The
-     * caller may hold [locker]: this only starts the timer, the sync itself
-     * takes the lock when it runs.
-     *
-     * A change that is still queued when the process dies is not lost, it is
-     * only not pushed yet — [updateDatabaseAndRepo] on the next start picks it up.
-     */
-    private fun scheduleRemoteSync() {
-        pendingRemoteSync?.cancel()
-        pendingRemoteSync = appScope.launch {
-            delay(REMOTE_SYNC_DEBOUNCE_MS)
-            syncWithRemote()
-        }
-    }
-
-    private suspend fun syncWithRemote(): Result<Unit> = locker.withLock {
-        syncWithRemoteWithoutLocker()
     }
 
     private suspend fun syncWithRemoteWithoutLocker(): Result<Unit> {
@@ -428,13 +347,10 @@ class StorageManager {
             }
 
             if (!isError)
-                _syncState.emit(SyncState.Ok(false))
+                _syncState.emit(SyncState.Ok)
         }
 
         return success(Unit)
     }
 
-    suspend fun consumeOkSyncState() {
-        _syncState.emit(SyncState.Ok(true))
-    }
 }

@@ -45,7 +45,6 @@ private val CheckBoxSize = 20.dp
 fun MarkDownContent(
     vm: MarkDownVM,
     textFocusRequester: FocusRequester,
-    onFinished: () -> Unit,
     isReadOnlyModeActive: Boolean,
     textContent: TextFieldValue,
     scrollState: LazyListState,
@@ -97,7 +96,6 @@ fun MarkDownContent(
         GenericTextField(
             vm = vm,
             textFocusRequester = textFocusRequester,
-            onFinished = onFinished,
             textContent = textContent
         )
     }

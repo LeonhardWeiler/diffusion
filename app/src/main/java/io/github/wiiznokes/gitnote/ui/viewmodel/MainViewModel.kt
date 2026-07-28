@@ -55,8 +55,10 @@ class MainViewModel : ViewModel() {
         }
         prefs.applyGitAuthorDefaults(null, gitManager.currentSignature())
 
+        // only the database is brought in line with the files here; talking to
+        // the remote waits for the user to ask for it
         appScope.launch {
-            storageManager.updateDatabaseAndRepo()
+            storageManager.updateDatabase()
         }
 
         return true

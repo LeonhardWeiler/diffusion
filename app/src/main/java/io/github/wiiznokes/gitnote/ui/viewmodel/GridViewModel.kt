@@ -55,9 +55,10 @@ class GridViewModel : ViewModel() {
 
     val syncState = storageManager.syncState
 
-    fun consumeOkSyncState() {
-        viewModelScope.launch {
-            storageManager.consumeOkSyncState()
+    /** Commits what has been written since the last sync, then pulls and pushes. */
+    fun syncWithRemote() {
+        appScope.launch {
+            storageManager.syncWithRemote()
         }
     }
 
@@ -88,10 +89,14 @@ class GridViewModel : ViewModel() {
         }
     }
 
+    /**
+     * Reads the files back into the database, which catches whatever changed
+     * outside the app. The remote is not part of it.
+     */
     fun refresh() {
         appScope.launch {
             _isRefreshing.emit(true)
-            storageManager.updateDatabaseAndRepo()
+            storageManager.updateDatabase(force = true)
             refreshSelectedNotes()
             _isRefreshing.emit(false)
         }

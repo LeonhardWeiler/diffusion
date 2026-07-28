@@ -128,5 +128,4 @@
     <string name="private_key_password">Mot de passe de la clé privée</string>
     <string name="cancel">Annuler</string>
     <string name="go_back">Retour</string>
-    <string name="confirmation_quit_edit_dialog">Êtes-vous sûr de vouloir abandonner ? Vous perdrez toutes vos modifications.</string>
 </resources>

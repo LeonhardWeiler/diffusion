@@ -48,7 +48,8 @@ class EditException(
 
 private const val TAG = "TextVM"
 
-private const val DRAFT_SAVE_DEBOUNCE_MS = 500L
+/** How long typing pauses before the note is written to disk. */
+private const val SAVE_DEBOUNCE_MS = 500L
 
 open class TextVM() : ViewModel() {
 
@@ -76,8 +77,6 @@ open class TextVM() : ViewModel() {
     val historyManager: StateFlow<History>
         get() = _historyManager.asStateFlow()
 
-
-    var shouldSaveWhenQuitting: Boolean = true
 
     val shouldForceNotReadOnlyMode: MutableState<Boolean> = mutableStateOf(false)
 
@@ -240,12 +239,12 @@ open class TextVM() : ViewModel() {
             )
         }
 
-        scheduleDraftSave()
+        scheduleSave()
     }
 
     fun onNameChange(v: TextFieldValue) {
         _name.value = v
-        scheduleDraftSave()
+        scheduleSave()
     }
 
 
@@ -260,7 +259,7 @@ open class TextVM() : ViewModel() {
             )
         }
         _content.value = history[historyManager.index - 1].v.copy()
-        scheduleDraftSave()
+        scheduleSave()
     }
 
     fun redo() {
@@ -274,7 +273,7 @@ open class TextVM() : ViewModel() {
             )
         }
         _content.value = history[historyManager.index + 1].v.copy()
-        scheduleDraftSave()
+        scheduleSave()
     }
 
     fun setReadOnlyMode(value: Boolean) {
@@ -435,34 +434,54 @@ open class TextVM() : ViewModel() {
         previousNote.nameWithoutExtension() == NameValidation.removeEndingWhiteSpace(name.value.text)
                 && previousNote.content == content.value.text
 
-    private var draftSaveJob: Job? = null
+    private var saveJob: Job? = null
+
+    private fun scheduleSave() {
+        saveJob?.cancel()
+        saveJob = viewModelScope.launch {
+            delay(SAVE_DEBOUNCE_MS)
+            saveNow()
+        }
+    }
+
+    /** The name that was last complained about, so the toast is shown once. */
+    private var rejectedName: String? = null
 
     /**
-     * [onCleared] alone is not enough: it is not called when the app is killed,
-     * so an edit that was never written to disk would be lost
+     * Writes the note to disk. There is no save button anymore, so this runs
+     * while typing, when the editor is left and when the app is stopped.
+     * Committing is not part of it, that waits for the user to sync.
      */
-    private fun scheduleDraftSave() {
-        draftSaveJob?.cancel()
-        draftSaveJob = viewModelScope.launch {
-            delay(DRAFT_SAVE_DEBOUNCE_MS)
+    fun saveNow() {
+        saveJob?.cancel()
+
+        val name = NameValidation.removeEndingWhiteSpace(name.value.text)
+        if (!NameValidation.check(name)) {
+            // a note without a usable name has nowhere to go on disk; the draft
+            // holds the text until the name is one a file can carry
+            if (name.isNotEmpty() && name != rejectedName) {
+                rejectedName = name
+                uiHelper.makeToast(uiHelper.getString(R.string.error_invalid_name))
+            }
+            writeDraft()
+            return
+        }
+        rejectedName = null
+
+        save()
+
+        // the draft is the net for what could not be written yet — an invalid
+        // name, say. Once the note is on disk it would only restore itself.
+        if (isPreviousNoteTheSame()) {
+            noteSaver.clear()
+        } else {
             writeDraft()
         }
     }
 
-    fun saveDraftNow() {
-        draftSaveJob?.cancel()
-        writeDraft()
-    }
-
-    fun discardDraft() {
-        shouldSaveWhenQuitting = false
-        draftSaveJob?.cancel()
-        noteSaver.clear()
-    }
-
     private fun writeDraft() {
         noteSaver.save(
-            shouldSave = shouldSaveWhenQuitting && !isPreviousNoteTheSame(),
+            shouldSave = !isPreviousNoteTheSame(),
             name = name.value.text,
             content = content.value.text,
             previousNote = previousNote,
@@ -471,7 +490,7 @@ open class TextVM() : ViewModel() {
     }
 
     override fun onCleared() {
-        saveDraftNow()
+        saveNow()
     }
 }
 
