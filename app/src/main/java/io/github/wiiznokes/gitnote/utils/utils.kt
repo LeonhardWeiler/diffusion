@@ -1,11 +1,14 @@
 package io.github.wiiznokes.gitnote.utils
 
+import android.util.Log
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.transform
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.Result.Companion.failure
 import kotlin.Result.Companion.success
+
+private const val TAG = "utils"
 
 class SuspendingLazy<T>(
     initializer: suspend () -> T
@@ -34,7 +37,7 @@ fun <T> toResult(fn: () -> T): Result<T> {
     return try {
         success(fn())
     } catch (e: Exception) {
-        e.printStackTrace()
+        Log.e(TAG, e.message ?: "call failed", e)
         failure(e)
     }
 }

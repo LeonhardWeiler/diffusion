@@ -1,6 +1,7 @@
 package io.github.wiiznokes.gitnote.data.platform
 
 import android.os.Environment
+import android.util.Log
 import io.github.wiiznokes.gitnote.MyApp
 import io.github.wiiznokes.gitnote.R
 import io.github.wiiznokes.gitnote.data.removeFirstAndLastSlash
@@ -139,7 +140,7 @@ sealed class NodeFs(
                     }
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e(TAG, "can't walk $path", e)
             }
             return output
         }
@@ -171,7 +172,7 @@ sealed class NodeFs(
                     fn(path.toNodeFs())
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e(TAG, "can't walk $path", e)
             }
         }
 

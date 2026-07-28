@@ -73,10 +73,17 @@ class GitManager {
             }
             success(f())
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, e.message ?: "libgit2 call failed", e)
             failure(e)
         }
     }
+
+    /**
+     * What to show the user for a negative return code. libgit2 writes a usable
+     * sentence for most failures, which the rust side keeps around; the bare
+     * number is only the fallback when there is nothing.
+     */
+    private fun errorDetail(res: Int): String = lastErrorMessageLib() ?: res.toString()
 
 
     suspend fun createRepo(repoPath: String): Result<Unit> = safelyAccessLibGit2 {
@@ -86,7 +93,7 @@ class GitManager {
 
         val res = createRepoLib(repoPath)
         if (res < 0) {
-            throw GitException(uiHelper.getString(R.string.error_create_repo, res.toString()))
+            throw GitException(uiHelper.getString(R.string.error_create_repo, errorDetail(res)))
         }
         isRepoInitialized = true
     }
@@ -98,7 +105,7 @@ class GitManager {
 
         val res = openRepoLib(repoPath)
         if (res < 0) {
-            throw GitException(uiHelper.getString(R.string.error_open_repo, res))
+            throw GitException(uiHelper.getString(R.string.error_open_repo, errorDetail(res)))
         }
         isRepoInitialized = true
     }
@@ -135,7 +142,7 @@ class GitManager {
         actualCb = null
 
         if (res < 0) {
-            throw GitException(uiHelper.getString(R.string.error_clone_repo, res))
+            throw GitException(uiHelper.getString(R.string.error_clone_repo, errorDetail(res)))
         }
 
         isRepoInitialized = true
@@ -156,7 +163,7 @@ class GitManager {
         var res = isChangeLib()
 
         if (res < 0) {
-            throw GitException(uiHelper.getString(R.string.error_commit_file_change, res))
+            throw GitException(uiHelper.getString(R.string.error_commit_file_change, errorDetail(res)))
         }
 
         if (res == 0) {
@@ -167,7 +174,7 @@ class GitManager {
 
         res = commitAllLib(author.name, author.email, message)
         if (res < 0) {
-            throw GitException(uiHelper.getString(R.string.error_commit_repo, res.toString()))
+            throw GitException(uiHelper.getString(R.string.error_commit_repo, errorDetail(res)))
         }
 
     }
@@ -185,11 +192,7 @@ class GitManager {
         val res = pushLib(cred)
 
         if (res < 0) {
-            Log.d(TAG, "push: $res")
-            val msg = uiHelper.getString(R.string.error_push_repo, res.toString())
-            Log.d(TAG, "push: $msg")
-
-            throw Exception(uiHelper.getString(R.string.error_push_repo, res.toString()))
+            throw Exception(uiHelper.getString(R.string.error_push_repo, errorDetail(res)))
         }
 
     }
@@ -205,7 +208,7 @@ class GitManager {
         }
 
         if (res < 0) {
-            throw Exception(uiHelper.getString(R.string.error_pull_repo, res.toString()))
+            throw Exception(uiHelper.getString(R.string.error_pull_repo, errorDetail(res)))
         }
     }
 
@@ -269,6 +272,12 @@ private external fun freeLib()
 private external fun closeRepoLib()
 
 private external fun isChangeLib(): Int
+
+/**
+ * The message behind the last negative return code, or null when there is none.
+ * Reading it clears it on the rust side.
+ */
+private external fun lastErrorMessageLib(): String?
 
 private external fun getTimestampsLib(timestamps: HashMap<String, Long>): Int
 

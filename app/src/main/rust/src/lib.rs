@@ -1,4 +1,5 @@
 use std::fmt::{Debug, Display};
+use std::sync::Mutex;
 
 use anyhow::anyhow;
 use git2::Signature;
@@ -67,8 +68,17 @@ impl Error {
     }
 }
 
+/// The message of the last error that was turned into a return code. Kotlin only
+/// gets an integer back, so without this the text libgit2 produced would be
+/// dropped and the user would be shown a bare number.
+static LAST_ERROR: Mutex<Option<String>> = Mutex::new(None);
+
 impl From<Error> for jint {
     fn from(value: Error) -> Self {
+        if let Ok(mut last_error) = LAST_ERROR.lock() {
+            *last_error = Some(value.to_string());
+        }
+
         match value {
             Error::Git2 { error, .. } => error.raw_code(),
             Error::MergeConflict { .. } => MERGE_CONFLICT,
@@ -179,6 +189,12 @@ const _GET_URL_INFO_LIB_METHOD: NativeMethod = native_method! {
     java_type = "io.github.wiiznokes.gitnote.manager.GitManagerKt",
     export = "Java_io_github_wiiznokes_gitnote_manager_GitManagerKt_getUrlInfoLib",
     static extern fn get_url_info_lib(url: JString) -> JObject,
+};
+
+const _LAST_ERROR_MESSAGE_LIB_METHOD: NativeMethod = native_method! {
+    java_type = "io.github.wiiznokes.gitnote.manager.GitManagerKt",
+    export = "Java_io_github_wiiznokes_gitnote_manager_GitManagerKt_lastErrorMessageLib",
+    static extern fn last_error_message_lib() -> JObject,
 };
 
 fn init_lib<'local>(
@@ -595,6 +611,23 @@ fn generate_ssh_keys_lib<'local>(
         .unwrap();
 
     Ok(pair_obj)
+}
+
+/// Hands over the message behind the last negative return code, and clears it so
+/// a later call cannot report an error that has already been shown.
+fn last_error_message_lib<'local>(
+    env: &mut Env<'local>,
+    _class: JClass<'local>,
+) -> Result<JObject<'local>, jni::errors::Error> {
+    let message = LAST_ERROR
+        .lock()
+        .ok()
+        .and_then(|mut last_error| last_error.take());
+
+    match message {
+        Some(message) => Ok(env.new_string(&message)?.into()),
+        None => Ok(JObject::null()),
+    }
 }
 
 fn extension_type_lib<'local>(

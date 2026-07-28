@@ -80,7 +80,7 @@ class NoteSaver(private val dir: File) {
             }
             Log.d(TAG, "draft saved")
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "can't save the draft", e)
         }
     }
 
@@ -111,7 +111,7 @@ class NoteSaver(private val dir: File) {
                 editType = draft.editType,
             )
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "can't read the draft, dropping it", e)
             draftFile.delete()
             null
         }
