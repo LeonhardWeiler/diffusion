@@ -65,7 +65,8 @@ fun FileExplorerScreen(
                 showCreateNewFolder.value = true
             }) {
                 SimpleIcon(
-                    imageVector = Icons.Rounded.CreateNewFolder
+                    imageVector = Icons.Rounded.CreateNewFolder,
+                    contentDescription = stringResource(R.string.create_new_folder)
                 )
             }
 
@@ -163,6 +164,8 @@ private fun FolderRow(
             modifier = Modifier
                 .size(50.dp),
             imageVector = Icons.Rounded.Folder,
+            // decorative, the folder name follows in the same row
+            contentDescription = null,
             tint = color
         )
         Text(

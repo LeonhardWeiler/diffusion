@@ -112,7 +112,10 @@ fun LogsScreen(
                     textSizeId.value = max(textSizeId.value - 1, TextSizeRange.first)
                 }
             ) {
-                SimpleIcon(imageVector = Icons.Default.Remove)
+                SimpleIcon(
+                    imageVector = Icons.Default.Remove,
+                    contentDescription = stringResource(R.string.decrease_text_size)
+                )
             }
 
             IconButton(
@@ -120,7 +123,10 @@ fun LogsScreen(
                     textSizeId.value = min(textSizeId.value + 1, TextSizeRange.last)
                 }
             ) {
-                SimpleIcon(imageVector = Icons.Default.Add)
+                SimpleIcon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = stringResource(R.string.increase_text_size)
+                )
             }
 
             val logLevelExpanded = remember {
@@ -159,7 +165,10 @@ fun LogsScreen(
 
             CustomDropDown(expanded = logLevelExpanded, options = options)
             IconButton(onClick = { logLevelExpanded.value = true }) {
-                SimpleIcon(imageVector = Icons.Default.MoreVert)
+                SimpleIcon(
+                    imageVector = Icons.Default.MoreVert,
+                    contentDescription = stringResource(R.string.more_options)
+                )
             }
         }
     ) {

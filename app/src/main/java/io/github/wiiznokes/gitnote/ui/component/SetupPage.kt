@@ -94,6 +94,8 @@ fun SetupButton(
             Spacer(Modifier.width(5.dp))
             SimpleIcon(
                 imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                // decorative, the button text right before it says where it goes
+                contentDescription = null
             )
         } else {
             Text(text = text)

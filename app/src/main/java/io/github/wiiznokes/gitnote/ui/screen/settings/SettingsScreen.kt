@@ -211,6 +211,7 @@ fun SettingsScreen(
                     ) {
                         SimpleIcon(
                             imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                            contentDescription = stringResource(R.string.open_in_browser)
                         )
 
                     }

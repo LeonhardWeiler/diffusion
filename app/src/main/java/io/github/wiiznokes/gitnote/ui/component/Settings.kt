@@ -94,7 +94,9 @@ fun DefaultSettingsRow(
                         SimpleIcon(
                             modifier = Modifier
                                 .padding(end = padding),
-                            imageVector = it
+                            imageVector = it,
+                            // decorative, the settings row right next to it carries the title
+                            contentDescription = null
                         )
                     }
 

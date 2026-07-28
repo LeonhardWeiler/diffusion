@@ -145,6 +145,7 @@ fun EditScreen(
                     ) {
                         SimpleIcon(
                             imageVector = Icons.AutoMirrored.Default.ArrowBack,
+                            contentDescription = stringResource(R.string.back)
                         )
                     }
                 },
@@ -195,6 +196,11 @@ fun EditScreen(
                             } else {
                                 Icons.Default.LockOpen
                             },
+                            contentDescription = if (isReadOnlyModeActive) {
+                                stringResource(R.string.read_only_mode_deactive)
+                            } else {
+                                stringResource(R.string.read_only_mode_activate)
+                            }
                         )
                     }
                 }
@@ -215,6 +221,7 @@ fun EditScreen(
                 ) {
                     SimpleIcon(
                         imageVector = Icons.Default.Done,
+                        contentDescription = stringResource(R.string.save),
                         tint = MaterialTheme.colorScheme.onPrimary
                     )
                 }

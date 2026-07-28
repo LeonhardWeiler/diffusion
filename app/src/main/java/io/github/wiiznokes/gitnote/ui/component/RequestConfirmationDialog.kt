@@ -74,7 +74,9 @@ fun RequestConfirmationDialog(
                 )
                 Spacer(Modifier.size(ButtonDefaults.IconSpacing))
                 SimpleIcon(
-                    imageVector = Icons.Default.Close
+                    imageVector = Icons.Default.Close,
+                    // decorative, the button already reads "No"
+                    contentDescription = null
                 )
             }
 
@@ -93,7 +95,9 @@ fun RequestConfirmationDialog(
                 )
                 Spacer(Modifier.size(ButtonDefaults.IconSpacing))
                 SimpleIcon(
-                    imageVector = Icons.Default.Done
+                    imageVector = Icons.Default.Done,
+                    // decorative, the button already reads "Yes"
+                    contentDescription = null
                 )
             }
         }

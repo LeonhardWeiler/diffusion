@@ -7,11 +7,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 
+/**
+ * [contentDescription] has no default on purpose: it is what a screen reader
+ * announces, and an icon button without it is a nameless button. Pass null only
+ * for icons that decorate something already labelled next to them.
+ */
 @Composable
 fun SimpleIcon(
     modifier: Modifier = Modifier,
     imageVector: ImageVector,
-    contentDescription: String? = null,
+    contentDescription: String?,
     tint: Color = LocalContentColor.current
 ) {
     Icon(

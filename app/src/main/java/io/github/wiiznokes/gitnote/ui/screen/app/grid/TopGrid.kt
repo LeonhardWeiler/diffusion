@@ -223,6 +223,7 @@ private fun SearchBar(
                         ) {
                             SimpleIcon(
                                 imageVector = Icons.Rounded.MoreVert,
+                                contentDescription = stringResource(R.string.more_options),
                                 tint = MaterialTheme.colorScheme.onSurface
                             )
                         }
@@ -263,6 +264,7 @@ private fun SearchBar(
                     ) {
                         SimpleIcon(
                             imageVector = Icons.Rounded.Close,
+                            contentDescription = stringResource(R.string.clear_search),
                             tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
@@ -310,6 +312,7 @@ private fun SelectableTopBar(
                 ) {
                     SimpleIcon(
                         imageVector = Icons.Rounded.Close,
+                        contentDescription = stringResource(R.string.clear_selection),
                         tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
@@ -333,6 +336,7 @@ private fun SelectableTopBar(
                     ) {
                         SimpleIcon(
                             imageVector = Icons.Rounded.MoreVert,
+                            contentDescription = stringResource(R.string.more_options),
                             tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
