@@ -21,7 +21,7 @@ android {
     // could be removed otherwise
     ndkVersion = "27.3.13750724"
 
-    namespace = "io.github.wiiznokes.gitnote"
+    namespace = "io.github.leonhardweiler.gitnote"
 
     // https://developer.android.com/about/versions
     compileSdk = 37
@@ -42,7 +42,7 @@ android {
             return reader.readLine()
         }
 
-        applicationId = "io.github.wiiznokes.gitnote"
+        applicationId = "io.github.leonhardweiler.gitnote"
         minSdk = 30
 
         versionCode = 18

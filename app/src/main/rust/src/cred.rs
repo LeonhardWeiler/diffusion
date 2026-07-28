@@ -110,13 +110,13 @@ impl Cred {
         };
 
         match class_name.as_str() {
-            "io.github.wiiznokes.gitnote.ui.model.Cred$UserPassPlainText" => {
+            "io.github.leonhardweiler.gitnote.ui.model.Cred$UserPassPlainText" => {
                 let username = jstring_field!(env, cred_obj, "username");
                 let password = jstring_field!(env, cred_obj, "username");
 
                 Ok(Some(Cred::UserPassPlainText { username, password }))
             }
-            "io.github.wiiznokes.gitnote.ui.model.Cred$Ssh" => {
+            "io.github.leonhardweiler.gitnote.ui.model.Cred$Ssh" => {
                 let username = jstring_field!(env, cred_obj, "username");
                 let public_key = jstring_field!(env, cred_obj, "publicKey");
 
