@@ -243,33 +243,6 @@ interface RepoDatabaseDao {
         return this.noteFoldersRaw(query)
     }
 
-    data class Testing(
-        val relativePath: String,
-        val id: Int,
-        val noteCount: Int,
-    )
-
-    @RawQuery
-    fun debugQuery(query: SupportSQLiteQuery): List<Testing>
-
-    fun testing() {
-
-        val sql = """
-            SELECT f.relativePath, f.id, COUNT(n.relativePath) as noteCount
-            FROM NoteFolders AS f
-            LEFT JOIN Notes AS n ON n.relativePath LIKE f.relativePath || '%'
-            WHERE parentPath(f.relativePath) = ?
-            GROUP BY f.relativePath
-            ORDER BY MAX(n.lastModifiedTimeMillis) DESC
-        """.trimIndent()
-
-        val query = SimpleSQLiteQuery(sql, arrayOf(""))
-        val results = this.debugQuery(query)
-
-        Log.d("SQL_DEBUG", results.joinToString("\n"))
-    }
-
-
     @Upsert
     suspend fun insertNoteFolder(noteFolder: NoteFolder)
 

@@ -61,7 +61,7 @@
     <string name="error_commit_file_change">Não foi possível saber se existem mudanças nos arquivos: %1$s</string>
     <string name="error_clone_repo">Não conseguiu clonar repositório: %1$s</string>
     <string name="error_open_repo">Não conseguiu abrir repositório: %1$s</string>
-    <string name="error_create_repo">Não conseguiu criar repositório</string>
+    <string name="error_create_repo">Não conseguiu criar repositório: %1$s</string>
     <string name="error_write_file">Não foi possível escrever o: %1$s</string>
     <string name="error_invalid_name">Nome é inválido</string>
     <string name="error_invalid_extension">Extensão é inválida</string>
