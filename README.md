@@ -27,14 +27,21 @@ Because all apps which integrate git on Android either separate the note title f
 - [x] private repo (SSH and HTTPS)
 - [x] remote sync
 - [x] time based sort
+- [x] pure black theme for OLED screens
 
 Notes are written to the repository while you type, so there is no save button.
 Nothing is committed until a sync: that commits what has changed, pulls and
-pushes in one step. The cloud button in the search bar is the way to ask for one
-at any time — there is no pull to refresh — and a dot on it says when there is
-something the remote has not been told about yet. The app also syncs by itself
-when it is opened and when it is left; that can be turned off under Settings →
-Repository if you would rather it only happened when asked.
+pushes in one step, and the commit is named after the notes it carries —
+`[fresh.md] added, [kept.md] changed, [gone.md] deleted`. The cloud button in
+the search bar is the way to ask for one at any time — there is no pull to
+refresh — and a dot on it says when there is something the remote has not been
+told about yet. The app also syncs by itself when it is opened and when it is
+left; that can be turned off under Settings → Repository if you would rather it
+only happened when asked. A sync waits briefly for the network before it gives
+up, so coming back to a phone that has not reconnected yet is not an error.
+
+Long pressing a row selects it, and from there tapping selects more. Folders can
+be selected too, and deleting a selected folder takes everything in it.
 
 Cloning wants a clone url and the credentials for it: ssh keys, which the app can
 generate for you to add as a deploy key, or a username and an access token. No
