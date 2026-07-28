@@ -54,6 +54,9 @@ android {
 
         vectorDrawables.useSupportLibrary = true
 
+        // android.util.Log throws in JVM tests unless its methods return a default
+        testOptions.unitTests.isReturnDefaultValues = true
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         ndk {
