@@ -23,13 +23,12 @@ import io.github.wiiznokes.gitnote.ui.model.NoteHeader
 import io.github.wiiznokes.gitnote.ui.model.SortOrder
 import io.github.wiiznokes.gitnote.utils.getParentPath
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class GridViewModel : ViewModel() {
@@ -229,9 +228,16 @@ class GridViewModel : ViewModel() {
      * The whole list: the way out of the folder, its subfolders and its notes.
      * The folders ride along in the [PagingData] instead of being a list of
      * their own, so opening a folder swaps the list in one go.
+     *
+     * cachedIn comes last, after the folders have been folded in, and there is
+     * no stateIn behind it. Both matter: leaving the list for the editor throws
+     * the collector away, and coming back collects the same flow again. Only
+     * what cachedIn covers survives that — anything transformed after it is
+     * replayed over an event stream that has nothing left to say, which is how
+     * the folder rows used to go missing until the database was reloaded.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
-    val gridItems = combine(
+    val gridItems: Flow<PagingData<GridItem>> = combine(
         currentNoteFolderRelativePath,
         query,
     ) { folderPath, query ->
@@ -251,7 +257,7 @@ class GridViewModel : ViewModel() {
                     )
                 }
             }
-        ).flow.cachedIn(viewModelScope)
+        ).flow
 
         combine(
             notes,
@@ -280,9 +286,7 @@ class GridViewModel : ViewModel() {
 
             items
         }
-    }.stateIn(
-        viewModelScope, SharingStarted.WhileSubscribed(5000), PagingData.empty()
-    )
+    }.cachedIn(viewModelScope)
 
     fun reloadDatabase() {
         appScope.launch {
