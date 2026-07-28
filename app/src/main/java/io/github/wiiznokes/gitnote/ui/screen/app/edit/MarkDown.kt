@@ -25,14 +25,22 @@ import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Title
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import com.mikepenz.markdown.compose.MarkdownElement
 import com.mikepenz.markdown.compose.components.markdownComponents
 import com.mikepenz.markdown.m3.Markdown
@@ -49,12 +57,27 @@ fun MarkDownContent(
     textContent: TextFieldValue,
     scrollState: LazyListState,
 ) {
-    if (isReadOnlyModeActive) {
-        // Parsing happens off the composition, so opening a long note does not
-        // wait for it, and the blocks are laid out lazily: a note with hundreds
-        // of links only builds the ones on screen instead of all of them.
-        val markdownState = rememberMarkdownState(textContent.text)
+    // What the reading mode shows, which is the text as it stood when it was
+    // last entered. Kept outside the branch below so that it survives a switch
+    // to writing and back: rememberMarkdownState re-parses whenever its input
+    // changes, and while it does the reader shows nothing at all. Coming back
+    // to a note that was not edited therefore costs no parse at all, and typing
+    // costs none until the reading mode is asked for again.
+    var readText by remember { mutableStateOf(textContent.text) }
 
+    LaunchedEffect(isReadOnlyModeActive) {
+        if (isReadOnlyModeActive) readText = textContent.text
+    }
+
+    val markdownState = rememberMarkdownState(readText)
+
+    // A checkbox that was ticked is written to the note but not parsed again:
+    // the whole tree would be thrown away and rebuilt for one character, and the
+    // reader would go blank while it happened. "[ ]" and "[x]" are the same
+    // length, so the offsets the parser handed us still point at the right box.
+    val ticked = remember(readText) { mutableStateMapOf<Int, Boolean>() }
+
+    if (isReadOnlyModeActive) {
         SelectionContainer {
             Markdown(
                 markdownState = markdownState,
@@ -62,19 +85,25 @@ fun MarkDownContent(
                 components = markdownComponents(
                     checkbox = { model ->
                         val node = model.node
-                        val checked = model.content
+                        val asParsed = model.content
                             .substring(node.startOffset, node.endOffset)
                             .contains('x', ignoreCase = true)
 
                         Checkbox(
                             modifier = Modifier.size(CheckBoxSize),
-                            checked = checked,
-                            onCheckedChange = {
+                            checked = ticked[node.startOffset] ?: asParsed,
+                            onCheckedChange = { checked ->
+                                ticked[node.startOffset] = checked
                                 vm.toggleCheckBox(node.startOffset, node.endOffset)
                             },
                         )
                     }
                 ),
+                loading = { modifier ->
+                    Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                },
                 success = { state, components, modifier ->
                     LazyColumn(
                         modifier = modifier.fillMaxSize(),
