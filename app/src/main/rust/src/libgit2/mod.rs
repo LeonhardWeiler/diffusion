@@ -272,7 +272,146 @@ fn unresolved_conflicts(repo: &Repository, index: &git2::Index) -> Vec<String> {
     paths
 }
 
-pub fn commit_all(name: &str, email: &str, message: &str) -> Result<(), Error> {
+/// How many names a group of the subject line carries before the rest of them
+/// are only counted.
+const MAX_NAMES_IN_SUBJECT: usize = 3;
+
+/// The notes a commit is about, grouped by what happened to them.
+#[derive(Default)]
+struct Changes {
+    added: Vec<String>,
+    changed: Vec<String>,
+    deleted: Vec<String>,
+}
+
+impl Changes {
+    /// What the index holds that HEAD does not.
+    fn of(repo: &Repository, index: &git2::Index) -> Self {
+        let mut changes = Self::default();
+
+        let head_tree = repo.head().ok().and_then(|head| head.peel_to_tree().ok());
+
+        let Ok(diff) = repo.diff_tree_to_index(head_tree.as_ref(), Some(index), None) else {
+            return changes;
+        };
+
+        for delta in diff.deltas() {
+            let path = |file: git2::DiffFile| {
+                file.path()
+                    .map(|path| path.to_string_lossy().into_owned())
+                    .unwrap_or_default()
+            };
+
+            match delta.status() {
+                git2::Delta::Added | git2::Delta::Copied => {
+                    changes.added.push(path(delta.new_file()))
+                }
+                git2::Delta::Deleted => changes.deleted.push(path(delta.old_file())),
+                // A rename is a name that changed, which is the only thing the
+                // list shows about a note anyway. Detection is off by default,
+                // so this is the rare arm.
+                git2::Delta::Modified | git2::Delta::Renamed | git2::Delta::Typechange => {
+                    changes.changed.push(path(delta.new_file()))
+                }
+                _ => {}
+            }
+        }
+
+        changes.added.sort();
+        changes.changed.sort();
+        changes.deleted.sort();
+        changes
+    }
+
+    fn is_empty(&self) -> bool {
+        self.added.is_empty() && self.changed.is_empty() && self.deleted.is_empty()
+    }
+
+    fn groups(&self) -> [(&str, &Vec<String>); 3] {
+        [
+            ("added", &self.added),
+            ("changed", &self.changed),
+            ("deleted", &self.deleted),
+        ]
+    }
+}
+
+/// One group of the subject line: `[a.md, b.md] added`.
+fn subject_group(paths: &[String], verb: &str) -> Option<String> {
+    if paths.is_empty() {
+        return None;
+    }
+
+    let mut list = paths
+        .iter()
+        .take(MAX_NAMES_IN_SUBJECT)
+        .map(String::as_str)
+        .collect::<Vec<_>>()
+        .join(", ");
+
+    let hidden = paths.len().saturating_sub(MAX_NAMES_IN_SUBJECT);
+    if hidden > 0 {
+        list.push_str(&format!(" and {hidden} more"));
+    }
+
+    Some(format!("[{list}] {verb}"))
+}
+
+/// What the commit is about, read off the index.
+///
+/// Every commit the app ever made said "commit from gitnote", so the history
+/// recorded when something had been synced and never what. The names are the
+/// paths of the notes, which is what a history is read by; a subject line that
+/// would grow without end counts the rest and lists them underneath.
+fn commit_message(repo: &Repository, index: &git2::Index, fallback: &str) -> String {
+    let changes = Changes::of(repo, index);
+
+    if changes.is_empty() {
+        // A merge that changed no file still needs a commit to close it, and
+        // that is the one thing it can honestly be called.
+        return if repo.state() == git2::RepositoryState::Merge {
+            "Merge".to_string()
+        } else {
+            fallback.to_string()
+        };
+    }
+
+    let subject = changes
+        .groups()
+        .iter()
+        .filter_map(|(verb, paths)| subject_group(paths, verb))
+        .collect::<Vec<_>>()
+        .join(", ");
+
+    // Only when the subject had to leave names out: repeating three paths
+    // underneath the line that already names them says nothing.
+    if changes
+        .groups()
+        .iter()
+        .all(|(_, paths)| paths.len() <= MAX_NAMES_IN_SUBJECT)
+    {
+        return subject;
+    }
+
+    let body = changes
+        .groups()
+        .iter()
+        .filter(|(_, paths)| !paths.is_empty())
+        .map(|(verb, paths)| {
+            let names = paths
+                .iter()
+                .map(|path| format!("  {path}"))
+                .collect::<Vec<_>>()
+                .join("\n");
+            format!("{verb}:\n{names}")
+        })
+        .collect::<Vec<_>>()
+        .join("\n\n");
+
+    format!("{subject}\n\n{body}")
+}
+
+pub fn commit_all(name: &str, email: &str, fallback_message: &str) -> Result<(), Error> {
     let repo = REPO.lock().expect("repo lock");
     let repo = repo.as_ref().expect("repo");
 
@@ -299,6 +438,10 @@ pub fn commit_all(name: &str, email: &str, message: &str) -> Result<(), Error> {
     // Write index to disk
     index.write().map_err(|e| Error::git2(e, "write"))?;
 
+    // Read off the index rather than the working tree: what is about to be
+    // committed is exactly what was just staged.
+    let message = commit_message(repo, &index, fallback_message);
+
     // Write tree
     let tree_oid = index
         .write_tree()
@@ -313,7 +456,7 @@ pub fn commit_all(name: &str, email: &str, message: &str) -> Result<(), Error> {
 
     let sig = Signature::now(name, email).map_err(|e| Error::git2(e, "Signature::now"))?;
 
-    repo.commit(Some("HEAD"), &sig, &sig, message, &tree, &parents)
+    repo.commit(Some("HEAD"), &sig, &sig, &message, &tree, &parents)
         .map_err(|e| Error::git2(e, "commit"))?;
 
     // Nothing is in progress anymore, whether or not anything was.

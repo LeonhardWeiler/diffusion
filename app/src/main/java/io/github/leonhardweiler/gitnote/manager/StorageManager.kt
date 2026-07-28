@@ -143,9 +143,11 @@ class StorageManager {
 
         announceSyncErrors = announceErrors
 
+        // Only a fallback: the message a commit really carries is the notes it
+        // is about, and only the rust side, which stages them, knows those.
         gitManager.commitAll(
             prefs.gitAuthor(),
-            "commit from gitnote"
+            fallbackMessage = "Sync from GitNote"
         ).onFailure { err ->
             failSync(err.message)
             return@withLock failure(err)

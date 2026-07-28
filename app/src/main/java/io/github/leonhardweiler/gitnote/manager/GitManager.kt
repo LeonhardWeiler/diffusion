@@ -194,7 +194,12 @@ class GitManager {
         }
     }
 
-    suspend fun commitAll(author: GitAuthor, message: String): Result<Unit> = safelyAccessLibGit2 {
+    /**
+     * @param fallbackMessage what the commit is called when the notes it holds
+     * cannot be worked out — a merge that changed no file, say. Otherwise the
+     * rust side names them, because it is the side that stages them.
+     */
+    suspend fun commitAll(author: GitAuthor, fallbackMessage: String): Result<Unit> = safelyAccessLibGit2 {
         Log.d(TAG, "commit all: ${author.name}")
         if (!isRepoInitialized) throw GitException(GitExceptionType.RepoNotInit)
 
@@ -210,7 +215,7 @@ class GitManager {
             return@safelyAccessLibGit2
         }
 
-        res = commitAllLib(author.name, author.email, message)
+        res = commitAllLib(author.name, author.email, fallbackMessage)
 
         if (res == UNRESOLVED_CONFLICT) {
             // the detail names the notes that still have the markers in them,

@@ -5,6 +5,7 @@ use std::{fs, io};
 
 use crate::cred::GitAuthor;
 use crate::error::Error;
+use crate::libgit2::commit_message;
 use crate::libgit2::date_pulled_notes;
 use crate::libgit2::merge::do_merge;
 use crate::libgit2::unresolved_conflicts;
@@ -333,4 +334,70 @@ fn test_conflict_markers_are_seen_until_they_are_gone() {
         unresolved_conflicts(&repo, &index).is_empty(),
         "a note that was edited still counted as conflicted"
     );
+}
+
+/// Removes a file from the working tree and stages that, which is what
+/// deleting a note ends up as.
+fn remove_file(repo: &Repository, filename: &str) {
+    fs::remove_file(repo.workdir().unwrap().join(filename)).unwrap();
+
+    let mut index = repo.index().unwrap();
+    index.remove_path(Path::new(filename)).unwrap();
+    index.write().unwrap();
+}
+
+#[test]
+fn test_commit_message_names_the_notes() {
+    let path = "repo_test/message_repo";
+    let _ = clear_dir(path);
+    let repo = Repository::init(path).unwrap();
+
+    add_file(&repo, "kept.md", "one");
+    add_file(&repo, "gone.md", "two");
+    commit_current_state(&repo, "Initial commit");
+
+    add_file(&repo, "kept.md", "one, edited");
+    add_file(&repo, "fresh.md", "three");
+    remove_file(&repo, "gone.md");
+
+    let index = repo.index().unwrap();
+    assert_eq!(
+        commit_message(&repo, &index, "fallback"),
+        "[fresh.md] added, [kept.md] changed, [gone.md] deleted"
+    );
+}
+
+#[test]
+fn test_commit_message_counts_what_it_leaves_out() {
+    let path = "repo_test/message_many_repo";
+    let _ = clear_dir(path);
+    let repo = Repository::init(path).unwrap();
+
+    add_file(&repo, "a.md", "a");
+    commit_current_state(&repo, "Initial commit");
+
+    for name in ["b.md", "c.md", "d.md", "e.md", "f.md"] {
+        add_file(&repo, name, name);
+    }
+
+    let index = repo.index().unwrap();
+    let message = commit_message(&repo, &index, "fallback");
+
+    let (subject, body) = message.split_once("\n\n").expect("a body was expected");
+
+    assert_eq!(subject, "[b.md, c.md, d.md and 2 more] added");
+    assert_eq!(body, "added:\n  b.md\n  c.md\n  d.md\n  e.md\n  f.md");
+}
+
+#[test]
+fn test_commit_message_falls_back_when_nothing_changed() {
+    let path = "repo_test/message_empty_repo";
+    let _ = clear_dir(path);
+    let repo = Repository::init(path).unwrap();
+
+    add_file(&repo, "a.md", "a");
+    commit_current_state(&repo, "Initial commit");
+
+    let index = repo.index().unwrap();
+    assert_eq!(commit_message(&repo, &index, "fallback"), "fallback");
 }
