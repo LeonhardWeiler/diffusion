@@ -40,7 +40,7 @@ google-services.json
 jniLibs/
 
 # Claude Code
-CLAUDE.md
+# CLAUDE.md is versioned: it describes the project, not the local setup.
 CLAUDE.local.md
 .claude/
 .claude*/
