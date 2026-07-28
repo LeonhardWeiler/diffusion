@@ -101,8 +101,6 @@
     <string name="setup_manually">Deixe-me fazer manualmente</string>
     <string name="loading">Carregando…</string>
     <string name="logs">Logs</string>
-    <string name="extension">Extensão: %1$s</string>
-    <string name="parent_path">Caminho: %1$s</string>
     <string name="public_key">Chave pública</string>
     <string name="load_from_file">Carregar de um arquivo</string>
     <string name="private_key">Chave privada</string>

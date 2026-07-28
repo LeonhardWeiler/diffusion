@@ -12,31 +12,21 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material.icons.automirrored.filled.Undo
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import io.github.wiiznokes.gitnote.R
 import io.github.wiiznokes.gitnote.ui.viewmodel.edit.TextVM
-import io.github.wiiznokes.gitnote.utils.getParentPath
 
 val bottomBarHeight = 50.dp
 
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DefaultRow(
     vm: TextVM,
@@ -82,37 +72,6 @@ fun DefaultRow(
             )
         }
 
-        val bottomSheetExpanded = rememberSaveable { mutableStateOf(false) }
-
-        if (bottomSheetExpanded.value) {
-            ModalBottomSheet(onDismissRequest = { bottomSheetExpanded.value = false }) {
-                Text(
-                    modifier = Modifier
-                        .padding(10.dp),
-                    text = stringResource(R.string.extension, vm.previousNote.fileExtension().text)
-                )
-                Text(
-                    modifier = Modifier
-                        .padding(10.dp),
-                    text = stringResource(
-                        R.string.parent_path,
-                        getParentPath(vm.previousNote.relativePath)
-                    )
-                )
-            }
-        }
-
-        Row(
-            modifier = Modifier
-                .align(Alignment.BottomEnd),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            SmallButton(
-                onClick = { bottomSheetExpanded.value = true },
-                imageVector = Icons.Default.MoreVert,
-                contentDescription = "more actions"
-            )
-        }
     }
 }
 

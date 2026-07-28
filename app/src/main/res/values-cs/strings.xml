@@ -101,6 +101,5 @@
     <string name="setup_manually">Nechte mě to udělat ručně</string>
     <string name="loading">Nahrávání…</string>
     <string name="logs">Logy</string>
-    <string name="extension">Rozšíření: %1$s</string>
 
 </resources>

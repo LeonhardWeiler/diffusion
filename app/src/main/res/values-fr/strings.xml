@@ -116,12 +116,10 @@
     <string name="setup_manually">Laisse-moi le faire manuellement</string>
     <string name="loading">Chargement…</string>
     <string name="logs">Journaux</string>
-    <string name="extension">Extension: %1$s</string>
     <string name="git_author_name">Nom de l\'auteur Git</string>
     <string name="reload_database">Recharger la base de donnée</string>
     <string name="authorize_gitnote_title">Récupérer les métadonnées des dépôts</string>
     <string name="custom_ssh_keys">Utiliser des clés SSH personnalisées</string>
-    <string name="parent_path">Dossier parent: %1$s</string>
     <string name="public_key">Clé publique</string>
     <string name="load_from_file">Charger depuis un fichier</string>
     <string name="private_key">Clé privée</string>
