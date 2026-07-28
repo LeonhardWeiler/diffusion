@@ -94,13 +94,16 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
 
 
     /**
-     * @param onRemoteFound called with the url when the repository turns out to
-     * have a remote, so the setup can go on and ask for credentials for it.
+     * @param onRemoteFound called with the url when the repository already has a
+     * remote, so the setup can go on and ask for credentials for it.
+     * @param onNoRemote called when it has none, so the user can be asked whether
+     * to give it one.
      */
     fun openRepo(
         storageConfig: StorageConfiguration,
         onSuccess: () -> Unit,
         onRemoteFound: (String) -> Unit,
+        onNoRemote: () -> Unit,
     ) {
 
         appScope.launch {
@@ -134,16 +137,12 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
             // from whatever is on disk, committed or not
             storageManager.updateDatabase(force = true)
 
-            if (remoteUrl.isEmpty()) {
-                finishSetup(onSuccess)
-                return@launch
-            }
-
-            // it has a remote, so it will want to push: the credentials for it
-            // are the one thing the repository cannot tell us
+            // whether it already syncs somewhere or not, the setup goes on from
+            // here rather than finishing: a repository without a remote is a
+            // choice, not a conclusion
             repoIsAlreadyOnDevice = true
             withContext(Dispatchers.Main) {
-                onRemoteFound(remoteUrl)
+                if (remoteUrl.isEmpty()) onNoRemote() else onRemoteFound(remoteUrl)
             }
         }
 
@@ -258,6 +257,15 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
             }
             if (shouldCancel) {
                 discardPartialClone(storageConfig)
+                return
+            }
+        }
+
+        // an opened repository may not have had a remote at all, and push reads
+        // it from the repository rather than from the preferences
+        if (repoIsAlreadyOnDevice) {
+            gitManager.setRemoteUrl(remoteUrl).onFailure {
+                _initState.emit(InitState.Error(it.message))
                 return
             }
         }

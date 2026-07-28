@@ -133,6 +133,26 @@ pub fn clone_repo(
     Ok(())
 }
 
+/// Points the repository at [url], adding the remote if it has none.
+///
+/// Written into the repository itself, because that is where push and pull look
+/// for it — what the app stores in its preferences is a copy for the settings
+/// screen, not the thing git reads.
+pub fn set_remote_url(url: &str) -> Result<(), Error> {
+    let repo = REPO.lock().expect("repo lock");
+    let repo = repo.as_ref().expect("repo");
+
+    if repo.find_remote(REMOTE).is_ok() {
+        repo.remote_set_url(REMOTE, url)
+            .map_err(|e| Error::git2(e, "remote_set_url"))?;
+    } else {
+        repo.remote(REMOTE, url)
+            .map_err(|e| Error::git2(e, "remote"))?;
+    }
+
+    Ok(())
+}
+
 /// The url the repository pushes to and pulls from, as it is configured. None
 /// when the repository has no remote at all, which a purely local one has not.
 pub fn remote_url() -> Option<String> {

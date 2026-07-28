@@ -50,6 +50,11 @@ const _REMOTE_URL_LIB_METHOD: NativeMethod = native_method! {
     static extern fn remote_url_lib() -> JString,
 };
 
+const _SET_REMOTE_URL_LIB_METHOD: NativeMethod = native_method! {
+    java_type = "io.github.wiiznokes.gitnote.manager.GitManagerKt",
+    static extern fn set_remote_url_lib(url: JString) -> jint,
+};
+
 const _COMMIT_ALL_LIB_METHOD: NativeMethod = native_method! {
     java_type = "io.github.wiiznokes.gitnote.manager.GitManagerKt",
     static extern fn commit_all_lib(name: JString, email: JString, message: JString) -> jint,
@@ -216,6 +221,18 @@ fn remote_url_lib<'local>(
     };
 
     Ok(env.new_string(url).expect("Couldn't create Java string!"))
+}
+
+fn set_remote_url_lib<'local>(
+    env: &mut Env<'local>,
+    _class: JClass<'local>,
+    url: JString<'local>,
+) -> Result<jint, jni::errors::Error> {
+    let url = url.try_to_string(env).unwrap();
+
+    unwrap_or_log!(libgit2::set_remote_url(&url), "set_remote_url");
+
+    Ok(OK)
 }
 
 fn commit_all_lib<'local>(

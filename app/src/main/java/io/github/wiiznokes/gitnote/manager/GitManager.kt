@@ -151,6 +151,21 @@ class GitManager {
         remoteUrlLib()
     }.getOrNull()
 
+    /**
+     * Points the repository at [url]. Push and pull read the remote from the
+     * repository, not from the preferences, so a url that is only stored in the
+     * app would leave them with nothing to talk to.
+     */
+    suspend fun setRemoteUrl(url: String): Result<Unit> = safelyAccessLibGit2 {
+        Log.d(TAG, "set remote url")
+        if (!isRepoInitialized) throw GitException(GitExceptionType.RepoNotInit)
+
+        val res = setRemoteUrlLib(url)
+        if (res < 0) {
+            throw GitException(uiHelper.getString(R.string.error_set_remote_url, errorDetail(res)))
+        }
+    }
+
     suspend fun commitAll(author: GitAuthor, message: String): Result<Unit> = safelyAccessLibGit2 {
         Log.d(TAG, "commit all: ${author.name}")
         if (!isRepoInitialized) throw GitException(GitExceptionType.RepoNotInit)
@@ -256,6 +271,8 @@ private external fun cloneRepoLib(
 private external fun lastCommitLib(): String?
 
 private external fun remoteUrlLib(): String?
+
+private external fun setRemoteUrlLib(url: String): Int
 
 private external fun commitAllLib(name: String, email: String, message: String): Int
 private external fun currentSignatureLib(): Pair<String, String>?

@@ -58,6 +58,8 @@
     <string name="error_commit_repo">can\'t commit: %1$s</string>
     <string name="error_commit_file_change">can\'t know if there is files change: %1$s</string>
     <string name="error_clone_repo">can\'t clone repository: %1$s</string>
+    <string name="error_set_remote_url">Can\'t set the remote url: %1$s</string>
+    <string name="set_up_remote_question">This repository has no remote yet. Set one up now, so notes can be synced?</string>
     <string name="error_open_repo">can\'t open repository: %1$s</string>
     <string name="error_write_file">Can\'t write file: %1$s</string>
     <string name="error_invalid_name">Name is invalid</string>

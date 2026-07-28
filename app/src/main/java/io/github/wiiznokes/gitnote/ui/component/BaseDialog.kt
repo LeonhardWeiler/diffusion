@@ -21,12 +21,15 @@ fun BaseDialog(
     expanded: MutableState<Boolean>,
     modifier: Modifier = Modifier,
     verticalScrollEnabled: Boolean = true,
+    /** Tapping outside the dialog or going back, which is not the same as saying no. */
+    onDismiss: () -> Unit = {},
     dialogContent: @Composable ColumnScope.(MutableState<Boolean>) -> Unit
 ) {
     if (expanded.value) {
         Dialog(
             onDismissRequest = {
                 expanded.value = false
+                onDismiss()
             }
         ) {
             Surface(

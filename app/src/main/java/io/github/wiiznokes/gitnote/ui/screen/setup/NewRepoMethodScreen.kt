@@ -29,6 +29,7 @@ import io.github.wiiznokes.gitnote.data.platform.pickedFolderPath
 import io.github.wiiznokes.gitnote.data.platform.primaryStorageUri
 import io.github.wiiznokes.gitnote.helper.StoragePermissionHelper
 import io.github.wiiznokes.gitnote.ui.component.AppPage
+import io.github.wiiznokes.gitnote.ui.component.RequestConfirmationDialog
 import io.github.wiiznokes.gitnote.ui.destination.NewRepoMethod
 import io.github.wiiznokes.gitnote.ui.destination.SetupDestination
 import io.github.wiiznokes.gitnote.ui.model.StorageConfiguration
@@ -40,7 +41,7 @@ private const val TAG = "NewRepoMethodScreen"
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewRepoMethodScreen(
-    openRepo: (StorageConfiguration, () -> Unit, (String) -> Unit) -> Unit,
+    openRepo: (StorageConfiguration, () -> Unit, (String) -> Unit, () -> Unit) -> Unit,
     checkPathForClone: (String) -> Result<Unit>,
     makeToast: (String) -> Unit,
     navigate: (SetupDestination) -> Unit,
@@ -52,6 +53,11 @@ fun NewRepoMethodScreen(
 
     val newRepoMethod: MutableState<NewRepoMethod?> =
         remember { mutableStateOf(null) }
+
+    // an opened repository without a remote: it works as it is, but nothing it
+    // holds would ever leave the device
+    val repoWithoutRemote: MutableState<StorageConfiguration?> = remember { mutableStateOf(null) }
+    val askAboutRemote = remember { mutableStateOf(false) }
 
     val storagePermissionHelper = remember {
         StoragePermissionHelper()
@@ -72,9 +78,15 @@ fun NewRepoMethodScreen(
 
             val storageConfig = StorageConfiguration.Device(path)
             when (newRepoMethod.value!!) {
-                NewRepoMethod.Open -> openRepo(storageConfig, onSetupSuccess) { remoteUrl ->
-                    navigate(SetupDestination.Remote(storageConfig, remoteUrl))
-                }
+                NewRepoMethod.Open -> openRepo(
+                    storageConfig,
+                    onSetupSuccess,
+                    { remoteUrl -> navigate(SetupDestination.Remote(storageConfig, remoteUrl)) },
+                    {
+                        repoWithoutRemote.value = storageConfig
+                        askAboutRemote.value = true
+                    },
+                )
 
                 // said now rather than after the remote has been set up
                 NewRepoMethod.Clone ->
@@ -131,6 +143,15 @@ fun NewRepoMethodScreen(
     }
 
 
+    RequestConfirmationDialog(
+        expanded = askAboutRemote,
+        text = stringResource(R.string.set_up_remote_question),
+        onConfirmation = {
+            repoWithoutRemote.value?.let { navigate(SetupDestination.Remote(it)) }
+        },
+        onDecline = onSetupSuccess,
+    )
+
     val sheetState = rememberModalBottomSheetState()
     val scope = rememberCoroutineScope()
 
@@ -160,9 +181,17 @@ fun NewRepoMethodScreen(
 
                     val storageConfig = StorageConfiguration.App
                     when (newRepoMethod.value!!) {
-                        NewRepoMethod.Open -> openRepo(storageConfig, onSetupSuccess) { remoteUrl ->
-                            navigate(SetupDestination.Remote(storageConfig, remoteUrl))
-                        }
+                        NewRepoMethod.Open -> openRepo(
+                            storageConfig,
+                            onSetupSuccess,
+                            { remoteUrl ->
+                                navigate(SetupDestination.Remote(storageConfig, remoteUrl))
+                            },
+                            {
+                                repoWithoutRemote.value = storageConfig
+                                askAboutRemote.value = true
+                            },
+                        )
 
                         NewRepoMethod.Clone -> navigate(SetupDestination.Remote(storageConfig))
                     }
@@ -209,7 +238,7 @@ fun NewRepoMethodScreen(
 private fun NewRepoMethodScreenPreview() {
 
     NewRepoMethodScreen(
-        openRepo = { _, _, _ -> },
+        openRepo = { _, _, _, _ -> },
         checkPathForClone = { Result.success(Unit) },
         makeToast = {},
         navigate = {},

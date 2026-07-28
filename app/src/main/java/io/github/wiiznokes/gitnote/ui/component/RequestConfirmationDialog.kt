@@ -33,10 +33,13 @@ fun RequestConfirmationDialog(
     expanded: MutableState<Boolean>,
     text: String,
     onConfirmation: () -> Unit,
+    /** What saying no means, when it means more than closing the dialog. */
+    onDecline: () -> Unit = {},
 ) {
 
     BaseDialog(
-        expanded = expanded
+        expanded = expanded,
+        onDismiss = onDecline
     ) {
 
         Card(
@@ -63,7 +66,10 @@ fun RequestConfirmationDialog(
         ) {
 
             Button(
-                onClick = { expanded.value = false },
+                onClick = {
+                    expanded.value = false
+                    onDecline()
+                },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer
@@ -113,8 +119,7 @@ private fun DialogPreview() {
         expanded = remember {
             mutableStateOf(true)
         },
-        text = "Are you sure?"
-    ) {
-
-    }
+        text = "Are you sure?",
+        onConfirmation = {},
+    )
 }
