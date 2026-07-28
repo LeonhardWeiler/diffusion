@@ -49,11 +49,6 @@ data class NoteFolder(
         return relativePath.substringAfterLast("/")
     }
 
-    fun parentPath(): String? {
-        if (relativePath == "") return null
-        return relativePath.substringBeforeLast("/", missingDelimiterValue = "")
-    }
-
     fun toFolderFs(rootPath: String): NodeFs.Folder {
         return NodeFs.Folder.fromPath(rootPath, relativePath)
     }
@@ -103,20 +98,16 @@ data class Note(
         }
     }
 
-    fun fullName(): String = fileName
-
     fun fileExtension(): FileExtension {
         return relativePath.substringAfterLast(".", missingDelimiterValue = "")
             .let { FileExtension.match(it) }
     }
 
-    fun nameWithoutExtension(): String {
-        val fullName = fullName()
-        return fullName.substring(
-            startIndex = 0,
-            endIndex = fullName.length - (fileExtension().text.length + 1)
-        )
-    }
+    /** The file name with the dot and what follows it taken off. */
+    fun nameWithoutExtension(): String = fileName.substring(
+        startIndex = 0,
+        endIndex = fileName.length - (fileExtension().text.length + 1)
+    )
 
     init {
         if (BuildConfig.DEBUG) {

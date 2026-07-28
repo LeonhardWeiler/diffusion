@@ -20,7 +20,6 @@ import io.github.wiiznokes.gitnote.helper.UiHelper
 import io.github.wiiznokes.gitnote.manager.StorageManager
 import io.github.wiiznokes.gitnote.ui.destination.EditParams
 import io.github.wiiznokes.gitnote.ui.model.EditType
-import io.github.wiiznokes.gitnote.ui.model.FileExtension
 import io.github.wiiznokes.gitnote.ui.viewmodel.viewModelFactory
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -192,6 +191,13 @@ open class TextVM() : ViewModel() {
     private val appScope = MyApp.appModule.appScope
     val prefs = MyApp.appModule.appPreferences
 
+    /**
+     * Writes the note as the editor currently holds it.
+     *
+     * Everything that can be answered without touching the disk is answered
+     * here, so that the ui thread is not the one waiting; the write itself goes
+     * to the app's scope, which outlives this view model.
+     */
     fun save(onSuccess: () -> Unit = {}) {
 
         if (isPreviousNoteTheSame()) {
@@ -200,140 +206,75 @@ open class TextVM() : ViewModel() {
             return
         }
 
-        when (editType) {
-            EditType.Create -> create(
-                parentPath = previousNote.parentPath,
-                name = name.value.text,
-                fileExtension = previousNote.fileExtension(),
-                content = content.value.text,
-                id = previousNote.id
-            ).onSuccess {
-                editType = EditType.Update
-                previousNote = it
-                onSuccess()
-            }
+        val note = noteAsEdited().getOrElse { return }
+        refuseToOverwrite(note).getOrElse { return }
 
-            EditType.Update -> update(
-                previousNote = previousNote,
-                parentPath = previousNote.parentPath,
-                name = name.value.text,
-                fileExtension = previousNote.fileExtension(),
-                content = content.value.text,
-            ).onSuccess {
-                previousNote = it
-                onSuccess()
-            }
-        }
-    }
-
-    /** Return early to not block the ui thread.
-     * This is a best effort to catch problem
-     */
-    private fun update(
-        previousNote: Note,
-        parentPath: String,
-        name: String,
-        fileExtension: FileExtension,
-        content: String,
-    ): Result<Note> {
-
-
-        val name = NameValidation.removeEndingWhiteSpace(name)
-
-        if (!NameValidation.check(name)) {
-            uiHelper.makeToast(uiHelper.getString(R.string.error_invalid_name))
-            return failure(DataFormatException("name invalid: $name"))
-        }
-
-        if (!NameValidation.check(fileExtension.text)) {
-            uiHelper.makeToast(uiHelper.getString(R.string.error_invalid_extension))
-            return failure(DataFormatException("extension invalid: $name"))
-        }
-
-        val relativePath = "$parentPath/$name.${fileExtension.text}"
-
-        // the note keeps its id across a save. It is what the undo history and
-        // the list rows are keyed by, and with the editor saving every 500 ms a
-        // new id per keystroke meant moving both along every time.
-        val newNote = Note.new(
-            relativePath = relativePath,
-            content = content,
-            id = previousNote.id,
-        )
-
-        prefs.repoPathBlocking().let { repoPath ->
-            val previousFile = previousNote.toFileFs(repoPath)
-            if (!previousFile.exist()) {
-                Log.w(TAG, "previous file ${previousFile.path} does not exist")
-            }
-
-            val newFile = newNote.toFileFs(repoPath)
-            if (newFile.path != previousFile.path) {
-                if (newFile.exist()) {
-                    uiHelper.makeToast(uiHelper.getString(R.string.error_file_already_exist))
-                    return failure(EditException(EditExceptionType.NoteAlreadyExist))
-                }
-            }
-        }
+        val previous = previousNote
+        val isNew = editType == EditType.Create
 
         appScope.launch {
-
-            storageManager.updateNote(
-                new = newNote,
-                previous = previousNote
-            ).onFailure {
-                uiHelper.makeToast(it.message)
-                return@launch
-            }
-
+            if (isNew) {
+                storageManager.createNote(note)
+            } else {
+                storageManager.updateNote(new = note, previous = previous)
+            }.onFailure { uiHelper.makeToast(it.message) }
         }
-        return success(newNote)
+
+        // the note is now the one on disk, whatever the write makes of it: a
+        // second save must not try to create it again or rename it from a name
+        // that is gone
+        editType = EditType.Update
+        previousNote = note
+        onSuccess()
     }
 
-    /** Return early to note block the ui thread.
-     * This is a best effort to catch problem
+    /**
+     * The note the editor is describing, or why it does not describe one.
+     *
+     * It keeps the id across a save. That is what the undo history and the list
+     * rows are keyed by, and with the editor saving every 500 ms a new id per
+     * keystroke meant moving both along every time.
      */
-    private fun create(
-        parentPath: String,
-        name: String,
-        fileExtension: FileExtension,
-        content: String,
-        id: Int
-    ): Result<Note> {
-
-        val name = NameValidation.removeEndingWhiteSpace(name)
+    private fun noteAsEdited(): Result<Note> {
+        val name = NameValidation.removeEndingWhiteSpace(name.value.text)
+        val extension = previousNote.fileExtension()
 
         if (!NameValidation.check(name)) {
             uiHelper.makeToast(uiHelper.getString(R.string.error_invalid_name))
             return failure(DataFormatException("name invalid: $name"))
         }
 
-        if (!NameValidation.check(fileExtension.text)) {
+        if (!NameValidation.check(extension.text)) {
             uiHelper.makeToast(uiHelper.getString(R.string.error_invalid_extension))
             return failure(DataFormatException("extension invalid: $name"))
         }
 
-        val relativePath = "$parentPath/$name.${fileExtension.text}"
-
-        val note = Note.new(
-            relativePath = relativePath,
-            content = content,
-            id = id,
+        return success(
+            Note.new(
+                relativePath = "${previousNote.parentPath}/$name.${extension.text}",
+                content = content.value.text,
+                id = previousNote.id,
+            )
         )
+    }
+
+    /**
+     * Refuses a note whose file is already somebody else's.
+     *
+     * Writing over the note it already is, is not that — which is the usual
+     * case, since this runs on every typing pause.
+     */
+    private fun refuseToOverwrite(note: Note): Result<Unit> {
+        if (editType == EditType.Update && note.relativePath == previousNote.relativePath) {
+            return success(Unit)
+        }
 
         if (note.toFileFs(prefs.repoPathBlocking()).exist()) {
             uiHelper.makeToast(uiHelper.getString(R.string.error_file_already_exist))
             return failure(EditException(EditExceptionType.NoteAlreadyExist))
         }
 
-        appScope.launch {
-            storageManager.createNote(note).onFailure {
-                uiHelper.makeToast(it.message)
-                return@launch
-            }
-        }
-
-        return success(note)
+        return success(Unit)
     }
 
     fun isPreviousNoteTheSame(): Boolean =

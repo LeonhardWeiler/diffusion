@@ -1,13 +1,11 @@
 package io.github.wiiznokes.gitnote.data.platform
 
-import android.os.Environment
 import android.util.Log
 import io.github.wiiznokes.gitnote.MyApp
 import io.github.wiiznokes.gitnote.R
 import io.github.wiiznokes.gitnote.data.removeFirstAndLastSlash
 import io.github.wiiznokes.gitnote.ui.model.FileExtension
 import io.github.wiiznokes.gitnote.utils.toResult
-import java.io.File
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.attribute.FileTime
@@ -15,7 +13,6 @@ import kotlin.Result.Companion.failure
 import kotlin.Result.Companion.success
 import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.createDirectories
-import kotlin.io.path.createDirectory
 import kotlin.io.path.createFile
 import kotlin.io.path.createParentDirectories
 import kotlin.io.path.deleteExisting
@@ -36,10 +33,6 @@ import kotlin.io.path.writeText
 
 
 private const val TAG = "FileSystem"
-
-object FileSystem {
-    val defaultDir = Environment.getExternalStorageDirectory().toFolderFs()
-}
 
 sealed class NodeFs(
     open val path: String,
@@ -63,10 +56,6 @@ sealed class NodeFs(
         return pathFs.isSymbolicLink()
     }
 
-    fun parent(): Folder? {
-        return pathFs.parent?.toFolderFs()
-    }
-
     fun exist(): Boolean {
         return pathFs.exists()
     }
@@ -88,9 +77,6 @@ sealed class NodeFs(
                 return Paths.get(prefix).resolve(removeFirstAndLastSlash(suffix)).toFileFs()
             }
         }
-
-        fun nameWithoutExtension() =
-            fullName.take(fullName.lastIndex - extension.text.length)
 
         override fun delete(): Result<Unit> {
 
@@ -131,20 +117,6 @@ sealed class NodeFs(
 
         }
 
-        suspend fun <T> filterMapNodeFs(fn: suspend (NodeFs) -> T?): List<T> {
-            val output = mutableListOf<T>()
-            try {
-                pathFs.forEachDirectoryEntry { path ->
-                    fn(path.toNodeFs())?.let {
-                        output.add(it)
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "can't walk $path", e)
-            }
-            return output
-        }
-
         /**
          * Returns success if the folder is
          * and existing empty directory
@@ -177,12 +149,6 @@ sealed class NodeFs(
         }
 
 
-        fun createFolder(name: String): Result<Unit> {
-            return toResult {
-                pathFs.resolve(name).createDirectory()
-            }
-        }
-
         fun createFile(name: String): Result<Unit> {
             return toResult {
                 pathFs.resolve(name).createFile()
@@ -205,13 +171,6 @@ sealed class NodeFs(
     }
 }
 
-
-private fun File.toFolderFs(): NodeFs.Folder {
-    return NodeFs.Folder(
-        fullName = this.name,
-        path = this.path
-    )
-}
 
 private fun Path.toFolderFs(): NodeFs.Folder {
     return NodeFs.Folder(
@@ -240,8 +199,4 @@ private fun Path.toNodeFs(): NodeFs {
     } else {
         this.toFileFs()
     }
-}
-
-fun NodeFs.toFile(): File {
-    return File(path)
 }

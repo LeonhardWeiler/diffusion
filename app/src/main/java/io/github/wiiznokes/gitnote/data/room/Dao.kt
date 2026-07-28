@@ -17,10 +17,7 @@ import io.github.wiiznokes.gitnote.ui.model.GridNote
 import io.github.wiiznokes.gitnote.ui.model.NoteHeader
 import io.github.wiiznokes.gitnote.ui.model.SortOrder
 import io.github.wiiznokes.gitnote.ui.model.FolderModel
-import io.requery.android.database.sqlite.SQLiteDatabase
 import kotlinx.coroutines.flow.Flow
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 
 
 private const val TAG = "Dao"
@@ -139,9 +136,6 @@ interface RepoDatabaseDao {
         initRec(rootFs)
     }
 
-
-    @Query("SELECT * FROM NoteFolders WHERE relativePath = ''")
-    suspend fun rootNoteFolder(): NoteFolder
 
     @Query(
         """
@@ -267,75 +261,5 @@ interface RepoDatabaseDao {
     fun clearDatabase() {
         removeAllNoteFolder()
         removeAllNote()
-    }
-}
-
-object Rank : SQLiteDatabase.Function {
-    override fun callback(
-        args: SQLiteDatabase.Function.Args?,
-        result: SQLiteDatabase.Function.Result?
-    ) {
-        if (args == null || result == null) return
-
-        val blob = args.getBlob(0) ?: return
-
-        val buffer = ByteBuffer.wrap(blob).order(ByteOrder.nativeOrder())
-
-        val phraseCount = buffer.int
-        val columnCount = buffer.int
-
-        var score = 0.0
-
-        for (phrase in 0 until phraseCount) {
-            for (column in 0 until columnCount) {
-
-                val hitsThisRow = buffer.int
-                buffer.int
-                buffer.int
-
-                if (hitsThisRow != 0) {
-                    // relativePath column
-                    if (column == 0) {
-                        result.set(2.0)
-                        return
-                    }
-                    // content column
-                    else {
-                        score = 1.0
-                    }
-                }
-            }
-        }
-
-        result.set(score)
-    }
-
-}
-
-object ParentPath : SQLiteDatabase.Function {
-    override fun callback(
-        args: SQLiteDatabase.Function.Args?,
-        result: SQLiteDatabase.Function.Result?
-    ) {
-        if (args == null || result == null) return
-
-        val path = args.getString(0) ?: return
-
-        if (path == "") return
-
-        result.set(path.substringBeforeLast("/", missingDelimiterValue = ""))
-    }
-}
-
-object FullName : SQLiteDatabase.Function {
-    override fun callback(
-        args: SQLiteDatabase.Function.Args?,
-        result: SQLiteDatabase.Function.Result?
-    ) {
-        if (args == null || result == null) return
-
-        val path = args.getString(0) ?: return
-
-        result.set(path.substringAfterLast("/"))
     }
 }
