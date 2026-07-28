@@ -98,6 +98,15 @@ class SetupViewModel : ViewModel(), SetupViewModelI {
                 return@launch
             }
 
+            // A repository may still be open from an earlier attempt in this
+            // same setup: the credential screens can be backed out of, and
+            // nothing closes what was opened on the way in. openRepoLib returns
+            // at once when one is open, so without this the app would have gone
+            // on holding the first folder while the preferences moved to the
+            // second — notes written into one repository, commits made in the
+            // other.
+            gitManager.closeRepo()
+
             gitManager.openRepo(storageConfig.repoPath()).onFailure {
                 uiHelper.makeToast(it.message)
                 _initState.emit(InitState.Idle)
@@ -150,6 +159,12 @@ class SetupViewModel : ViewModel(), SetupViewModelI {
 
 
     fun checkPathForClone(repoPath: String): Result<Unit> {
+        // The one place the clone route is taken, so the one place to take back
+        // what an earlier "open" in the same setup decided: it is the flag that
+        // says there is nothing left to clone, and left standing it turned a
+        // clone into "set a remote url on the folder that is still open".
+        repoIsAlreadyOnDevice = false
+
         val result = NodeFs.Folder.fromPath(repoPath).isEmptyDirectory()
         result.onFailure {
             uiHelper.makeToast(it.message)
@@ -217,6 +232,11 @@ class SetupViewModel : ViewModel(), SetupViewModelI {
         shouldCancel = false
 
         if (!repoIsAlreadyOnDevice) {
+            // Same reason as in openRepo: an "open" earlier in this setup can
+            // have been backed out of and still holds a repository, and cloning
+            // while one is open is refused outright.
+            gitManager.closeRepo()
+
             storageConfig.prepareStorageRepoPath().onFailure {
                 _initState.emit(InitState.Error(it.message))
                 return
