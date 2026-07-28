@@ -149,12 +149,18 @@ dependencies {
 
     // Compose
     implementation(composeBom)
+    // the previews are compiled everywhere, see below
+    compileOnly(composeBom)
     implementation(libs.compose.ui)
     implementation(libs.compose.material3)
     implementation(libs.compose.material.icons.extended)
 
     // Compose Debug
-    implementation(libs.compose.ui.tooling.preview)
+    // A preview is written next to the thing it previews, so the annotation has
+    // to be on the compile path of every variant — but only the debug build has
+    // anything to do with it, and the release should not carry it.
+    compileOnly(libs.compose.ui.tooling.preview)
+    debugImplementation(libs.compose.ui.tooling.preview)
     debugImplementation(libs.androidx.ui.tooling)
 
     // Room
