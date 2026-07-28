@@ -10,6 +10,8 @@ plugins {
     alias(libs.plugins.ksp)
     // for compose navigation
     id("kotlin-parcelize")
+    // consumes what :baselineprofile records
+    alias(libs.plugins.baselineprofile)
 }
 
 android {
@@ -140,6 +142,8 @@ dependencies {
 
     // AndroidX Core
     implementation(libs.core.ktx)
+    // installs the recorded baseline profile on first run
+    implementation(libs.profileinstaller)
     implementation(libs.lifecycle.runtime.ktx)
     implementation(libs.lifecycle.runtime.compose)
     implementation(libs.activity.compose)
@@ -184,6 +188,9 @@ dependencies {
     // unit test
     testImplementation(kotlin("test"))
     testImplementation(kotlin("test-junit"))
+
+    // the profile itself, recorded on a device
+    baselineProfile(project(":baselineprofile"))
 
     // integration test
     androidTestImplementation(libs.test.junit.ktx)
