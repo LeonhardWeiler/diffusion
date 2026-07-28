@@ -6,6 +6,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import io.github.wiiznokes.gitnote.data.AppPreferences
 import io.github.wiiznokes.gitnote.data.room.RepoDatabase
+import io.github.wiiznokes.gitnote.helper.EditHistoryStore
 import io.github.wiiznokes.gitnote.helper.NoteSaver
 import io.github.wiiznokes.gitnote.helper.UiHelper
 import io.github.wiiznokes.gitnote.manager.GitManager
@@ -20,6 +21,7 @@ interface AppModule {
     val gitManager: GitManager
     val appPreferences: AppPreferences
     val noteSaver: NoteSaver
+    val editHistoryStore: EditHistoryStore
     val context: Context
 
 }
@@ -49,5 +51,9 @@ class AppModuleImpl(
 
     override val noteSaver: NoteSaver by lazy {
         NoteSaver(context.filesDir)
+    }
+
+    override val editHistoryStore: EditHistoryStore by lazy {
+        EditHistoryStore()
     }
 }

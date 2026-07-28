@@ -13,6 +13,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.wiiznokes.gitnote.MyApp
 import io.github.wiiznokes.gitnote.R
 import io.github.wiiznokes.gitnote.data.room.Note
+import io.github.wiiznokes.gitnote.helper.EditHistory
+import io.github.wiiznokes.gitnote.helper.HistoryItem
 import io.github.wiiznokes.gitnote.helper.NameValidation
 import io.github.wiiznokes.gitnote.helper.NoteSaver
 import io.github.wiiznokes.gitnote.helper.UiHelper
@@ -65,17 +67,30 @@ open class TextVM() : ViewModel() {
     private val _content = mutableStateOf(TextFieldValue())
     val content: State<TextFieldValue> get() = _content
 
-    private data class HistoryItem(
-        val v: TextFieldValue,
-        val flagDoNotRemove: Boolean = false,
-    )
-
-    private val history = mutableListOf<HistoryItem>()
+    /**
+     * Kept by the app, not by this view model, so that leaving a note and
+     * opening it again can still undo what was typed before.
+     */
+    private lateinit var editHistory: EditHistory
+    private val history: MutableList<HistoryItem> get() = editHistory.items
 
     private val _historyManager: MutableStateFlow<History> =
         MutableStateFlow(History(index = 0, size = 1))
     val historyManager: StateFlow<History>
         get() = _historyManager.asStateFlow()
+
+    private fun initHistory(initial: TextFieldValue) {
+        editHistory = MyApp.appModule.editHistoryStore.of(previousNote.id)
+        editHistory.seed(initial)
+        publishHistory()
+    }
+
+    private fun publishHistory() {
+        _historyManager.value = History(
+            size = history.size,
+            index = editHistory.index,
+        )
+    }
 
 
     val shouldForceNotReadOnlyMode: MutableState<Boolean> = mutableStateOf(false)
@@ -97,7 +112,7 @@ open class TextVM() : ViewModel() {
         )
 
         _content.value = textFieldValue.copy()
-        history.add(HistoryItem(textFieldValue))
+        initHistory(textFieldValue)
 
         Log.d(TAG, "init: $previousNote, $editType")
     }
@@ -120,7 +135,7 @@ open class TextVM() : ViewModel() {
         )
 
         _content.value = textFieldValue.copy()
-        history.add(HistoryItem(textFieldValue))
+        initHistory(textFieldValue)
 
         Log.d(TAG, "init saved: $previousNote, $editType")
     }
@@ -229,15 +244,9 @@ open class TextVM() : ViewModel() {
         }
 
         cleanHistory()
-
-        viewModelScope.launch {
-            _historyManager.emit(
-                History(
-                    size = history.size,
-                    index = history.size - 1
-                )
-            )
-        }
+        editHistory.trim()
+        editHistory.index = history.size - 1
+        publishHistory()
 
         scheduleSave()
     }
@@ -249,30 +258,19 @@ open class TextVM() : ViewModel() {
 
 
     fun undo() {
-        val historyManager = historyManager.value
-        viewModelScope.launch {
-            _historyManager.emit(
-                History(
-                    size = historyManager.size,
-                    index = historyManager.index - 1
-                )
-            )
-        }
-        _content.value = history[historyManager.index - 1].v.copy()
-        scheduleSave()
+        moveInHistory(editHistory.index - 1)
     }
 
     fun redo() {
-        val historyManager = historyManager.value
-        viewModelScope.launch {
-            _historyManager.emit(
-                History(
-                    size = historyManager.size,
-                    index = historyManager.index + 1
-                )
-            )
-        }
-        _content.value = history[historyManager.index + 1].v.copy()
+        moveInHistory(editHistory.index + 1)
+    }
+
+    private fun moveInHistory(index: Int) {
+        if (index !in history.indices) return
+
+        editHistory.index = index
+        publishHistory()
+        _content.value = history[index].v.copy()
         scheduleSave()
     }
 
@@ -318,6 +316,9 @@ open class TextVM() : ViewModel() {
                 fileExtension = previousNote.fileExtension(),
                 content = content.value.text,
             ).onSuccess {
+                // a saved note is a new row with a new id, and its history has
+                // to follow, or reopening the note would start from scratch
+                MyApp.appModule.editHistoryStore.move(previousNote.id, it.id)
                 previousNote = it
                 onSuccess()
             }
