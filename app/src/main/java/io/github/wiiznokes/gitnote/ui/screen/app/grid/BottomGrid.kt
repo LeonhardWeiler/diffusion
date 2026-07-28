@@ -26,7 +26,7 @@ import kotlin.math.roundToInt
 @Composable
 fun FloatingActionButtons(
     vm: GridViewModel,
-    offset: Float,
+    offset: () -> Float,
     onEditClick: (Note, EditType) -> Unit,
 ) {
     val dropDownExpanded = remember { mutableStateOf(false) }
@@ -60,7 +60,7 @@ fun FloatingActionButtons(
 
         FloatingActionButton(
             modifier = Modifier
-                .offset { IntOffset(x = 0, y = -offset.roundToInt()) },
+                .offset { IntOffset(x = 0, y = -offset().roundToInt()) },
             onClick = { dropDownExpanded.value = true },
         ) {
             Icon(

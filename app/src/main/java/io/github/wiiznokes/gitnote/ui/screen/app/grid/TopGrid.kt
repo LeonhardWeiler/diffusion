@@ -85,7 +85,7 @@ private val ButtonSize = 35.dp
 @Composable
 fun TopBar(
     padding: PaddingValues,
-    offset: Float,
+    offset: () -> Float,
     selectedNotesNumber: Int,
     onSettingsClick: () -> Unit,
     searchFocusRequester: FocusRequester,
@@ -135,7 +135,7 @@ fun TopBar(
 @Composable
 private fun SearchBar(
     padding: PaddingValues,
-    offset: Float,
+    offset: () -> Float,
     onSettingsClick: () -> Unit,
     searchFocusRequester: FocusRequester,
     onReloadDatabase: () -> Unit,
@@ -178,7 +178,7 @@ private fun SearchBar(
             .padding(padding)
             .padding(horizontal = 10.dp)
             .padding(top = 15.dp)
-            .offset { IntOffset(x = 0, y = offset.roundToInt()) }
+            .offset { IntOffset(x = 0, y = offset().roundToInt()) }
             .focusRequester(searchFocusRequester),
         value = queryTextField.value,
         onValueChange = {
@@ -450,7 +450,7 @@ private fun SyncStateIcon(
 private fun TopBarPreview() {
     TopBar(
         padding = PaddingValues(),
-        offset = 0f,
+        offset = { 0f },
         onSettingsClick = {},
         searchFocusRequester = remember { FocusRequester() },
         onReloadDatabase = { },

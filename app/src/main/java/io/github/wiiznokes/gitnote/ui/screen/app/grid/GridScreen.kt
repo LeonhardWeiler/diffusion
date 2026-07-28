@@ -91,7 +91,7 @@ fun GridScreen(
             if (selectedNotes.isEmpty()) {
                 FloatingActionButtons(
                     vm = vm,
-                    offset = offset.floatValue,
+                    offset = { offset.floatValue },
                     onEditClick = onEditClick,
                 )
             }
@@ -112,7 +112,7 @@ fun GridScreen(
         )
 
         TopBar(
-            offset = offset.floatValue,
+            offset = { offset.floatValue },
             selectedNotesNumber = selectedNotes.size,
             onSettingsClick = onSettingsClick,
             searchFocusRequester = searchFocusRequester,
