@@ -59,9 +59,12 @@ sealed class StorageConfiguration : Parcelable {
         }
     }
 
-    fun prepareStorageRepoPath() {
-        val folder = NodeFs.Folder.fromPath(repoPath())
-        folder.delete()
-        folder.create()
+    /**
+     * Creates the repo directory if it does not exist yet. Never deletes anything:
+     * the caller decides what to do with a directory that already has content,
+     * using [NodeFs.Folder.isEmptyDirectory].
+     */
+    fun prepareStorageRepoPath(): Result<Unit> {
+        return NodeFs.Folder.fromPath(repoPath()).create()
     }
 }

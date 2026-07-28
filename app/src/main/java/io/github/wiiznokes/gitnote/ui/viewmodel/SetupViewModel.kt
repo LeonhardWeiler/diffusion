@@ -110,7 +110,10 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
 
         CoroutineScope(Dispatchers.IO).launch {
 
-            storageConfig.prepareStorageRepoPath()
+            storageConfig.prepareStorageRepoPath().onFailure {
+                uiHelper.makeToast(it.message)
+                return@launch
+            }
 
             NodeFs.Folder.fromPath(storageConfig.repoPath()).isEmptyDirectory().onFailure {
                 uiHelper.makeToast(it.message)
@@ -202,7 +205,18 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
         shouldCancel = false
 
         storageConfig.applyUrlName(remoteUrl)
-        storageConfig.prepareStorageRepoPath()
+
+        storageConfig.prepareStorageRepoPath().onFailure {
+            _initState.emit(InitState.Error(it.message))
+            return
+        }
+
+        // Checked here and not only in the setup screen, because the check there is
+        // skipped when the repo name comes from the url.
+        NodeFs.Folder.fromPath(storageConfig.repoPath()).isEmptyDirectory().onFailure {
+            _initState.emit(InitState.Error(it.message))
+            return
+        }
 
         _initState.emit(InitState.Cloning(0))
 
