@@ -10,9 +10,7 @@
 
 </div>
 
-[![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/wiiznokes/gitnote.svg?logo=github&label=GitHub&cacheSeconds=3600)](https://github.com/wiiznokes/gitnote/releases/latest)
-[![F-Droid](https://img.shields.io/f-droid/v/io.github.wiiznokes.gitnote?logo=f-droid&label=F-Droid&cacheSeconds=3600)](https://f-droid.org/packages/io.github.wiiznokes.gitnote)
-[![IzzyOnDroid](https://img.shields.io/endpoint?url=https://apt.izzysoft.de/fdroid/api/v1/shield/io.github.wiiznokes.gitnote)](https://apt.izzysoft.de/fdroid/index/apk/io.github.wiiznokes.gitnote)
+[![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/LeonhardWeiler/gitnote.svg?logo=github&label=GitHub&cacheSeconds=3600)](https://github.com/LeonhardWeiler/gitnote/releases/latest)
 
 Android note app which integrate Git. You can use this app with other desktop editors.
 
@@ -41,7 +39,7 @@ credentials it cannot read. A repository without a remote is asked about rather
 than left as it is, so notes written into it can still be synced later.
 
 <p  style="text-align: center;">
-  <img src="https://media.githubusercontent.com/media/wiiznokes/gitnote/master/assets/edit.png" width="32%"  alt="edit screen"/>
+  <img src="https://media.githubusercontent.com/media/LeonhardWeiler/gitnote/master/assets/edit.png" width="32%"  alt="edit screen"/>
 </p>
 
 _Supported Android versions: 11 to 16_
@@ -61,3 +59,10 @@ _Supported Architecture: `arm64-v8a`, `x86_64`_
 ## Contributing
 
 See [this file](./CONTRIBUTING.md).
+
+## Credits
+
+GitNote was created by [wiiznokes](https://github.com/wiiznokes), and this is a
+fork of [wiiznokes/gitnote](https://github.com/wiiznokes/gitnote) that goes its
+own way. Everything up to the fork is their work, and it stays under the same
+licence — see [LICENSE](./LICENSE).
