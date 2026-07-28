@@ -7,6 +7,7 @@ import kotlinx.coroutines.SupervisorJob
 import io.github.leonhardweiler.gitnote.data.AppPreferences
 import io.github.leonhardweiler.gitnote.data.room.RepoDatabase
 import io.github.leonhardweiler.gitnote.helper.EditHistoryStore
+import io.github.leonhardweiler.gitnote.helper.NetworkMonitor
 import io.github.leonhardweiler.gitnote.helper.NoteSaver
 import io.github.leonhardweiler.gitnote.helper.UiHelper
 import io.github.leonhardweiler.gitnote.manager.GitManager
@@ -22,6 +23,7 @@ interface AppModule {
     val appPreferences: AppPreferences
     val noteSaver: NoteSaver
     val editHistoryStore: EditHistoryStore
+    val networkMonitor: NetworkMonitor
     val context: Context
 
 }
@@ -55,5 +57,9 @@ class AppModuleImpl(
 
     override val editHistoryStore: EditHistoryStore by lazy {
         EditHistoryStore()
+    }
+
+    override val networkMonitor: NetworkMonitor by lazy {
+        NetworkMonitor(context)
     }
 }

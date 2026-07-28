@@ -12,6 +12,12 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!--
+        so that a sync can wait for the network instead of failing at dns.
+        a normal permission: it is granted at install time and never asked for.
+    -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
     <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
 
     <application

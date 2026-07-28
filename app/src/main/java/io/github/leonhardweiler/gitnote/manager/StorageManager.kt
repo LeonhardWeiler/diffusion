@@ -43,6 +43,8 @@ class StorageManager {
 
     private val uiHelper = MyApp.appModule.uiHelper
 
+    private val networkMonitor = MyApp.appModule.networkMonitor
+
     private val dao = this.db.repoDatabaseDao
 
     private val gitManager: GitManager = MyApp.appModule.gitManager
@@ -397,10 +399,31 @@ class StorageManager {
     }
 
     private suspend fun syncWithRemoteWithoutLocker(): Result<Unit> {
-        val hasRemote = prefs.remoteUrl.get().isNotEmpty()
+        var hasRemote = prefs.remoteUrl.get().isNotEmpty()
         val cred = prefs.cred()
         var isError = false
         var conflicted = false
+
+        // The two syncs nobody asks for run when the app is opened and when it
+        // is left, which is exactly the moment a phone comes back from being
+        // asleep and wifi has not reassociated yet. libgit2 got as far as dns
+        // and no further, and the cloud button was left carrying "failed to
+        // resolve address for github.com" for a sync the user never started —
+        // one tap later the same thing worked. Waited out here, it usually
+        // does not happen at all.
+        if (hasRemote && !networkMonitor.awaitOnline()) {
+            hasRemote = false
+
+            // A sync that was asked for gets an answer, in words that name the
+            // thing to fix. One that ran by itself says nothing: the dot on the
+            // button already says the notes have not gone out, and being out of
+            // signal for a moment is not a failure worth an error icon.
+            if (announceSyncErrors) {
+                failSync(uiHelper.getString(R.string.error_no_network))
+            } else {
+                Log.d(TAG, "sync: no network, and nobody asked")
+            }
+        }
 
         if (hasRemote) {
             _syncState.emit(SyncState.Pull)

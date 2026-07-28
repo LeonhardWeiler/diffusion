@@ -56,6 +56,7 @@
     <string name="error_note_not_found">This note is no longer there</string>
     <string name="error_delete_file">Can\'t delete file %1$s: %2$s</string>
     <string name="error_create_folder">Can\'t create folder: %1$s</string>
+    <string name="error_no_network">No network connection. The notes stay here until the next sync.</string>
     <string name="error_pull_repo">Can\'t pull: %1$s</string>
     <string name="error_merge_conflict">Changed here and somewhere else. Both versions are now in the note, between &lt;&lt;&lt;&lt;&lt;&lt;&lt; and &gt;&gt;&gt;&gt;&gt;&gt;&gt; markers — edit it to keep what you want, then sync again. (%1$s)</string>
     <string name="error_push_repo">Can\'t push: %1$s</string>
