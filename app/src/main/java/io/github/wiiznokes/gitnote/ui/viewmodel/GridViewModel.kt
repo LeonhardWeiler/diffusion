@@ -62,10 +62,6 @@ class GridViewModel : ViewModel() {
         }
     }
 
-    private val _isRefreshing = MutableStateFlow(false)
-    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
-
-
     private val _currentNoteFolderRelativePath = MutableStateFlow("")
     val currentNoteFolderRelativePath: StateFlow<String>
         get() = _currentNoteFolderRelativePath.asStateFlow()
@@ -82,7 +78,8 @@ class GridViewModel : ViewModel() {
         Log.d(TAG, "init")
     }
 
-    suspend fun refreshSelectedNotes() {
+    /** Drops from the selection whatever is no longer in the database. */
+    private suspend fun refreshSelectedNotes() {
         selectedNotes.value.filter { selectedNote ->
             dao.isNoteExist(selectedNote.relativePath)
         }.let { newSelectedNotes ->
@@ -90,18 +87,6 @@ class GridViewModel : ViewModel() {
         }
     }
 
-    /**
-     * Reads the files back into the database, which catches whatever changed
-     * outside the app. The remote is not part of it.
-     */
-    fun refresh() {
-        appScope.launch {
-            _isRefreshing.emit(true)
-            storageManager.updateDatabase(force = true)
-            refreshSelectedNotes()
-            _isRefreshing.emit(false)
-        }
-    }
 
     fun updateSettings(f: suspend AppPreferences.() -> Unit) {
         viewModelScope.launch { prefs.f() }
@@ -294,12 +279,17 @@ class GridViewModel : ViewModel() {
         }
     }.cachedIn(viewModelScope)
 
+    /**
+     * Reads the files back into the database, which catches whatever changed
+     * outside the app. The remote is not part of it — syncing is the button in
+     * the search bar and nothing else.
+     */
     fun reloadDatabase() {
         appScope.launch {
-            val res = storageManager.updateDatabase(force = true)
-            res.onFailure {
+            storageManager.updateDatabase(force = true).onFailure {
                 uiHelper.makeToast("$it")
             }
+            refreshSelectedNotes()
         }
     }
 }

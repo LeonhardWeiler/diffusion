@@ -14,9 +14,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -153,51 +150,26 @@ private fun GridView(
     val query = vm.query.collectAsState()
 
 
-    val isRefreshing by vm.isRefreshing.collectAsStateWithLifecycle()
-    val pullToRefreshState = rememberPullToRefreshState()
+    val listState = rememberLazyListState()
 
-    PullToRefreshBox(
-        isRefreshing = isRefreshing,
-        onRefresh = {
-            Log.d(TAG, "pull refresh")
-            vm.refresh()
-        },
-        modifier = Modifier.fillMaxSize(),
-        state = pullToRefreshState,
-        indicator = {
-            PullToRefreshDefaults.Indicator(
-                state = pullToRefreshState,
-                isRefreshing = isRefreshing,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = topBarHeight + padding.calculateTopPadding()),
-                containerColor = MaterialTheme.colorScheme.primary,
-                color = MaterialTheme.colorScheme.onPrimary,
-            )
-        }
-    ) {
-
-        val listState = rememberLazyListState()
-
-        LaunchedEffect(query.value) {
-            listState.scrollToItem(index = 0)
-        }
-
-        NoteListView(
-            gridItems = gridItems,
-            topSpacerHeight = topSpacerHeight,
-            listState = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .nestedScroll(nestedScrollConnection),
-            selectedNotes = selectedNotes,
-            onEditClick = onEditClick,
-            onFolderClick = vm::openFolder,
-            onFolderDelete = vm::deleteFolder,
-            isSearching = query.value.isNotEmpty(),
-            vm = vm,
-        )
+    LaunchedEffect(query.value) {
+        listState.scrollToItem(index = 0)
     }
+
+    NoteListView(
+        gridItems = gridItems,
+        topSpacerHeight = topSpacerHeight,
+        listState = listState,
+        modifier = Modifier
+            .fillMaxSize()
+            .nestedScroll(nestedScrollConnection),
+        selectedNotes = selectedNotes,
+        onEditClick = onEditClick,
+        onFolderClick = vm::openFolder,
+        onFolderDelete = vm::deleteFolder,
+        isSearching = query.value.isNotEmpty(),
+        vm = vm,
+    )
 }
 
 
