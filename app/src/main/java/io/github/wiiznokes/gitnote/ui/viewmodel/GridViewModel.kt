@@ -273,15 +273,21 @@ class GridViewModel : ViewModel() {
                 )
             }
 
-            // every header goes to the very front, so the last one inserted wins
-            folders.asReversed().forEach { folder ->
-                items = items.insertHeaderItem(item = GridItem.Folder(folder))
-            }
+            // A search reaches into the subfolders, so the folders of the one
+            // being looked at are not what was asked for — and the way out of it
+            // would sit above results that come from inside it.
+            if (gridQuery.query.isEmpty()) {
 
-            if (gridQuery.folderPath.isNotEmpty()) {
-                items = items.insertHeaderItem(
-                    item = GridItem.ParentFolder(getParentPath(gridQuery.folderPath))
-                )
+                // every header goes to the very front, so the last one inserted wins
+                folders.asReversed().forEach { folder ->
+                    items = items.insertHeaderItem(item = GridItem.Folder(folder))
+                }
+
+                if (gridQuery.folderPath.isNotEmpty()) {
+                    items = items.insertHeaderItem(
+                        item = GridItem.ParentFolder(getParentPath(gridQuery.folderPath))
+                    )
+                }
             }
 
             items

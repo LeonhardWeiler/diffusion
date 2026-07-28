@@ -67,6 +67,7 @@ internal fun NoteListView(
     onEditClick: (Note, EditType) -> Unit,
     onFolderClick: (String) -> Unit,
     onFolderDelete: (NoteFolder) -> Unit,
+    isSearching: Boolean,
     vm: GridViewModel,
 ) {
 
@@ -98,6 +99,7 @@ internal fun NoteListView(
                     vm = vm,
                     onEditClick = onEditClick,
                     selectedNotes = selectedNotes,
+                    isSearching = isSearching,
                 )
 
                 null -> Unit
@@ -230,6 +232,7 @@ private fun NoteListRow(
     vm: GridViewModel,
     onEditClick: (Note, EditType) -> Unit,
     selectedNotes: List<NoteHeader>,
+    isSearching: Boolean,
 ) {
     val dropDownExpanded = remember { mutableStateOf(false) }
     val clickPosition = remember { mutableStateOf(Offset.Zero) }
@@ -239,7 +242,9 @@ private fun NoteListRow(
             .format(Date(gridNote.note.lastModifiedTimeMillis))
     }
 
-    val title = if (!gridNote.isUnique) {
+    // A search spans the whole repository, so the name alone does not say which
+    // note was found: results are named by their path.
+    val title = if (isSearching || !gridNote.isUnique) {
         gridNote.note.relativePath
     } else {
         gridNote.note.nameWithoutExtension()

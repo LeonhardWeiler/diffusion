@@ -194,6 +194,7 @@ private fun GridView(
             onEditClick = onEditClick,
             onFolderClick = vm::openFolder,
             onFolderDelete = vm::deleteFolder,
+            isSearching = query.value.isNotEmpty(),
             vm = vm,
         )
     }
