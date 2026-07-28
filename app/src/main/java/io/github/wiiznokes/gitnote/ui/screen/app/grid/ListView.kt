@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Folder
@@ -44,13 +43,11 @@ import io.github.wiiznokes.gitnote.ui.component.CustomDropDown
 import io.github.wiiznokes.gitnote.ui.component.CustomDropDownModel
 import io.github.wiiznokes.gitnote.ui.model.EditType
 import io.github.wiiznokes.gitnote.ui.model.FolderModel
+import io.github.wiiznokes.gitnote.ui.model.GridItem
 import io.github.wiiznokes.gitnote.ui.model.GridNote
 import io.github.wiiznokes.gitnote.ui.viewmodel.GridViewModel
-import io.github.wiiznokes.gitnote.utils.getParentPath
 import java.text.DateFormat
 import java.util.Date
-
-private const val PARENT_FOLDER_KEY = ".."
 
 /**
  * A note row is two lines high, a folder row only one. Without a common floor
@@ -61,9 +58,7 @@ private val ListRowMinHeight = 56.dp
 
 @Composable
 internal fun NoteListView(
-    gridNotes: LazyPagingItems<GridNote>,
-    folders: List<FolderModel>,
-    currentFolderPath: String,
+    gridItems: LazyPagingItems<GridItem>,
     topSpacerHeight: Dp,
     listState: LazyListState,
     modifier: Modifier = Modifier,
@@ -83,35 +78,31 @@ internal fun NoteListView(
             Spacer(modifier = Modifier.height(topSpacerHeight))
         }
 
-        if (currentFolderPath.isNotEmpty()) {
-            item(key = PARENT_FOLDER_KEY) {
-                ParentFolderRow(onClick = { onFolderClick(getParentPath(currentFolderPath)) })
-            }
-        }
-
         items(
-            items = folders,
-            key = { it.noteFolder.id }
-        ) { folder ->
-            FolderRow(
-                folder = folder,
-                onClick = { onFolderClick(folder.noteFolder.relativePath) },
-                onDelete = { onFolderDelete(folder.noteFolder) },
-            )
-        }
-
-        items(
-            count = gridNotes.itemCount,
-            key = gridNotes.itemKey { it.note.id }
+            count = gridItems.itemCount,
+            key = gridItems.itemKey { it.key() }
         ) { index ->
-            val gridNote = gridNotes[index] ?: return@items
-            NoteListRow(
-                gridNote = gridNote,
-                vm = vm,
-                onEditClick = onEditClick,
-                selectedNotes = selectedNotes,
-                showFullPathOfNotes = showFullPathOfNotes,
-            )
+            when (val gridItem = gridItems[index]) {
+                is GridItem.ParentFolder -> ParentFolderRow(
+                    onClick = { onFolderClick(gridItem.relativePath) }
+                )
+
+                is GridItem.Folder -> FolderRow(
+                    folder = gridItem.folder,
+                    onClick = { onFolderClick(gridItem.folder.noteFolder.relativePath) },
+                    onDelete = { onFolderDelete(gridItem.folder.noteFolder) },
+                )
+
+                is GridItem.Note -> NoteListRow(
+                    gridNote = gridItem.gridNote,
+                    vm = vm,
+                    onEditClick = onEditClick,
+                    selectedNotes = selectedNotes,
+                    showFullPathOfNotes = showFullPathOfNotes,
+                )
+
+                null -> Unit
+            }
         }
 
         item {

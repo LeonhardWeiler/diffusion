@@ -7,6 +7,7 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
+import androidx.paging.insertHeaderItem
 import androidx.paging.map
 import io.github.wiiznokes.gitnote.MyApp
 import io.github.wiiznokes.gitnote.R
@@ -17,6 +18,9 @@ import io.github.wiiznokes.gitnote.data.room.RepoDatabase
 import io.github.wiiznokes.gitnote.helper.NameValidation
 import io.github.wiiznokes.gitnote.manager.StorageManager
 import io.github.wiiznokes.gitnote.ui.model.FileExtension
+import io.github.wiiznokes.gitnote.ui.model.GridItem
+import io.github.wiiznokes.gitnote.ui.model.SortOrder
+import io.github.wiiznokes.gitnote.utils.getParentPath
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -204,48 +208,72 @@ class GridViewModel : ViewModel() {
     }
 
 
+    private data class GridQuery(
+        val folderPath: String,
+        val sortOrder: SortOrder,
+        val sortOrderFolder: SortOrder,
+        val query: String,
+    )
+
+    /**
+     * The whole list: the way out of the folder, its subfolders and its notes.
+     * The folders ride along in the [PagingData] instead of being a list of
+     * their own, so opening a folder swaps the list in one go.
+     */
     @OptIn(ExperimentalCoroutinesApi::class)
-    val gridNotes = combine(
+    val gridItems = combine(
         currentNoteFolderRelativePath,
         prefs.sortOrder.getFlow(),
+        prefs.sortOrderFolder.getFlow(),
         query,
-    ) { currentNoteFolderRelativePath, sortOrder, query ->
-        Triple(currentNoteFolderRelativePath, sortOrder, query)
-    }.flatMapLatest { triple ->
-        val (currentNoteFolderRelativePath, sortOrder, query) = triple
+    ) { folderPath, sortOrder, sortOrderFolder, query ->
+        GridQuery(folderPath, sortOrder, sortOrderFolder, query)
+    }.flatMapLatest { gridQuery ->
 
-        Pager(
+        val notes = Pager(
             config = PagingConfig(pageSize = 50),
             pagingSourceFactory = {
-                if (query.isEmpty()) {
-                    dao.gridNotes(currentNoteFolderRelativePath, sortOrder)
+                if (gridQuery.query.isEmpty()) {
+                    dao.gridNotes(gridQuery.folderPath, gridQuery.sortOrder)
                 } else {
-                    dao.gridNotesWithQuery(currentNoteFolderRelativePath, sortOrder, query)
+                    dao.gridNotesWithQuery(
+                        gridQuery.folderPath,
+                        gridQuery.sortOrder,
+                        gridQuery.query
+                    )
                 }
             }
         ).flow.cachedIn(viewModelScope)
-    }.combine(selectedNotes) { gridNotes, selectedNotes ->
-        gridNotes.map { gridNote ->
-            gridNote.copy(
-                selected = selectedNotes.contains(gridNote.note)
-            )
+
+        combine(
+            notes,
+            dao.folders(gridQuery.folderPath, gridQuery.sortOrderFolder),
+            selectedNotes,
+        ) { pagingData, folders, selectedNotes ->
+
+            var items: PagingData<GridItem> = pagingData.map { gridNote ->
+                GridItem.Note(
+                    gridNote.copy(
+                        selected = selectedNotes.contains(gridNote.note)
+                    )
+                )
+            }
+
+            // every header goes to the very front, so the last one inserted wins
+            folders.asReversed().forEach { folder ->
+                items = items.insertHeaderItem(item = GridItem.Folder(folder))
+            }
+
+            if (gridQuery.folderPath.isNotEmpty()) {
+                items = items.insertHeaderItem(
+                    item = GridItem.ParentFolder(getParentPath(gridQuery.folderPath))
+                )
+            }
+
+            items
         }
     }.stateIn(
         viewModelScope, SharingStarted.WhileSubscribed(5000), PagingData.empty()
-    )
-
-    // todo: use pager
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val folders = combine(
-        currentNoteFolderRelativePath,
-        prefs.sortOrderFolder.getFlow(),
-    ) { currentNoteFolderRelativePath, sortOrder ->
-        Pair(currentNoteFolderRelativePath, sortOrder)
-    }.flatMapLatest { pair ->
-        val (currentNoteFolderRelativePath, sortOrder) = pair
-        dao.folders(currentNoteFolderRelativePath, sortOrder)
-    }.stateIn(
-        viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
     )
 
     fun reloadDatabase() {

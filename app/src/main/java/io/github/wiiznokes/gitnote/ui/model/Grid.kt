@@ -35,3 +35,24 @@ data class GridNote(
     val isUnique: Boolean,
     val selected: Boolean = false,
 )
+
+/**
+ * One row of the note list. Folders and notes come from two different queries
+ * that answer at their own pace, so they are merged into a single paged list:
+ * that way the list changes once when a folder is opened, not once per query.
+ */
+sealed interface GridItem {
+
+    data class ParentFolder(val relativePath: String) : GridItem
+
+    data class Folder(val folder: FolderModel) : GridItem
+
+    data class Note(val gridNote: GridNote) : GridItem
+
+    /** Stable across the two kinds of row, which have their own id spaces. */
+    fun key(): String = when (this) {
+        is ParentFolder -> ".."
+        is Folder -> "f${folder.noteFolder.id}"
+        is Note -> "n${gridNote.note.id}"
+    }
+}
