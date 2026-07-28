@@ -119,7 +119,17 @@ internal fun SyncButton(
             Box {
                 Icon(
                     painter = icon,
-                    contentDescription = stringResource(R.string.sync_with_remote),
+                    // The dot below is a coloured box and nothing else, so a
+                    // screen reader has no way of finding out about it. What it
+                    // says goes here instead, the same way the tooltip says it.
+                    contentDescription = if (hasLocalChanges) {
+                        stringResource(
+                            R.string.sync_not_committed,
+                            stringResource(R.string.sync_with_remote)
+                        )
+                    } else {
+                        stringResource(R.string.sync_with_remote)
+                    },
                     modifier = iconModifier,
                 )
 
