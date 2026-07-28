@@ -6,7 +6,6 @@ import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -51,6 +50,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.TextFieldDefaults
 import com.mikepenz.markdown.compose.LocalMarkdownColors
 import com.mikepenz.markdown.compose.LocalMarkdownDimens
 import com.mikepenz.markdown.compose.MarkdownElement
@@ -142,7 +142,12 @@ fun MarkDownContent(
                     LazyColumn(
                         modifier = modifier.fillMaxSize(),
                         state = readScrollState,
-                        contentPadding = PaddingValues(15.dp),
+                        // The same inset the field types into, asked of the same
+                        // place the field asks: reading and writing are two views
+                        // of one note, and a first line that sat a little higher
+                        // in one of them made switching look like a change to the
+                        // note rather than to the way it is shown.
+                        contentPadding = TextFieldDefaults.contentPaddingWithoutLabel(),
                     ) {
                         items(
                             items = state.node.children,
