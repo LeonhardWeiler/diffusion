@@ -8,7 +8,6 @@ import io.github.wiiznokes.gitnote.provider.UserInfo
 import io.github.wiiznokes.gitnote.ui.model.Cred
 import io.github.wiiznokes.gitnote.ui.model.CredType
 import io.github.wiiznokes.gitnote.ui.model.GitAuthor
-import io.github.wiiznokes.gitnote.ui.model.SortOrder
 import io.github.wiiznokes.gitnote.ui.model.StorageConfiguration
 import io.github.wiiznokes.gitnote.ui.theme.Theme
 import kotlinx.coroutines.runBlocking
@@ -132,16 +131,6 @@ class AppPreferences(
 
     val provider = enumPreference("provider", ProviderType.GitHub)
 
-    val defaultPathForNewNote = stringPreference("defaultPathForNewNote", "")
-    val sortOrder = enumPreference("sortOrder", SortOrder.MostRecent)
-    val sortOrderFolder = enumPreference("sortOrderFolder", SortOrder.AZ)
-
-
-    val rememberLastOpenedFolder = booleanPreference("rememberLastOpenedFolder", false)
-    val lastOpenedFolder = stringPreference("lastOpenedFolder", "")
-
-    val showFullPathOfNotes = booleanPreference("showFullPathOfNotes", false)
-
     val defaultExtension = stringPreference("defaultExtension", "md")
     val showLinesNumber = booleanPreference("showLinesNumber", false)
 
@@ -162,7 +151,6 @@ class AppPreferences(
                 repoPath.update(storageConfig.path)
             }
         }
-        lastOpenedFolder.update("")
     }
 
     suspend fun closeRepo() {

@@ -12,7 +12,6 @@
 
     <string name="error_folder_already_exist">Le dossier existe déjà</string>
 
-    <string name="oldest_sort_order">Plus ancient</string>
     <string name="new_folder_label">Nom du nouveau dossier</string>
     <string name="create_new_folder">Créer un nouveau dossier</string>
 
@@ -27,11 +26,6 @@
     <string name="user_interface">Interface</string>
     <string name="dynamic_colors">Couleurs dynamique</string>
 
-    <string name="sort_order">Odre du tri</string>
-    <string name="defaultPathForNewNote">Chemin par défaut pour les nouvelles notes</string>
-    <string name="remember_last_opened_folder">Se souvenir du dernier dossier ouvert</string>
-    <string name="show_the_full_notes_path">Montrer le chemin entier des notes</string>
-    <string name="show_the_full_notes_path_subtitle">Notez que le comportement par défaut montrera le chemin entier si plus de deux notes partage le même nom</string>
     <string name="edit">Édition</string>
     <string name="default_note_extension">Extension par défaut des notes</string>
     <string name="repository">Dépôt</string>
@@ -63,7 +57,6 @@
     <string name="error_clone_repo">Impossible de clone: %1$s</string>
     <string name="error_open_repo">Impossible d\'ouvrir le dépôt: %1$s</string>
     <string name="error_create_repo">Impossible de créer le dépôt: %1$s</string>
-    <string name="grid">Grille</string>
     <string name="about">À propos</string>
     <string name="app_page_choose_method">Choisir la méthode</string>
     <string name="create_local_repo">Créer un dépôt local</string>
@@ -124,16 +117,11 @@
     <string name="loading">Chargement…</string>
     <string name="logs">Journaux</string>
     <string name="extension">Extension: %1$s</string>
-    <string name="az_sort_order">A-Z</string>
-    <string name="za_sort_order">Z-A</string>
-    <string name="most_recent_sort_order">Plus récent</string>
-    <string name="sort_order_folder">Odre du tri des dossiers</string>
     <string name="git_author_name">Nom de l\'auteur Git</string>
     <string name="reload_database">Recharger la base de donnée</string>
     <string name="authorize_gitnote_title">Récupérer les métadonnées des dépôts</string>
     <string name="custom_ssh_keys">Utiliser des clés SSH personnalisées</string>
     <string name="parent_path">Dossier parent: %1$s</string>
-    <string name="pick_folder">Sélectionnez ce dossier</string>
     <string name="public_key">Clé publique</string>
     <string name="load_from_file">Charger depuis un fichier</string>
     <string name="private_key">Clé privée</string>

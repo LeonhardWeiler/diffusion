@@ -12,10 +12,6 @@
     <string name="search_in_notes">Hledat v poznámkách</string>
     <string name="user_interface">Uživatelské rozhraní</string>
     <string name="dynamic_colors">Dynamické barvy</string>
-    <string name="sort_order">Pořadí řazení</string>
-    <string name="remember_last_opened_folder">Pamatovat si naposledy otevřenou složku</string>
-    <string name="show_the_full_notes_path">Vždy zobrazit celou cestu k poznámkám</string>
-    <string name="show_the_full_notes_path_subtitle">Upozorňujeme, že ve výchozím nastavení se cesta vypíše pouze v případě, že více než dvě poznámky mají stejný název</string>
     <string name="edit">Úpravy</string>
     <string name="default_note_extension">Výchozí přípona poznámek</string>
     <string name="repository">Repozitář</string>
@@ -48,7 +44,6 @@
     <string name="error_invalid_name">Název je neplatný</string>
     <string name="error_invalid_extension">Rozšíření je neplatné</string>
     <string name="error_folder_already_exist">Složka již existuje</string>
-    <string name="grid">Mřížka</string>
     <string name="about">O</string>
     <string name="app_page_choose_method">Zvolit metodu</string>
     <string name="create_local_repo">Vytvořit místní repozitář</string>

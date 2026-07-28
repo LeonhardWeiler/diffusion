@@ -13,10 +13,6 @@
     <string name="system_theme">System</string>
     <string name="light_theme">Light</string>
     <string name="dark_theme">Dark</string>
-    <string name="az_sort_order">A-Z</string>
-    <string name="za_sort_order">Z-A</string>
-    <string name="most_recent_sort_order">Most recent</string>
-    <string name="oldest_sort_order">Oldest</string>
     <string name="new_folder_label">New folder name</string>
     <string name="create_new_folder">Create new folder</string>
     <string name="create_new_note">Create new note</string>
@@ -28,12 +24,6 @@
     <string name="search_in_notes">Search in notes</string>
     <string name="user_interface">User interface</string>
     <string name="dynamic_colors">Dynamic colors</string>
-    <string name="sort_order">Sort Order</string>
-    <string name="sort_order_folder">Sort Order folder</string>
-    <string name="defaultPathForNewNote">Default path for new notes</string>
-    <string name="remember_last_opened_folder">Remember last opened folder</string>
-    <string name="show_the_full_notes_path">Always show the full path of notes</string>
-    <string name="show_the_full_notes_path_subtitle">Note that the default behavior will only print the path if more than two notes share the same name</string>
     <string name="edit">Edit</string>
     <string name="default_note_extension">Default extension for notes</string>
     <string name="repository">Repository</string>
@@ -72,7 +62,6 @@
     <string name="error_invalid_name">Name is invalid</string>
     <string name="error_invalid_extension">Extension is invalid</string>
     <string name="error_folder_already_exist">Folder already exist</string>
-    <string name="grid">Grid</string>
     <string name="about">About</string>
     <string name="app_page_choose_method">Choose method</string>
     <string name="create_local_repo">Create local repository</string>
@@ -136,7 +125,6 @@
     <string name="logs">Logs</string>
     <string name="extension">Extension: %1$s</string>
     <string name="parent_path">Parent folder: %1$s</string>
-    <string name="pick_folder">Pick this folder</string>
     <string name="public_key">Public key</string>
     <string name="load_from_file">Load from file</string>
     <string name="private_key">Private key</string>

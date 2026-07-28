@@ -1,8 +1,6 @@
 package io.github.wiiznokes.gitnote.ui.model
 
 import androidx.room.Embedded
-import io.github.wiiznokes.gitnote.MyApp
-import io.github.wiiznokes.gitnote.R
 import io.github.wiiznokes.gitnote.data.room.Note
 import io.github.wiiznokes.gitnote.data.room.NoteFolder
 
@@ -10,17 +8,7 @@ enum class SortOrder {
     AZ,
     ZA,
     MostRecent,
-    Oldest;
-
-    override fun toString(): String {
-        val res = when (this) {
-            AZ -> R.string.az_sort_order
-            ZA -> R.string.za_sort_order
-            MostRecent -> R.string.most_recent_sort_order
-            Oldest -> R.string.oldest_sort_order
-        }
-        return MyApp.appModule.uiHelper.getString(res)
-    }
+    Oldest,
 }
 
 data class FolderModel(

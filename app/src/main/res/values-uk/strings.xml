@@ -12,10 +12,6 @@
     <string name="search_in_notes">Пошук у нотатках</string>
     <string name="user_interface">Інтерфейс</string>
     <string name="dynamic_colors">Динамічні кольори</string>
-    <string name="sort_order">Порядок сортування</string>
-    <string name="remember_last_opened_folder">Запам’ятовувати останню відкриту папку</string>
-    <string name="show_the_full_notes_path">Завжди показувати повний шлях нотатки</string>
-    <string name="show_the_full_notes_path_subtitle">За замовчуванням шлях відображається лише якщо більше двох нотаток мають однакову назву</string>
     <string name="edit">Редагувати</string>
     <string name="default_note_extension">Розширення нотаток за замовчуванням</string>
     <string name="repository">Репозиторій</string>
@@ -48,7 +44,6 @@
     <string name="error_invalid_name">Недопустиме ім’я</string>
     <string name="error_invalid_extension">Недопустиме розширення</string>
     <string name="error_folder_already_exist">Папка вже існує</string>
-    <string name="grid">Сітка</string>
     <string name="about">Про застосунок</string>
     <string name="app_page_choose_method">Оберіть спосіб</string>
     <string name="open_repo">Відкрити локальний репозиторій</string>

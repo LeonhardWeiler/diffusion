@@ -63,7 +63,6 @@ internal fun NoteListView(
     listState: LazyListState,
     modifier: Modifier = Modifier,
     selectedNotes: List<Note>,
-    showFullPathOfNotes: Boolean,
     onEditClick: (Note, EditType) -> Unit,
     onFolderClick: (String) -> Unit,
     onFolderDelete: (NoteFolder) -> Unit,
@@ -98,7 +97,6 @@ internal fun NoteListView(
                     vm = vm,
                     onEditClick = onEditClick,
                     selectedNotes = selectedNotes,
-                    showFullPathOfNotes = showFullPathOfNotes,
                 )
 
                 null -> Unit
@@ -231,7 +229,6 @@ private fun NoteListRow(
     vm: GridViewModel,
     onEditClick: (Note, EditType) -> Unit,
     selectedNotes: List<Note>,
-    showFullPathOfNotes: Boolean,
 ) {
     val dropDownExpanded = remember { mutableStateOf(false) }
     val clickPosition = remember { mutableStateOf(Offset.Zero) }
@@ -241,7 +238,7 @@ private fun NoteListRow(
             .format(Date(gridNote.note.lastModifiedTimeMillis))
     }
 
-    val title = if (showFullPathOfNotes || !gridNote.isUnique) {
+    val title = if (!gridNote.isUnique) {
         gridNote.note.relativePath
     } else {
         gridNote.note.nameWithoutExtension()

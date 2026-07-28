@@ -3,7 +3,6 @@
     <string name="system_theme">Sistema</string>
     <string name="light_theme">Claro</string>
     <string name="dark_theme">Escuro</string>
-    <string name="oldest_sort_order">Mais antigo</string>
     <string name="new_folder_label">Nome da nova pasta</string>
     <string name="create_new_folder">Criar nova pasta</string>
     <string name="yes">Sim</string>
@@ -14,14 +13,6 @@
     <string name="search_in_notes">Pesquisar anotações</string>
     <string name="user_interface">Interface de usuário</string>
     <string name="dynamic_colors">Cores dinâmicas</string>
-    <string name="sort_order">Ordem de organização</string>
-    <string name="defaultPathForNewNote">Caminho padrão para novas notas</string>
-    <string name="remember_last_opened_folder">Lembrar última pasta aberta</string>
-    <string name="show_the_full_notes_path">Sempre mostrar o caminho completo das notas</string>
-    <string name="show_the_full_notes_path_subtitle">Note que o comportamento padrão irá apenas mostrar o caminho se duas ou mais notas tiverem o mesmo nome</string>
-    <string name="za_sort_order">Z-A</string>
-    <string name="most_recent_sort_order">Mais recente</string>
-    <string name="sort_order_folder">Organizar ordem das pastas</string>
     <string name="edit">Editar</string>
     <string name="default_note_extension">Extensão padrão para anotações</string>
     <string name="repository">Repositório</string>
@@ -37,7 +28,6 @@
     <string name="source_code">Código fonte</string>
     <string name="copy_all_logs">Copiar todos os logs</string>
     <string name="note_name">Nome da nota</string>
-    <string name="az_sort_order">A-Z</string>
     <string name="delete_this_folder">Deletar esta pasta</string>
     <string name="theme">Tema</string>
     <string name="delete_this_note">Deletar esta nota</string>
@@ -58,7 +48,6 @@
     <string name="error_invalid_name">Nome é inválido</string>
     <string name="error_invalid_extension">Extensão é inválida</string>
     <string name="error_folder_already_exist">Pasta já existente</string>
-    <string name="grid">Grade</string>
     <string name="about">Sobre</string>
     <string name="app_page_choose_method">Escolher método</string>
     <string name="create_local_repo">Criar repositório local</string>
@@ -114,7 +103,6 @@
     <string name="logs">Logs</string>
     <string name="extension">Extensão: %1$s</string>
     <string name="parent_path">Caminho: %1$s</string>
-    <string name="pick_folder">Escolher esta pasta</string>
     <string name="public_key">Chave pública</string>
     <string name="load_from_file">Carregar de um arquivo</string>
     <string name="private_key">Chave privada</string>

@@ -35,6 +35,10 @@ class GridViewModel : ViewModel() {
 
     companion object {
         private const val TAG = "GridViewModel"
+
+        /** Notes are shown newest first, folders alphabetically. */
+        private val NOTE_SORT_ORDER = SortOrder.MostRecent
+        private val FOLDER_SORT_ORDER = SortOrder.AZ
     }
 
 
@@ -61,13 +65,7 @@ class GridViewModel : ViewModel() {
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
 
-    private val _currentNoteFolderRelativePath = MutableStateFlow(
-        if (prefs.rememberLastOpenedFolder.getBlocking()) {
-            prefs.lastOpenedFolder.getBlocking()
-        } else {
-            ""
-        }
-    )
+    private val _currentNoteFolderRelativePath = MutableStateFlow("")
     val currentNoteFolderRelativePath: StateFlow<String>
         get() = _currentNoteFolderRelativePath.asStateFlow()
 
@@ -118,7 +116,6 @@ class GridViewModel : ViewModel() {
     fun openFolder(relativePath: String) {
         viewModelScope.launch {
             _currentNoteFolderRelativePath.emit(relativePath)
-            prefs.lastOpenedFolder.update(relativePath)
         }
     }
 
@@ -196,22 +193,14 @@ class GridViewModel : ViewModel() {
         val defaultExtension = FileExtension.match(prefs.defaultExtension.getBlocking())
         val defaultFullName = "$defaultName.${defaultExtension.text}"
 
-        val currentNoteFolderRelativePath = currentNoteFolderRelativePath.value
-
-        val parent = if (currentNoteFolderRelativePath == "") {
-            prefs.defaultPathForNewNote.getBlocking()
-        } else currentNoteFolderRelativePath
-
         return Note.new(
-            relativePath = "$parent/$defaultFullName",
+            relativePath = "${currentNoteFolderRelativePath.value}/$defaultFullName",
         )
     }
 
 
     private data class GridQuery(
         val folderPath: String,
-        val sortOrder: SortOrder,
-        val sortOrderFolder: SortOrder,
         val query: String,
     )
 
@@ -223,22 +212,20 @@ class GridViewModel : ViewModel() {
     @OptIn(ExperimentalCoroutinesApi::class)
     val gridItems = combine(
         currentNoteFolderRelativePath,
-        prefs.sortOrder.getFlow(),
-        prefs.sortOrderFolder.getFlow(),
         query,
-    ) { folderPath, sortOrder, sortOrderFolder, query ->
-        GridQuery(folderPath, sortOrder, sortOrderFolder, query)
+    ) { folderPath, query ->
+        GridQuery(folderPath, query)
     }.flatMapLatest { gridQuery ->
 
         val notes = Pager(
             config = PagingConfig(pageSize = 50),
             pagingSourceFactory = {
                 if (gridQuery.query.isEmpty()) {
-                    dao.gridNotes(gridQuery.folderPath, gridQuery.sortOrder)
+                    dao.gridNotes(gridQuery.folderPath, NOTE_SORT_ORDER)
                 } else {
                     dao.gridNotesWithQuery(
                         gridQuery.folderPath,
-                        gridQuery.sortOrder,
+                        NOTE_SORT_ORDER,
                         gridQuery.query
                     )
                 }
@@ -247,7 +234,7 @@ class GridViewModel : ViewModel() {
 
         combine(
             notes,
-            dao.folders(gridQuery.folderPath, gridQuery.sortOrderFolder),
+            dao.folders(gridQuery.folderPath, FOLDER_SORT_ORDER),
             selectedNotes,
         ) { pagingData, folders, selectedNotes ->
 

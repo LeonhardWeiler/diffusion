@@ -28,7 +28,6 @@ import io.github.wiiznokes.gitnote.R
 import io.github.wiiznokes.gitnote.ui.component.AppPage
 import io.github.wiiznokes.gitnote.ui.component.DefaultSettingsRow
 import io.github.wiiznokes.gitnote.ui.component.MultipleChoiceSettings
-import io.github.wiiznokes.gitnote.ui.component.PickFolderDialog
 import io.github.wiiznokes.gitnote.ui.component.RequestConfirmationDialog
 import io.github.wiiznokes.gitnote.ui.component.SettingsSection
 import io.github.wiiznokes.gitnote.ui.component.SimpleIcon
@@ -36,7 +35,6 @@ import io.github.wiiznokes.gitnote.ui.component.StringSettings
 import io.github.wiiznokes.gitnote.ui.component.ToggleableSettings
 import io.github.wiiznokes.gitnote.ui.destination.SettingsDestination
 import io.github.wiiznokes.gitnote.ui.model.FileExtension
-import io.github.wiiznokes.gitnote.ui.model.SortOrder
 import io.github.wiiznokes.gitnote.ui.theme.Theme
 import io.github.wiiznokes.gitnote.ui.viewmodel.SettingsViewModel
 import kotlinx.coroutines.launch
@@ -79,66 +77,6 @@ fun SettingsScreen(
                 }
             )
 
-        }
-
-        SettingsSection(
-            title = stringResource(R.string.grid)
-        ) {
-
-            val sortOrder by vm.prefs.sortOrder.getAsState()
-            MultipleChoiceSettings(
-                title = stringResource(R.string.sort_order),
-                subtitle = sortOrder.toString(),
-                options = SortOrder.entries,
-                onOptionClick = {
-                    vm.update { vm.prefs.sortOrder.update(it) }
-                }
-            )
-
-            val sortOrderFolder by vm.prefs.sortOrderFolder.getAsState()
-            MultipleChoiceSettings(
-                title = stringResource(R.string.sort_order_folder),
-                subtitle = sortOrderFolder.toString(),
-                options = SortOrder.entries,
-                onOptionClick = {
-                    vm.update { vm.prefs.sortOrderFolder.update(it) }
-                }
-            )
-
-            val rememberLastOpenedFolder by vm.prefs.rememberLastOpenedFolder.getAsState()
-            ToggleableSettings(
-                title = stringResource(R.string.remember_last_opened_folder),
-                checked = rememberLastOpenedFolder,
-                onCheckedChange = {
-                    vm.update { vm.prefs.rememberLastOpenedFolder.update(it) }
-                }
-            )
-
-            val showFullPathOfNotes by vm.prefs.showFullPathOfNotes.getAsState()
-            ToggleableSettings(
-                title = stringResource(R.string.show_the_full_notes_path),
-                subtitle = stringResource(R.string.show_the_full_notes_path_subtitle),
-                checked = showFullPathOfNotes,
-                onCheckedChange = {
-                    vm.update { vm.prefs.showFullPathOfNotes.update(it) }
-                }
-            )
-
-
-            val defaultPathForNewNote by vm.prefs.defaultPathForNewNote.getAsState()
-            val pickFolderDialogExpanded = rememberSaveable { mutableStateOf(false) }
-            DefaultSettingsRow(
-                title = stringResource(R.string.defaultPathForNewNote),
-                subTitle = "Only when located in the root folder.\nCurrent value: \"$defaultPathForNewNote\"",
-                onClick = { pickFolderDialogExpanded.value = true }
-            )
-
-            PickFolderDialog(
-                expanded = pickFolderDialogExpanded,
-                onSelectedFolder = {
-                    vm.update { vm.prefs.defaultPathForNewNote.update(it) }
-                }
-            )
         }
 
         SettingsSection(

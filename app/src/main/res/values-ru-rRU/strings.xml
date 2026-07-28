@@ -12,10 +12,6 @@
     <string name="search_in_notes">Поиск в заметках</string>
     <string name="user_interface">Интерфейс</string>
     <string name="dynamic_colors">Динамические цвета</string>
-    <string name="sort_order">Порядок сортировки</string>
-    <string name="remember_last_opened_folder">Запоминать последнюю открытую папку</string>
-    <string name="show_the_full_notes_path">Всегда показывать полный путь заметки</string>
-    <string name="show_the_full_notes_path_subtitle">По умолчанию путь отображается только если более двух заметок имеют одинаковое имя</string>
     <string name="edit">Редактировать</string>
     <string name="default_note_extension">Расширение заметок по умолчанию</string>
     <string name="repository">Репозиторий</string>
@@ -48,7 +44,6 @@
     <string name="error_invalid_name">Недопустимое имя</string>
     <string name="error_invalid_extension">Недопустимое расширение</string>
     <string name="error_folder_already_exist">Папка уже существует</string>
-    <string name="grid">Сетка</string>
     <string name="about">О приложении</string>
     <string name="app_page_choose_method">Выберите способ</string>
     <string name="open_repo">Открыть локальный репозиторий</string>

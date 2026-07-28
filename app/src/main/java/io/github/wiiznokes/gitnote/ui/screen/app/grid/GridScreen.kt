@@ -155,8 +155,6 @@ private fun GridView(
     val isRefreshing by vm.isRefreshing.collectAsStateWithLifecycle()
     val pullToRefreshState = rememberPullToRefreshState()
 
-    val showFullPathOfNotes = vm.prefs.showFullPathOfNotes.getAsState()
-
     PullToRefreshBox(
         isRefreshing = isRefreshing,
         onRefresh = {
@@ -195,7 +193,6 @@ private fun GridView(
                 .fillMaxSize()
                 .nestedScroll(nestedScrollConnection),
             selectedNotes = selectedNotes,
-            showFullPathOfNotes = showFullPathOfNotes.value,
             onEditClick = onEditClick,
             onFolderClick = vm::openFolder,
             onFolderDelete = vm::deleteFolder,
