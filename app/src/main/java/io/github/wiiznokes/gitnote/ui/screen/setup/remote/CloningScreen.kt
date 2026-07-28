@@ -44,7 +44,7 @@ fun CloningScreen(
 
         Button(
             onClick = onCancel,
-            enabled = cloneState !is InitState.CalculatingTimestamps && cloneState !is InitState.GeneratingDatabase
+            enabled = cloneState !is InitState.GeneratingDatabase
         ) {
             Text(
                 if (cloneState is InitState.Error) {

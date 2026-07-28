@@ -62,8 +62,6 @@ sealed interface SyncState {
 }
 
 sealed class Progress {
-    data object Timestamps : Progress()
-
     data class GeneratingDatabase(val path: String) : Progress()
 }
 
@@ -135,13 +133,8 @@ class StorageManager {
         val repoPath = prefs.repoPath()
         Log.d(TAG, "repoPath = $repoPath")
 
-        progressCb?.invoke(Progress.Timestamps)
-        // A failure here used to be thrown out of the coroutine that started the
-        // update, which is nobody's to catch and takes the app down with it.
-        val timestamps = gitManager.getTimestamps().getOrElse { return failure(it) }
-
         db.withTransaction {
-            dao.clearAndInit(repoPath, timestamps, progressCb)
+            dao.clearAndInit(repoPath, progressCb)
         }
         prefs.databaseCommit.update(fsCommit)
 

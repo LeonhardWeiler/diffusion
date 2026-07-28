@@ -73,7 +73,6 @@ interface RepoDatabaseDao {
     @Transaction
     suspend fun clearAndInit(
         rootPath: String,
-        timestamps: HashMap<String, Long>,
         progressCb: ((Progress) -> Unit)? = null
     ) {
         Log.d(TAG, "clearAndInit")
@@ -107,11 +106,14 @@ interface RepoDatabaseDao {
                             return@forEachNodeFs
                         }
 
-                        val relativePath = nodeFs.path.substring(startIndex = rootLength)
+                        // The file's own date, and nothing else. It is the only
+                        // one that is right for a note that was written and not
+                        // committed yet, and a checkout hands the others theirs
+                        // (see applyCommitTimestamps) rather than the moment it
+                        // ran — so the commit history has nothing to add here.
                         val note = Note.new(
-                            relativePath = relativePath,
-                            lastModifiedTimeMillis = timestamps.get(relativePath)
-                                ?: nodeFs.lastModifiedTime().toMillis(),
+                            relativePath = nodeFs.path.substring(startIndex = rootLength),
+                            lastModifiedTimeMillis = nodeFs.lastModifiedTime().toMillis(),
                             content = nodeFs.readText(),
                         )
                         insertNote(note)

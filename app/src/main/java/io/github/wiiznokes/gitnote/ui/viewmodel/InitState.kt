@@ -19,14 +19,12 @@ sealed class InitState {
 
     data class Cloning(val percent: Int) : InitState()
 
-    data object CalculatingTimestamps : InitState()
     data class GeneratingDatabase(val path: String) : InitState()
 
 
     fun message(): String {
         return when (this) {
             AddingDeployKey -> "Adding deploy key"
-            CalculatingTimestamps -> "Calculating timestamps"
             is Cloning -> "Cloning: $percent %"
             CreatingRemoteRepo -> "Creating repository"
             is Error -> if (message != null) "Error: $message" else "Error"

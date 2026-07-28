@@ -3,6 +3,7 @@ use std::{
     fs,
     path::Path,
     sync::{LazyLock, Mutex},
+    time::{Duration, SystemTime},
 };
 
 use git2::{
@@ -127,6 +128,12 @@ pub fn clone_repo(
         .fetch_options(fetch_options)
         .clone(remote_url, std::path::Path::new(&repo_path))
         .map_err(|e| Error::git2(e, "clone"))?;
+
+    // Everything that just landed carries the time of the checkout. Left that
+    // way, a repository of years of notes would read as written this minute.
+    if let Err(e) = apply_commit_timestamps_to(&repo) {
+        error!("apply_commit_timestamps: {e}");
+    }
 
     REPO.lock().unwrap().replace(repo);
 
@@ -305,6 +312,12 @@ pub fn pull(cred: Option<Cred>, author: &GitAuthor) -> Result<(), Error> {
 
     merge::do_merge(repo, &branch, commit, author).map_err(|e| e.add_message("do_merge"))?;
 
+    // The merge checked out whatever came in, which dates those notes to now
+    // rather than to when they were written on the other device.
+    if let Err(e) = apply_commit_timestamps_to(repo) {
+        error!("apply_commit_timestamps: {e}");
+    }
+
     Ok(())
 }
 
@@ -329,10 +342,24 @@ pub fn is_change() -> Result<bool, Error> {
     Ok(count > 0)
 }
 
-pub fn get_timestamps() -> Result<HashMap<String, i64>, Error> {
-    let repo = REPO.lock().expect("repo lock");
-    let repo = repo.as_ref().expect("repo");
+/// The paths the working tree does not agree with HEAD about, whether they are
+/// changed, staged or not tracked at all.
+fn dirty_paths(repo: &Repository) -> Result<HashSet<String>, Error> {
+    let mut opts = StatusOptions::new();
+    opts.include_untracked(true).recurse_untracked_dirs(true);
 
+    let statuses = repo
+        .statuses(Some(&mut opts))
+        .map_err(|e| Error::git2(e, "statuses"))?;
+
+    Ok(statuses
+        .iter()
+        .filter_map(|entry| entry.path().map(str::to_string).ok())
+        .collect())
+}
+
+/// When each note was last changed by a commit, in seconds since the epoch.
+fn commit_timestamps(repo: &Repository) -> Result<HashMap<String, i64>, Error> {
     // A repository without commits has no HEAD to walk. It has no timestamps to
     // offer either, so the files keep the ones the filesystem gives them.
     let Ok(head) = repo.head().and_then(|head| head.peel_to_commit()) else {
@@ -374,7 +401,7 @@ pub fn get_timestamps() -> Result<HashMap<String, i64>, Error> {
             .transpose()?;
 
         let diff = repo.diff_tree_to_tree(parent_tree.as_ref(), Some(&commit.tree()?), None)?;
-        let time = commit.time().seconds() * 1000;
+        let time = commit.time().seconds();
 
         for delta in diff.deltas() {
             if let Some(path) = delta.new_file().path().and_then(|path| path.to_str())
@@ -386,4 +413,55 @@ pub fn get_timestamps() -> Result<HashMap<String, i64>, Error> {
     }
 
     Ok(file_timestamps)
+}
+
+/// Gives every unchanged note the time of the commit that last wrote it.
+///
+/// The note list reads its dates off the filesystem, which is the only place a
+/// note that was never committed has one. A checkout does not honour that: it
+/// stamps every file it writes with the moment it ran, so without this a clone
+/// would show a repository of years of notes as all written just now.
+///
+/// Files the working tree disagrees with HEAD about are left alone. Their own
+/// timestamp is the true one — it is when the user typed, which is later than
+/// any commit that could speak for them.
+pub fn apply_commit_timestamps() -> Result<(), Error> {
+    let repo = REPO.lock().expect("repo lock");
+    let repo = repo.as_ref().expect("repo");
+
+    apply_commit_timestamps_to(repo)
+}
+
+/// The body of [apply_commit_timestamps], for the callers that already hold the
+/// repository — the lock is not reentrant, so taking it again would hang.
+fn apply_commit_timestamps_to(repo: &Repository) -> Result<(), Error> {
+    let Some(workdir) = repo.workdir().map(Path::to_path_buf) else {
+        return Ok(());
+    };
+
+    let dirty = dirty_paths(repo)?;
+
+    for (path, seconds) in commit_timestamps(repo)? {
+        if dirty.contains(&path) {
+            continue;
+        }
+
+        let Ok(seconds) = u64::try_from(seconds) else {
+            continue;
+        };
+
+        let time = SystemTime::UNIX_EPOCH + Duration::from_secs(seconds);
+
+        // Best effort: a note whose date could not be written still reads
+        // fine, it only carries the time of the checkout.
+        if let Err(e) = set_modified(&workdir.join(&path), time) {
+            debug!("could not date {path}: {e}");
+        }
+    }
+
+    Ok(())
+}
+
+fn set_modified(path: &Path, time: SystemTime) -> Result<(), std::io::Error> {
+    fs::File::options().write(true).open(path)?.set_modified(time)
 }

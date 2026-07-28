@@ -126,6 +126,13 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
                 return@launch
             }
 
+            // Once, for a repository the app is seeing for the first time: it
+            // may have been checked out by something else, which would have
+            // dated every note to the moment it arrived. A clone and a pull do
+            // this themselves, and every later start reads the dates as they
+            // now stand on disk.
+            gitManager.applyCommitTimestamps()
+
             // what the repository already knows about itself, rather than
             // asking for it again
             val remoteUrl = gitManager.remoteUrl().orEmpty()
@@ -277,12 +284,10 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
         storageManager.updateDatabase(
             progressCb = {
                 viewModelScope.launch {
-                    _initState.emit(
-                        when (it) {
-                            is Progress.GeneratingDatabase -> InitState.GeneratingDatabase(it.path)
-                            Progress.Timestamps -> InitState.CalculatingTimestamps
-                        }
-                    )
+                    when (it) {
+                        is Progress.GeneratingDatabase ->
+                            _initState.emit(InitState.GeneratingDatabase(it.path))
+                    }
                 }
             }
         )

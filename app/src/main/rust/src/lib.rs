@@ -93,10 +93,9 @@ const _IS_CHANGE_LIB_LIB_METHOD: NativeMethod = native_method! {
     static extern fn is_change_lib() -> jint,
 };
 
-const _GET_TIMESTAMPS_LIB_METHOD: NativeMethod = native_method! {
+const _APPLY_COMMIT_TIMESTAMPS_LIB_METHOD: NativeMethod = native_method! {
     java_type = "io.github.wiiznokes.gitnote.manager.GitManagerKt",
-    export = "Java_io_github_wiiznokes_gitnote_manager_GitManagerKt_getTimestampsLib",
-    static extern fn get_timestamps_lib(j_map: JObject) -> jint,
+    static extern fn apply_commit_timestamps_lib() -> jint,
 };
 
 const _GENERATE_SSH_KEYS_LIB_METHOD: NativeMethod = native_method! {
@@ -323,59 +322,13 @@ fn is_change_lib<'local>(
     Ok(is_change as jint)
 }
 
-fn get_timestamps_lib<'local>(
-    env: &mut Env<'local>,
+fn apply_commit_timestamps_lib<'local>(
+    _env: &mut Env<'local>,
     _class: JClass<'local>,
-    j_map: JObject<'local>,
 ) -> Result<jint, jni::errors::Error> {
-    let timestamps = unwrap_or_log!(libgit2::get_timestamps(), "get_timestamps");
-
-    if let Err(e) = get_timestamps_jni(env, &j_map, timestamps.iter()) {
-        error!("get_timestamps_jni: {e}");
-        return Ok(-1);
-    }
+    unwrap_or_log!(libgit2::apply_commit_timestamps(), "apply_commit_timestamps");
 
     Ok(OK)
-}
-
-fn get_timestamps_jni<'local, 'a>(
-    env: &mut Env<'local>,
-    j_map: &JObject<'local>,
-    timestamps: impl Iterator<Item = (&'a String, &'a i64)>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let map_class = env.get_object_class(j_map)?;
-    let put_method = env.get_method_id(
-        map_class,
-        jni_str!("put"),
-        jni_sig!((JObject, JObject) -> JObject),
-    )?;
-
-    let long_class = env.find_class(jni_str!("java/lang/Long"))?;
-    let long_ctor = env.get_method_id(&long_class, jni_str!("<init>"), jni_sig!((jlong)))?;
-
-    for (path, timestamp) in timestamps {
-        let j_key: JString = env.new_string(path)?;
-
-        unsafe {
-            let j_value = env.new_object_unchecked(
-                &long_class,
-                long_ctor,
-                &[JValue::Long(*timestamp).as_jni()],
-            )?;
-
-            env.call_method_unchecked(
-                j_map,
-                put_method,
-                jni::signature::ReturnType::Object,
-                &[
-                    JValue::Object(&JObject::from(j_key)).as_jni(),
-                    JValue::Object(&j_value).as_jni(),
-                ],
-            )?;
-        }
-    }
-
-    Ok(())
 }
 
 fn generate_ssh_keys_lib<'local>(

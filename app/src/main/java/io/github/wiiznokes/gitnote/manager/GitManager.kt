@@ -229,17 +229,22 @@ class GitManager {
         }
     }
 
-    suspend fun getTimestamps(): Result<HashMap<String, Long>> = safelyAccessLibGit2 {
-        Log.d(TAG, "getTimestamps")
+    /**
+     * Dates the notes by the commits that wrote them.
+     *
+     * Only for a repository that was just opened for the first time — a clone
+     * and a pull do this themselves, because they are the two things that write
+     * files without the user having written them. Best effort: a note that
+     * keeps the wrong date is worth less than one that fails to open.
+     */
+    suspend fun applyCommitTimestamps(): Result<Unit> = safelyAccessLibGit2 {
+        Log.d(TAG, "applyCommitTimestamps")
+        if (!isRepoInitialized) throw GitException(GitExceptionType.RepoNotInit)
 
-        val h: HashMap<String, Long> = HashMap()
-
-        val res = getTimestampsLib(h)
-
+        val res = applyCommitTimestampsLib()
         if (res < 0) {
-            throw Exception("getTimestampsLib error $res")
+            Log.w(TAG, "applyCommitTimestamps: ${errorDetail(res)}")
         }
-        h
     }
 
 
@@ -299,7 +304,7 @@ private external fun isChangeLib(): Int
  */
 private external fun lastErrorMessageLib(): String?
 
-private external fun getTimestampsLib(timestamps: HashMap<String, Long>): Int
+private external fun applyCommitTimestampsLib(): Int
 
 external fun generateSshKeysLib(): Pair<String, String>
 
