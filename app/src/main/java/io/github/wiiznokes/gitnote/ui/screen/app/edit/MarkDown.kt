@@ -1,5 +1,6 @@
 package io.github.wiiznokes.gitnote.ui.screen.app.edit
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.Arrangement
@@ -59,7 +60,8 @@ fun MarkDownContent(
     textFocusRequester: FocusRequester,
     isReadOnlyModeActive: Boolean,
     textContent: TextFieldValue,
-    scrollState: LazyListState,
+    readScrollState: LazyListState,
+    writeScrollState: ScrollState,
 ) {
     // What the reading mode shows, which is the text as it stood when it was
     // last entered. Kept outside the branch below so that it survives a switch
@@ -115,7 +117,7 @@ fun MarkDownContent(
                 success = { state, components, modifier ->
                     LazyColumn(
                         modifier = modifier.fillMaxSize(),
-                        state = scrollState,
+                        state = readScrollState,
                         contentPadding = PaddingValues(15.dp),
                     ) {
                         items(state.node.children) { node ->
@@ -133,7 +135,8 @@ fun MarkDownContent(
         GenericTextField(
             vm = vm,
             textFocusRequester = textFocusRequester,
-            textContent = textContent
+            textContent = textContent,
+            scrollState = writeScrollState,
         )
     }
 }

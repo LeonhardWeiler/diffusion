@@ -1,14 +1,19 @@
 package io.github.wiiznokes.gitnote.ui.screen.app.edit
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -87,8 +92,10 @@ fun EditScreen(
         finish()
     }
 
-    // survives the switch between reading and editing, and process death
+    // both survive the switch between reading and editing, and the keyboard
+    // coming and going
     val readScrollState = rememberLazyListState()
+    val writeScrollState = rememberScrollState()
 
     val nameFocusRequester = remember { FocusRequester() }
     val textFocusRequester = remember { FocusRequester() }
@@ -205,7 +212,8 @@ fun EditScreen(
                             textFocusRequester = textFocusRequester,
                             isReadOnlyModeActive = isReadOnlyModeActive,
                             textContent = textContent,
-                            scrollState = readScrollState,
+                            readScrollState = readScrollState,
+                            writeScrollState = writeScrollState,
                         )
                     }
 
@@ -214,7 +222,8 @@ fun EditScreen(
                             vm = vm,
                             textFocusRequester = textFocusRequester,
                             isReadOnlyModeActive = isReadOnlyModeActive,
-                            textContent = textContent
+                            textContent = textContent,
+                            scrollState = writeScrollState,
                         )
                     }
                 }
@@ -259,32 +268,50 @@ fun EditScreen(
     }
 }
 
+/**
+ * The note as something to type in.
+ *
+ * The scrolling is the column's, not the field's. A TextField that scrolls
+ * itself is measured again when the keyboard takes half the screen away, and
+ * comes back at the first line — so tapping into a note that was scrolled down
+ * threw away the place being read, every time, unless the keyboard happened to
+ * be open already. A scroll state held out here does not notice the resize.
+ */
 @Composable
 fun GenericTextField(
     vm: TextVM,
     textFocusRequester: FocusRequester,
     isReadOnlyModeActive: Boolean = false,
     textContent: TextFieldValue,
+    scrollState: ScrollState,
 ) {
-    TextField(
-        modifier = Modifier
-            .fillMaxSize()
-            .focusRequester(textFocusRequester),
-        value = textContent,
-        onValueChange = { vm.onValueChange(it) },
-        colors = TextFieldDefaults.colors(
-            focusedContainerColor = MaterialTheme.colorScheme.background,
-            unfocusedContainerColor = MaterialTheme.colorScheme.background,
-            focusedTextColor = MaterialTheme.colorScheme.onBackground,
-            unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
-            focusedIndicatorColor = Color.Transparent,
-            unfocusedIndicatorColor = Color.Transparent,
-        ),
-        keyboardActions = KeyboardActions(
-            onDone = { vm.saveNow() }
-        ),
-        readOnly = isReadOnlyModeActive
-    )
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
 
+        // the field is as tall as its text, but never shorter than the screen:
+        // below the last line is where one taps to start writing
+        val minHeight = maxHeight
 
+        Column(modifier = Modifier.verticalScroll(scrollState)) {
+            TextField(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = minHeight)
+                    .focusRequester(textFocusRequester),
+                value = textContent,
+                onValueChange = { vm.onValueChange(it) },
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.background,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.background,
+                    focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                ),
+                keyboardActions = KeyboardActions(
+                    onDone = { vm.saveNow() }
+                ),
+                readOnly = isReadOnlyModeActive
+            )
+        }
+    }
 }
