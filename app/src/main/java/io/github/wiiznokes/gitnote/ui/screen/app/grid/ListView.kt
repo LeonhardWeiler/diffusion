@@ -1,6 +1,7 @@
 package io.github.wiiznokes.gitnote.ui.screen.app.grid
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,8 +13,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardReturn
 import androidx.compose.material.icons.rounded.Description
+import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -31,21 +35,34 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemKey
+import androidx.compose.ui.res.stringResource
+import io.github.wiiznokes.gitnote.R
 import io.github.wiiznokes.gitnote.data.room.Note
+import io.github.wiiznokes.gitnote.data.room.NoteFolder
+import io.github.wiiznokes.gitnote.ui.component.CustomDropDown
+import io.github.wiiznokes.gitnote.ui.component.CustomDropDownModel
 import io.github.wiiznokes.gitnote.ui.model.EditType
+import io.github.wiiznokes.gitnote.ui.model.FolderModel
 import io.github.wiiznokes.gitnote.ui.model.GridNote
 import io.github.wiiznokes.gitnote.ui.viewmodel.GridViewModel
+import io.github.wiiznokes.gitnote.utils.getParentPath
 import java.text.DateFormat
 import java.util.Date
+
+private const val PARENT_FOLDER_KEY = ".."
 
 @Composable
 internal fun NoteListView(
     gridNotes: LazyPagingItems<GridNote>,
+    folders: List<FolderModel>,
+    currentFolderPath: String,
     listState: LazyListState,
     modifier: Modifier = Modifier,
     selectedNotes: List<Note>,
     showFullPathOfNotes: Boolean,
     onEditClick: (Note, EditType) -> Unit,
+    onFolderClick: (String) -> Unit,
+    onFolderDelete: (NoteFolder) -> Unit,
     vm: GridViewModel,
 ) {
 
@@ -55,6 +72,23 @@ internal fun NoteListView(
     ) {
         item {
             Spacer(modifier = Modifier.height(topSpacerHeight))
+        }
+
+        if (currentFolderPath.isNotEmpty()) {
+            item(key = PARENT_FOLDER_KEY) {
+                ParentFolderRow(onClick = { onFolderClick(getParentPath(currentFolderPath)) })
+            }
+        }
+
+        items(
+            items = folders,
+            key = { it.noteFolder.id }
+        ) { folder ->
+            FolderRow(
+                folder = folder,
+                onClick = { onFolderClick(folder.noteFolder.relativePath) },
+                onDelete = { onFolderDelete(folder.noteFolder) },
+            )
         }
 
         items(
@@ -75,6 +109,119 @@ internal fun NoteListView(
             Spacer(modifier = Modifier.height(topBarHeight + 10.dp))
         }
     }
+}
+
+@Composable
+private fun ParentFolderRow(
+    onClick: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface)
+            .clickable(onClick = onClick)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.KeyboardReturn,
+                contentDescription = stringResource(R.string.parent_folder),
+                tint = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = "..",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+
+        RowDivider()
+    }
+}
+
+@Composable
+private fun FolderRow(
+    folder: FolderModel,
+    onClick: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    val dropDownExpanded = remember { mutableStateOf(false) }
+    val clickPosition = remember { mutableStateOf(Offset.Zero) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface)
+            .combinedClickable(
+                onLongClick = { dropDownExpanded.value = true },
+                onClick = onClick
+            )
+            .pointerInteropFilter {
+                clickPosition.value = Offset(it.x, it.y)
+                false
+            }
+    ) {
+        Box {
+            // need this box for clickPosition
+            Box {
+                CustomDropDown(
+                    expanded = dropDownExpanded,
+                    shape = MaterialTheme.shapes.medium,
+                    options = listOf(
+                        CustomDropDownModel(
+                            text = stringResource(R.string.delete_this_folder),
+                            onClick = onDelete
+                        ),
+                    ),
+                    clickPosition = clickPosition
+                )
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Folder,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+
+                Text(
+                    modifier = Modifier.weight(1f),
+                    text = folder.noteFolder.fullName(),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Text(
+                    text = folder.noteCount.toString(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        RowDivider()
+    }
+}
+
+@Composable
+private fun RowDivider() {
+    HorizontalDivider(
+        thickness = 1.dp,
+        color = MaterialTheme.colorScheme.surfaceColorAtElevation(80.dp)
+    )
 }
 
 @Composable
@@ -167,9 +314,6 @@ private fun NoteListRow(
             }
         }
 
-        HorizontalDivider(
-            thickness = 1.dp,
-            color = MaterialTheme.colorScheme.surfaceColorAtElevation(80.dp)
-        )
+        RowDivider()
     }
 }

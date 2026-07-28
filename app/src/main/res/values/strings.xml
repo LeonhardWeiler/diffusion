@@ -48,6 +48,7 @@
     <string name="copy_all_logs">Copy all logs</string>
     <string name="note_name">Note name</string>
     <string name="delete_this_folder">Delete this folder</string>
+    <string name="parent_folder">Parent folder</string>
     <string name="theme">Theme</string>
     <string name="delete_this_note">Delete this note</string>
     <string name="select_multiple_notes">Select multiple notes</string>

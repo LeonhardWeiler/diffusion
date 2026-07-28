@@ -4,6 +4,7 @@ import androidx.room.Embedded
 import io.github.wiiznokes.gitnote.MyApp
 import io.github.wiiznokes.gitnote.R
 import io.github.wiiznokes.gitnote.data.room.Note
+import io.github.wiiznokes.gitnote.data.room.NoteFolder
 
 enum class SortOrder {
     AZ,
@@ -21,6 +22,12 @@ enum class SortOrder {
         return MyApp.appModule.uiHelper.getString(res)
     }
 }
+
+data class FolderModel(
+    @Embedded
+    val noteFolder: NoteFolder,
+    val noteCount: Int,
+)
 
 data class GridNote(
     @Embedded

@@ -48,9 +48,9 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.room.Embedded
 import io.github.wiiznokes.gitnote.R
 import io.github.wiiznokes.gitnote.data.room.NoteFolder
+import io.github.wiiznokes.gitnote.ui.model.FolderModel
 import io.github.wiiznokes.gitnote.ui.component.CustomDropDown
 import io.github.wiiznokes.gitnote.ui.component.CustomDropDownModel
 import io.github.wiiznokes.gitnote.ui.component.GetStringDialog
@@ -64,18 +64,12 @@ import kotlinx.coroutines.launch
 
 private const val TAG = "DrawerScreen"
 
-data class DrawerFolderModel(
-    @Embedded val noteFolder: NoteFolder,
-    val noteCount: Int,
-)
-
-
 @OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
 fun DrawerScreen(
     drawerState: DrawerState,
     currentNoteFolderRelativePath: String,
-    drawerFolders: List<DrawerFolderModel>,
+    drawerFolders: List<FolderModel>,
     openFolder: (String) -> Unit,
     deleteFolder: (NoteFolder) -> Unit,
     createNoteFolder: (relativeParentPath: String, name: String) -> Boolean,

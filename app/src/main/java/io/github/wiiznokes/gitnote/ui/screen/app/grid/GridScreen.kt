@@ -77,7 +77,7 @@ fun GridScreen(
             DrawerScreen(
                 drawerState = drawerState,
                 currentNoteFolderRelativePath = vm.currentNoteFolderRelativePath.collectAsState().value,
-                drawerFolders = vm.drawerFolders.collectAsState().value,
+                drawerFolders = vm.folders.collectAsState().value,
                 openFolder = vm::openFolder,
                 deleteFolder = vm::deleteFolder,
                 createNoteFolder = vm::createNoteFolder,
@@ -194,11 +194,15 @@ private fun GridView(
 
         NoteListView(
             gridNotes = gridNotes,
+            folders = vm.folders.collectAsState().value,
+            currentFolderPath = vm.currentNoteFolderRelativePath.collectAsState().value,
             listState = listState,
             modifier = commonModifier,
             selectedNotes = selectedNotes,
             showFullPathOfNotes = showFullPathOfNotes.value,
             onEditClick = onEditClick,
+            onFolderClick = vm::openFolder,
+            onFolderDelete = vm::deleteFolder,
             vm = vm,
         )
 

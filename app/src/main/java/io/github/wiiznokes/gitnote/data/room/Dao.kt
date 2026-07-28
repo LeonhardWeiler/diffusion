@@ -14,7 +14,7 @@ import io.github.wiiznokes.gitnote.manager.Progress
 import io.github.wiiznokes.gitnote.manager.isExtensionSupportedLib
 import io.github.wiiznokes.gitnote.ui.model.GridNote
 import io.github.wiiznokes.gitnote.ui.model.SortOrder
-import io.github.wiiznokes.gitnote.ui.screen.app.DrawerFolderModel
+import io.github.wiiznokes.gitnote.ui.model.FolderModel
 import io.requery.android.database.sqlite.SQLiteDatabase
 import kotlinx.coroutines.flow.Flow
 import java.nio.ByteBuffer
@@ -128,7 +128,7 @@ interface RepoDatabaseDao {
             WITH notes_with_filename AS (
                 SELECT *, fullName(relativePath) AS fileName
                 FROM Notes
-                WHERE relativePath LIKE :currentNoteFolderRelativePath || '%'
+                WHERE parentPath(relativePath) = :currentNoteFolderRelativePath
             )
             SELECT *,
                    CASE 
@@ -197,12 +197,12 @@ interface RepoDatabaseDao {
 
 
     @RawQuery(observedEntities = [Note::class, NoteFolder::class])
-    fun gridDrawerFoldersRaw(query: SupportSQLiteQuery): Flow<List<DrawerFolderModel>>
+    fun foldersRaw(query: SupportSQLiteQuery): Flow<List<FolderModel>>
 
-    fun drawerFolders(
+    fun folders(
         currentNoteFolderRelativePath: String,
         sortOrder: SortOrder,
-    ): Flow<List<DrawerFolderModel>> {
+    ): Flow<List<FolderModel>> {
 
         val (sortColumn, order) = when (sortOrder) {
             SortOrder.AZ -> "folderName" to "ASC"
@@ -221,7 +221,7 @@ interface RepoDatabaseDao {
         """.trimIndent()
 
         val query = SimpleSQLiteQuery(sql, arrayOf(currentNoteFolderRelativePath))
-        return this.gridDrawerFoldersRaw(query)
+        return this.foldersRaw(query)
     }
 
     @RawQuery(observedEntities = [Note::class, NoteFolder::class])
