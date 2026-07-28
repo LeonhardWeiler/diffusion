@@ -22,8 +22,8 @@ Because all apps which integrate git on Android either separate the note title f
 
 # Features
 
-- [x] create/open/clone repositories
-- [x] notes search (global and from specific folder)
+- [x] open or clone repositories
+- [x] notes search across the whole repository
 - [x] folder navigation
 - [x] edit view
 - [x] private repo (SSH and HTTPS)
@@ -32,7 +32,12 @@ Because all apps which integrate git on Android either separate the note title f
 
 Notes are written to the repository while you type, so there is no save button.
 Nothing is committed or sent anywhere until you tap the cloud button in the
-search bar: that commits what has changed, pulls and pushes in one step.
+search bar: that commits what has changed, pulls and pushes in one step. It is
+the only thing that talks to the remote — there is no pull to refresh.
+
+Opening a repository that is already on the device picks up its remote and its
+author, so it is set up with what it already knows and only asks for the
+credentials it cannot read.
 
 <p  style="text-align: center;">
   <img src="https://media.githubusercontent.com/media/wiiznokes/gitnote/master/assets/edit.png" width="32%"  alt="edit screen"/>
@@ -48,6 +53,7 @@ _Supported Architecture: `arm64-v8a`, `x86_64`_
 
 # Current limitation
 
+- A repository has to live on the shared internal storage. A memory card or a usb stick has no file path git can be pointed at.
 - Android does not differentiate case for file name, so if you have a folder named `A` and another folder named `a`, `a` will not be displayed.
 - Conflicts cannot be resolved in the app. When the same note was changed here and on the remote, the sync stops and reports it; your local version is kept untouched, and you need a git client to resolve it.
 
