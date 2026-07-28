@@ -31,8 +31,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Checkbox
+import com.mikepenz.markdown.compose.components.markdownComponents
 import com.mikepenz.markdown.m3.Markdown
 import io.github.wiiznokes.gitnote.ui.viewmodel.edit.MarkDownVM
+
+private val CheckBoxSize = 20.dp
 
 @Composable
 fun MarkDownContent(
@@ -54,6 +59,22 @@ fun MarkDownContent(
                     modifier = Modifier
                         .padding(15.dp),
                     content = textContent.text,
+                    components = markdownComponents(
+                        checkbox = { model ->
+                            val node = model.node
+                            val checked = model.content
+                                .substring(node.startOffset, node.endOffset)
+                                .contains('x', ignoreCase = true)
+
+                            Checkbox(
+                                modifier = Modifier.size(CheckBoxSize),
+                                checked = checked,
+                                onCheckedChange = {
+                                    vm.toggleCheckBox(node.startOffset, node.endOffset)
+                                },
+                            )
+                        }
+                    ),
                 )
             }
         }

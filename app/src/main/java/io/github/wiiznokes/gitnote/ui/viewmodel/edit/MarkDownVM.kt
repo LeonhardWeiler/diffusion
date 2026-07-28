@@ -27,6 +27,27 @@ class MarkDownVM : TextVM {
         super.onValueChange(newValue)
     }
 
+    /**
+     * [nodeStart] and [nodeEnd] delimit the checkbox node of the parsed
+     * markdown, which is the only reliable way to find the right one when the
+     * same line appears twice.
+     */
+    fun toggleCheckBox(nodeStart: Int, nodeEnd: Int) {
+        val text = content.value.text
+
+        val open = text.indexOf('[', nodeStart)
+        if (open == -1 || open >= nodeEnd) return
+
+        val close = text.indexOf(']', open)
+        if (close == -1 || close > nodeEnd) return
+
+        val checked = text.substring(open + 1, close).trim().equals("x", ignoreCase = true)
+        val toggled = text.substring(0, open + 1) + (if (checked) " " else "x") + text.substring(close)
+
+        super.onValueChange(content.value.copy(text = toggled))
+        save()
+    }
+
     fun onTitle() {
         val newValue = onTitle(content.value)
         super.onValueChange(newValue)
