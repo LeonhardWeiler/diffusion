@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
@@ -40,12 +41,13 @@ fun MarkDownContent(
     onFinished: () -> Unit,
     isReadOnlyModeActive: Boolean,
     textContent: TextFieldValue,
+    scrollState: ScrollState,
 ) {
     if (isReadOnlyModeActive) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
         ) {
             SelectionContainer {
                 Markdown(
