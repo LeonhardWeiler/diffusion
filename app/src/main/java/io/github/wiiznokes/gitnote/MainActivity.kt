@@ -8,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.olshevski.navigation.reimagined.AnimatedNavHost
 import dev.olshevski.navigation.reimagined.NavBackHandler
@@ -109,7 +110,7 @@ class MainActivity : ComponentActivity() {
 
             if (code != null) {
                 Log.d(TAG, "received code from intent, sending it...")
-                CoroutineScope(Dispatchers.Default).launch {
+                lifecycleScope.launch {
                     authFlow.emit(code)
                 }
             } else {

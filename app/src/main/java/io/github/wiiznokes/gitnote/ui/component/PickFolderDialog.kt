@@ -76,6 +76,9 @@ class PickFolderVm : ViewModel() {
     val uiHelper = MyApp.appModule.uiHelper
     private val storageManager: StorageManager = MyApp.appModule.storageManager
 
+    // Creating a folder writes to disk and must not stop with the dialog.
+    private val appScope = MyApp.appModule.appScope
+
 
     private val _currentNoteFolderRelativePath = MutableStateFlow("")
 
@@ -97,7 +100,7 @@ class PickFolderVm : ViewModel() {
     val noteFolders = currentNoteFolderRelativePath.flatMapLatest { currentNoteFolderRelativePath ->
         dao.noteFolders(currentNoteFolderRelativePath)
     }.stateIn(
-        CoroutineScope(Dispatchers.IO), SharingStarted.WhileSubscribed(5000), emptyList()
+        viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
     )
 
     fun openFolder(relativePath: String) {
@@ -123,7 +126,7 @@ class PickFolderVm : ViewModel() {
             return false
         }
 
-        CoroutineScope(Dispatchers.IO).launch {
+        appScope.launch {
             storageManager.createNoteFolder(noteFolder)
         }
 

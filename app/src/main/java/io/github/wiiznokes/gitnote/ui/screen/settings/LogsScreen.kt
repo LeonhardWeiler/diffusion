@@ -22,6 +22,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
@@ -35,7 +36,6 @@ import io.github.wiiznokes.gitnote.ui.component.AppPage
 import io.github.wiiznokes.gitnote.ui.component.CustomDropDown
 import io.github.wiiznokes.gitnote.ui.component.CustomDropDownModel
 import io.github.wiiznokes.gitnote.ui.component.SimpleIcon
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.BufferedReader
@@ -92,8 +92,11 @@ fun LogsScreen(
     }
 
 
+    val scope = rememberCoroutineScope()
+
     SideEffect {
-        CoroutineScope(Dispatchers.IO).launch {
+        // getLogs shells out to logcat and blocks, so not on the main thread
+        scope.launch(Dispatchers.IO) {
             logState.value = getLogs(logLevel.value)
         }
     }
@@ -136,7 +139,7 @@ fun LogsScreen(
             val options: MutableList<CustomDropDownModel> = LogLevel.entries.map {
                 CustomDropDownModel(text = it.toString()) {
                     logLevel.value = it
-                    CoroutineScope(Dispatchers.IO).launch {
+                    scope.launch(Dispatchers.IO) {
                         logState.value = getLogs(logLevel.value)
                     }
                 }
@@ -156,7 +159,7 @@ fun LogsScreen(
                             ClipData.Item(logState.value)
                         )
 
-                        CoroutineScope(Dispatchers.IO).launch {
+                        scope.launch {
                             clipboardManager.setClipEntry(ClipEntry(data))
                         }
 

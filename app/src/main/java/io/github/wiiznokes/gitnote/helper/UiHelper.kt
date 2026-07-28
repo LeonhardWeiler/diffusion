@@ -6,14 +6,18 @@ import androidx.annotation.PluralsRes
 import androidx.annotation.StringRes
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 class UiHelper(
     private val context: Context
 ) {
+    // One scope for every toast, instead of a new one per call.
+    private val mainScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
     fun makeToast(text: String?, duration: Int = Toast.LENGTH_SHORT) {
         if (text == null) return
-        CoroutineScope(Dispatchers.Main).launch {
+        mainScope.launch {
             Toast.makeText(context, text, duration).show()
         }
     }

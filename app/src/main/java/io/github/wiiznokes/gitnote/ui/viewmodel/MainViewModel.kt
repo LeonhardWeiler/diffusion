@@ -8,8 +8,6 @@ import io.github.wiiznokes.gitnote.data.platform.NodeFs
 import io.github.wiiznokes.gitnote.helper.StoragePermissionHelper
 import io.github.wiiznokes.gitnote.helper.UiHelper
 import io.github.wiiznokes.gitnote.ui.model.StorageConfiguration
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 class MainViewModel : ViewModel() {
@@ -19,6 +17,9 @@ class MainViewModel : ViewModel() {
     val uiHelper: UiHelper = MyApp.appModule.uiHelper
 
     private val storageManager = MyApp.appModule.storageManager
+
+    // The first sync must not die with the view model that kicked it off.
+    private val appScope = MyApp.appModule.appScope
 
 
     suspend fun tryInit(): Boolean {
@@ -54,7 +55,7 @@ class MainViewModel : ViewModel() {
         }
         prefs.applyGitAuthorDefaults(null, gitManager.currentSignature())
 
-        CoroutineScope(Dispatchers.IO).launch {
+        appScope.launch {
             storageManager.updateDatabaseAndRepo()
         }
 

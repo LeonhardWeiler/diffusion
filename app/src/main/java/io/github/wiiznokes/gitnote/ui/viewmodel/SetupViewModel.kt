@@ -20,7 +20,6 @@ import io.github.wiiznokes.gitnote.provider.RepoInfo
 import io.github.wiiznokes.gitnote.provider.UserInfo
 import io.github.wiiznokes.gitnote.ui.model.Cred
 import io.github.wiiznokes.gitnote.ui.model.StorageConfiguration
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -69,6 +68,9 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
 
     private val storageManager = MyApp.appModule.storageManager
 
+    // Setting up a repository must not be cancelled by leaving the screen.
+    private val appScope = MyApp.appModule.appScope
+
     private val _initState: MutableStateFlow<InitState> = MutableStateFlow(InitState.Idle)
     val initState: StateFlow<InitState> = _initState.asStateFlow()
 
@@ -83,7 +85,7 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
 
     init {
 
-        CoroutineScope(Dispatchers.Default).launch {
+        viewModelScope.launch {
             authFlow.collect {
                 Log.d(TAG, "received $it")
                 onReceiveCode(it)
@@ -109,7 +111,7 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
 
     fun createLocalRepo(storageConfig: StorageConfiguration, onSuccess: () -> Unit) {
 
-        CoroutineScope(Dispatchers.IO).launch {
+        appScope.launch {
 
             storageConfig.prepareStorageRepoPath().onFailure {
                 uiHelper.makeToast(it.message)
@@ -139,7 +141,7 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
 
     fun openRepo(storageConfig: StorageConfiguration, onSuccess: () -> Unit) {
 
-        CoroutineScope(Dispatchers.IO).launch {
+        appScope.launch {
             if (!NodeFs.Folder.fromPath(storageConfig.repoPath()).exist()) {
                 val msg = uiHelper.getString(R.string.error_path_not_directory)
                 uiHelper.makeToast(msg)
@@ -185,8 +187,13 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
         viewModelScope.launch { f() }
     }
 
+    /**
+     * Setting up a repository writes to disk and to the preferences. Leaving the
+     * screen must not tear that down half way, so it does not run in
+     * viewModelScope. The clone has [cancelClone] for the explicit way out.
+     */
     private fun runCloneJob(f: suspend () -> Unit) {
-        CoroutineScope(Dispatchers.IO).launch {
+        appScope.launch {
             f()
         }
     }
@@ -308,7 +315,7 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
 
     fun onReceiveCode(code: String) {
 
-        CoroutineScope(Dispatchers.IO).launch {
+        viewModelScope.launch {
 
             _initState.emit(InitState.GettingAccessToken)
             val token = try {
@@ -325,7 +332,7 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
     }
 
     fun fetchInfos(token: String) {
-        CoroutineScope(Dispatchers.IO).launch {
+        viewModelScope.launch {
 
             _initState.emit(InitState.FetchingRepos)
 

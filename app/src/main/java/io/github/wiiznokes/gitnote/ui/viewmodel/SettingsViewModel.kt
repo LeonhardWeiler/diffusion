@@ -6,8 +6,6 @@ import androidx.lifecycle.viewModelScope
 import io.github.wiiznokes.gitnote.MyApp
 import io.github.wiiznokes.gitnote.R
 import io.github.wiiznokes.gitnote.data.AppPreferences
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 class SettingsViewModel : ViewModel() {
@@ -16,6 +14,9 @@ class SettingsViewModel : ViewModel() {
     private val storageManager = MyApp.appModule.storageManager
     val uiHelper = MyApp.appModule.uiHelper
 
+    // Storage work outlives the screen that started it, see AppModule.appScope.
+    private val appScope = MyApp.appModule.appScope
+
     fun update(f: suspend () -> Unit) {
         viewModelScope.launch {
             f()
@@ -23,13 +24,13 @@ class SettingsViewModel : ViewModel() {
     }
 
     fun closeRepo() {
-        CoroutineScope(Dispatchers.IO).launch {
+        appScope.launch {
             storageManager.closeRepo()
         }
     }
 
     fun reloadDatabase() {
-        CoroutineScope(Dispatchers.IO).launch {
+        appScope.launch {
             val res = storageManager.updateDatabase(force = true)
             res.onFailure {
                 uiHelper.makeToast("$it")
