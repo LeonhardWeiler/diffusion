@@ -78,8 +78,19 @@ class GitManager {
     private val uiHelper = MyApp.appModule.uiHelper
 
     private val locker = Mutex()
+
+    /**
+     * Volatile because it is the one thing here that is read without the lock.
+     * The sync asks it before it starts, the setup asks it to decide whether a
+     * clone can still be cancelled, and neither of those holds [locker] — so
+     * without this, the thread that opened the repository and the thread that
+     * asks about it can disagree for as long as the jvm likes.
+     */
+    @Volatile
     var isRepoInitialized = false
         private set
+
+    /** Only ever touched under [locker], where the lock carries it across. */
     private var isLibInitialized = false
 
     private suspend fun <T> safelyAccessLibGit2(f: suspend () -> T): Result<T> = locker.withLock {

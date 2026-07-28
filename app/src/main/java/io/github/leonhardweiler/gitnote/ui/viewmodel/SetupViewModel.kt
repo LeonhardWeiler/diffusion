@@ -43,8 +43,16 @@ class SetupViewModel : ViewModel(), SetupViewModelI {
      * credential screens are the same ones the clone uses, but there is nothing
      * left to clone — only the credentials for that remote are missing.
      */
+    @Volatile
     private var repoIsAlreadyOnDevice = false
 
+    /**
+     * Written on the main thread by the cancel button and read from the clone's
+     * progress callback, which runs wherever libgit2 is. Volatile, or the loop
+     * that is meant to stop reading it can keep reading the value it had when
+     * it started.
+     */
+    @Volatile
     private var shouldCancel = false
     fun cancelClone(): Boolean {
         if (gitManager.isRepoInitialized) {
