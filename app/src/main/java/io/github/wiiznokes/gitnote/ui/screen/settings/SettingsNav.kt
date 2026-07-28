@@ -64,15 +64,6 @@ fun SettingsNav(
                     vm = vm
                 )
             }
-
-            SettingsDestination.FolderFilters -> {
-                FolderFiltersScreen(
-                    onBackClick = {
-                        navController.pop()
-                    },
-                    vm = vm
-                )
-            }
         }
     }
 }
@@ -86,7 +77,6 @@ private object SettingsNavTransitionSpec : NavTransitionSpec<SettingsDestination
     ): ContentTransform {
 
         return when (from) {
-            SettingsDestination.FolderFilters -> slide(backWard = true)
             SettingsDestination.Logs -> slide(backWard = true)
             SettingsDestination.Main -> slide()
         }

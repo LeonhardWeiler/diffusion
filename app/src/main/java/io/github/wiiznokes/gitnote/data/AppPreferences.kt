@@ -145,12 +145,6 @@ class AppPreferences(
     val defaultExtension = stringPreference("defaultExtension", "md")
     val showLinesNumber = booleanPreference("showLinesNumber", false)
 
-    val folderFilters = setPreference(
-        "folderFilters", setOf(
-            ".*"
-        )
-    )
-
     val storageConfig = enumPreference("storageConfig", StorageConfig.App)
 
     suspend fun initRepo(storageConfig: StorageConfiguration) {

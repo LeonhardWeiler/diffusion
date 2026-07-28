@@ -139,15 +139,6 @@ fun SettingsScreen(
                     vm.update { vm.prefs.defaultPathForNewNote.update(it) }
                 }
             )
-
-            /*
-            DefaultSettingsRow(
-                title = stringResource(R.string.folder_filters),
-                subTitle = stringResource(R.string.folder_filters_subtitle)
-            ) {
-                navController.navigate(SettingsDestination.FolderFilters)
-            }
-             */
         }
 
         SettingsSection(

@@ -11,7 +11,4 @@ sealed interface SettingsDestination : Parcelable {
     @Parcelize
     data object Logs : SettingsDestination
 
-    @Parcelize
-    data object FolderFilters : SettingsDestination
-
 }
