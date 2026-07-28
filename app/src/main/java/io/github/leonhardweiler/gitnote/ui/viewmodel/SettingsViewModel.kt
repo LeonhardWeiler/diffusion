@@ -12,6 +12,7 @@ class SettingsViewModel : ViewModel() {
 
     val prefs: AppPreferences = MyApp.appModule.appPreferences
     private val storageManager = MyApp.appModule.storageManager
+    private val gitManager = MyApp.appModule.gitManager
     val uiHelper = MyApp.appModule.uiHelper
 
     // Storage work outlives the screen that started it, see AppModule.appScope.
@@ -20,6 +21,33 @@ class SettingsViewModel : ViewModel() {
     fun update(f: suspend () -> Unit) {
         viewModelScope.launch {
             f()
+        }
+    }
+
+    /**
+     * Points the repository somewhere else.
+     *
+     * Both halves are needed and only one of them was here: push and pull ask
+     * the repository for its remote, the preference is what the app shows and
+     * what tells it whether there is a remote at all. Writing only the
+     * preference left a settings screen saying one address while every sync
+     * went to another.
+     */
+    fun updateRemoteUrl(url: String) {
+        val trimmed = url.trim()
+
+        appScope.launch {
+            prefs.remoteUrl.update(trimmed)
+
+            // An emptied field means "do not sync", which the preference above
+            // already says. Writing it through would ask libgit2 for a remote
+            // without an address, and the repository is better left with the
+            // one it has than with a broken one.
+            if (trimmed.isEmpty()) return@launch
+
+            gitManager.setRemoteUrl(trimmed).onFailure {
+                uiHelper.makeToast(it.message)
+            }
         }
     }
 

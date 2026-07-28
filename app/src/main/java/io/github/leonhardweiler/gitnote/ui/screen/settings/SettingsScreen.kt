@@ -134,9 +134,7 @@ fun SettingsScreen(
                 title = stringResource(R.string.remote_url),
                 subtitle = remoteUrl.ifEmpty { stringResource(id = R.string.none) },
                 stringValue = remoteUrl,
-                onChange = {
-                    vm.update { vm.prefs.remoteUrl.update(it) }
-                },
+                onChange = { vm.updateRemoteUrl(it) },
                 endContent = {
                     val uriHandler = LocalUriHandler.current
                     Button(
