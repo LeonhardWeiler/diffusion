@@ -49,13 +49,21 @@ internal class CaretScroller(private val scrollState: ScrollState) {
     }
 
     /**
-     * Moves the column so that [caret] can be seen, and no further than that.
+     * Where the caret last was, in the field's coordinates.
      *
-     * The rect arrives in the field's own coordinates, and the field is the
-     * only child of the column and sits at its top — so what it says is where
-     * the caret stands in the scrolled content.
+     * The field is the only child of the column and sits at its top, so what
+     * the rect says is where the caret stands in the scrolled content — and
+     * that does not move when the keyboard takes half the screen away, which is
+     * why it is worth keeping.
+     */
+    private var caret: Rect? = null
+
+    /**
+     * Moves the column so that [caret] can be seen, and no further than that.
      */
     suspend fun bringIntoView(caret: Rect) {
+        this.caret = caret
+
         if (heldFrames > 0) return
 
         val viewport = scrollState.viewportSize
@@ -69,6 +77,37 @@ internal class CaretScroller(private val scrollState: ScrollState) {
             else -> return
         }
 
+        scrollTo(target)
+    }
+
+    /**
+     * Puts the caret in the middle of what is left of the screen, if the
+     * keyboard has just covered where it was.
+     *
+     * This is what the first tap into a note ends in: the tap itself moves
+     * nothing (see [hold]), the keyboard then arrives and takes half the view
+     * with it, and the line that was tapped is behind it. Bringing it just far
+     * enough would leave it lying on the keyboard, so it goes to the middle —
+     * where the next few lines of what is being written are visible too.
+     *
+     * Only when it is really out of sight. A caret the keyboard did not reach
+     * stays exactly where it is: the note moving for no reason is the thing
+     * this was all about.
+     */
+    suspend fun keepCaretVisible() {
+        val caret = caret ?: return
+
+        val viewport = scrollState.viewportSize
+        if (viewport <= 0) return
+
+        val top = scrollState.value
+        if (caret.top >= top && caret.bottom <= top + viewport) return
+
+        scrollTo(caret.center.y - viewport / 2f)
+    }
+
+    /** Instantly, never animated: this is a correction, not a movement. */
+    private suspend fun scrollTo(target: Float) {
         scrollState.scrollTo(target.roundToInt().coerceIn(0, scrollState.maxValue))
     }
 }

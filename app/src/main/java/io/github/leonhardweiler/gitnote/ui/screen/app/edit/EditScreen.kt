@@ -306,6 +306,15 @@ fun GenericTextField(
             caretScroller.holdForOneFrame()
         }
 
+        // The keyboard arriving is what makes the tapped line disappear: the
+        // scaffold takes the ime inset off, this box is measured smaller, and
+        // the caret that was in the lower half is now behind the keys. One
+        // frame later, so that the new size has reached the scroll state.
+        LaunchedEffect(scrollState.viewportSize) {
+            withFrameNanos { }
+            caretScroller.keepCaretVisible()
+        }
+
         Column(modifier = Modifier.verticalScroll(scrollState)) {
             TextField(
                 modifier = Modifier
