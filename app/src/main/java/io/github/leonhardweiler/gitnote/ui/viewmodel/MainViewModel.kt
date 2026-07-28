@@ -48,6 +48,17 @@ class MainViewModel : ViewModel() {
         }
         prefs.applyGitAuthorDefaults(gitManager.currentSignature())
 
+        // What a previous run left in the working tree is still there — being
+        // killed does not commit anything. Nothing carried that over, though:
+        // the flag behind the dot starts false in a fresh process and was only
+        // ever set by a write or by a sync, so an app that had crashed came
+        // back saying everything had been sent. Asking git walks the working
+        // tree, so it goes to the app's scope rather than holding up the first
+        // frame.
+        appScope.launch {
+            storageManager.refreshChangeState()
+        }
+
         // Opening the app is one of the two moments a sync does not have to be
         // asked for — what another device wrote is what one opens the app to
         // read. It brings the database in line on the way through, and says
