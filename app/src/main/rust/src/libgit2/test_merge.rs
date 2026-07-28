@@ -2,9 +2,9 @@ use git2::{Repository, Signature, build::CheckoutBuilder};
 use std::path::Path;
 use std::{fs, io};
 
-use crate::libgit2::merge::do_merge;
 use crate::cred::GitAuthor;
 use crate::error::Error;
+use crate::libgit2::merge::do_merge;
 
 fn clear_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
     for entry in fs::read_dir(path)? {
