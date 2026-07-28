@@ -7,14 +7,10 @@ For features, it's better to create an issue first, in order to get feedback on 
 
 # Translation
 
-There are two places where translations can be done in this project.
-
-- the fastlane [directory](./metadata/)
-- the strings used in the app ([directory](./app/src/main/res/))
-
-There is no plan to add Weblate support for now, because it cost to much money. You can use Android Studio if you want to use an editor.
-
-<strong> Please don't translate the README, or other markdown files, this will not be merged. </strong>
+The app is English only. Translations are not maintained here anymore: a
+half translated interface reads worse than one that is honest about the single
+language it speaks, and keeping five locales in step with the strings was work
+nobody was doing. Please don't open pull requests adding locales.
 
 # File extensions
 
