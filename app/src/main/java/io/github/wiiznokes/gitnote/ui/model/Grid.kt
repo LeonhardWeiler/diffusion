@@ -22,23 +22,6 @@ enum class SortOrder {
     }
 }
 
-enum class NoteMinWidth(val size: Int) {
-    Default(200),
-    C250(250),
-    C300(300),
-    C350(350),
-    C400(400),
-    C500(500),
-    C600(600);
-
-    override fun toString(): String = this.size.toString()
-}
-
-enum class NoteViewType {
-    Grid,
-    List,
-}
-
 data class GridNote(
     @Embedded
     val note: Note,

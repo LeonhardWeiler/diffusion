@@ -36,7 +36,6 @@ import io.github.wiiznokes.gitnote.ui.component.StringSettings
 import io.github.wiiznokes.gitnote.ui.component.ToggleableSettings
 import io.github.wiiznokes.gitnote.ui.destination.SettingsDestination
 import io.github.wiiznokes.gitnote.ui.model.FileExtension
-import io.github.wiiznokes.gitnote.ui.model.NoteMinWidth
 import io.github.wiiznokes.gitnote.ui.model.SortOrder
 import io.github.wiiznokes.gitnote.ui.theme.Theme
 import io.github.wiiznokes.gitnote.ui.viewmodel.SettingsViewModel
@@ -103,25 +102,6 @@ fun SettingsScreen(
                 options = SortOrder.entries,
                 onOptionClick = {
                     vm.update { vm.prefs.sortOrderFolder.update(it) }
-                }
-            )
-
-            val noteMinWidth by vm.prefs.noteMinWidth.getAsState()
-            MultipleChoiceSettings(
-                title = stringResource(R.string.minimal_note_width),
-                subtitle = noteMinWidth.toString(),
-                options = NoteMinWidth.entries,
-                onOptionClick = {
-                    vm.update { vm.prefs.noteMinWidth.update(it) }
-                }
-            )
-
-            val showFullNoteHeight by vm.prefs.showFullNoteHeight.getAsState()
-            ToggleableSettings(
-                title = stringResource(R.string.show_long_notes),
-                checked = showFullNoteHeight,
-                onCheckedChange = {
-                    vm.update { vm.prefs.showFullNoteHeight.update(it) }
                 }
             )
 

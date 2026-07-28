@@ -3,42 +3,24 @@ package io.github.wiiznokes.gitnote.ui.screen.app.grid
 import android.annotation.SuppressLint
 import android.util.Log
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContent
-import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
-import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
-import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
-import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
-import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
-import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableFloatState
@@ -46,7 +28,6 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -56,27 +37,19 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
-import androidx.paging.compose.itemKey
 import io.github.wiiznokes.gitnote.R
 import io.github.wiiznokes.gitnote.data.room.Note
 import io.github.wiiznokes.gitnote.ui.component.CustomDropDown
 import io.github.wiiznokes.gitnote.ui.component.CustomDropDownModel
 import io.github.wiiznokes.gitnote.ui.model.EditType
-import io.github.wiiznokes.gitnote.ui.model.FileExtension
 import io.github.wiiznokes.gitnote.ui.model.GridNote
-import io.github.wiiznokes.gitnote.ui.model.NoteViewType
 import io.github.wiiznokes.gitnote.ui.screen.app.DrawerScreen
 import io.github.wiiznokes.gitnote.ui.viewmodel.GridViewModel
 
@@ -120,8 +93,6 @@ fun GridScreen(
             }
         }
 
-        val noteViewType by vm.prefs.noteViewType.getAsState()
-
         val searchFocusRequester = remember { FocusRequester() }
 
         val offset = remember { mutableFloatStateOf(0f) }
@@ -152,7 +123,6 @@ fun GridScreen(
                 selectedNotes = selectedNotes,
                 nestedScrollConnection = nestedScrollConnection,
                 padding = padding,
-                noteViewType = noteViewType,
             )
 
             TopBar(
@@ -168,7 +138,6 @@ fun GridScreen(
                 query = vm.query.collectAsState().value,
                 clearQuery = vm::clearQuery,
                 search = vm::search,
-                noteViewType = vm.prefs.noteViewType.getAsState().value,
                 syncState = vm.syncState.collectAsState().value,
                 consumeOkSyncState = vm::consumeOkSyncState,
                 isReadOnlyModeActive = vm.prefs.isReadOnlyModeActive.getAsState().value,
@@ -194,7 +163,6 @@ private fun GridView(
     onEditClick: (Note, EditType) -> Unit,
     selectedNotes: List<Note>,
     padding: PaddingValues,
-    noteViewType: NoteViewType,
 ) {
     val gridNotes = vm.gridNotes.collectAsLazyPagingItems()
     val query = vm.query.collectAsState()
@@ -218,43 +186,21 @@ private fun GridView(
             .pullRefresh(pullRefreshState)
             .nestedScroll(nestedScrollConnection)
 
-        when (noteViewType) {
-            NoteViewType.Grid -> {
-                val gridState = rememberLazyStaggeredGridState()
+        val listState = rememberLazyListState()
 
-                LaunchedEffect(query.value) {
-                    gridState.animateScrollToItem(index = 0)
-                }
-
-                GridNotesView(
-                    gridNotes = gridNotes,
-                    gridState = gridState,
-                    modifier = commonModifier,
-                    selectedNotes = selectedNotes,
-                    showFullPathOfNotes = showFullPathOfNotes.value,
-                    onEditClick = onEditClick,
-                    vm = vm,
-                )
-            }
-
-            NoteViewType.List -> {
-                val listState = rememberLazyListState()
-
-                LaunchedEffect(query.value) {
-                    listState.animateScrollToItem(index = 0)
-                }
-
-                NoteListView(
-                    gridNotes = gridNotes,
-                    listState = listState,
-                    modifier = commonModifier,
-                    selectedNotes = selectedNotes,
-                    showFullPathOfNotes = showFullPathOfNotes.value,
-                    onEditClick = onEditClick,
-                    vm = vm,
-                )
-            }
+        LaunchedEffect(query.value) {
+            listState.animateScrollToItem(index = 0)
         }
+
+        NoteListView(
+            gridNotes = gridNotes,
+            listState = listState,
+            modifier = commonModifier,
+            selectedNotes = selectedNotes,
+            showFullPathOfNotes = showFullPathOfNotes.value,
+            onEditClick = onEditClick,
+            vm = vm,
+        )
 
         // fix me: https://stackoverflow.com/questions/74594418/pullrefreshindicator-overlaps-with-scrollabletabrow
         PullRefreshIndicator(
@@ -271,171 +217,6 @@ private fun GridView(
 
 }
 
-
-@Composable
-private fun GridNotesView(
-    gridNotes: LazyPagingItems<GridNote>,
-    gridState: LazyStaggeredGridState,
-    modifier: Modifier = Modifier,
-    selectedNotes: List<Note>,
-    showFullPathOfNotes: Boolean,
-    onEditClick: (Note, EditType) -> Unit,
-    vm: GridViewModel,
-) {
-
-
-    val noteMinWidth = vm.prefs.noteMinWidth.getAsState()
-    val showFullNoteHeight = vm.prefs.showFullNoteHeight.getAsState()
-
-    LazyVerticalStaggeredGrid(
-        modifier = modifier,
-        contentPadding = PaddingValues(horizontal = 3.dp),
-        columns = StaggeredGridCells.Adaptive(noteMinWidth.value.size.dp),
-        state = gridState
-    ) {
-        item(span = StaggeredGridItemSpan.FullLine) {
-            Spacer(modifier = Modifier.height(topSpacerHeight))
-        }
-
-        items(
-            count = gridNotes.itemCount,
-            key = gridNotes.itemKey { it.note.id }
-        ) { index ->
-            val gridNote = gridNotes[index] ?: return@items
-
-            NoteCard(
-                gridNote = gridNote,
-                vm = vm,
-                onEditClick = onEditClick,
-                selectedNotes = selectedNotes,
-                showFullPathOfNotes = showFullPathOfNotes,
-                showFullNoteHeight = showFullNoteHeight.value,
-                modifier = Modifier.padding(3.dp)
-            )
-        }
-
-        item(span = StaggeredGridItemSpan.FullLine) {
-            Spacer(modifier = Modifier.height(topBarHeight + 10.dp))
-        }
-    }
-}
-
-@Composable
-private fun NoteCard(
-    gridNote: GridNote,
-    vm: GridViewModel,
-    onEditClick: (Note, EditType) -> Unit,
-    selectedNotes: List<Note>,
-    showFullPathOfNotes: Boolean,
-    showFullNoteHeight: Boolean,
-    modifier: Modifier = Modifier,
-) {
-    val dropDownExpanded = remember {
-        mutableStateOf(false)
-    }
-
-    val clickPosition = remember {
-        mutableStateOf(Offset.Zero)
-    }
-
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        border = if (dropDownExpanded.value) {
-            BorderStroke(
-                width = 2.dp, color = MaterialTheme.colorScheme.primary
-            )
-        } else if (gridNote.selected) {
-            BorderStroke(
-                width = 2.dp, color = MaterialTheme.colorScheme.onSurface
-            )
-        } else {
-            BorderStroke(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.surfaceColorAtElevation(1000.dp)
-            )
-        },
-        modifier = modifier
-            .sizeIn(
-                maxHeight = if (showFullNoteHeight) Dp.Unspecified else 500.dp
-            )
-            .combinedClickable(onLongClick = {
-                dropDownExpanded.value = true
-            }, onClick = {
-                if (selectedNotes.isEmpty()) {
-                    onEditClick(
-                        gridNote.note, EditType.Update
-                    )
-                } else {
-                    vm.selectNote(
-                        gridNote.note, add = !gridNote.selected
-                    )
-                }
-            })
-            .pointerInteropFilter {
-                clickPosition.value = Offset(it.x, it.y)
-                false
-            },
-    ) {
-        Box {
-
-            NoteActionsDropdown(
-                vm = vm,
-                gridNote = gridNote,
-                selectedNotes = selectedNotes,
-                dropDownExpanded = dropDownExpanded,
-                clickPosition = clickPosition
-            )
-
-            Column(
-                modifier = Modifier.padding(10.dp),
-                verticalArrangement = Arrangement.Top,
-                horizontalAlignment = Alignment.Start,
-            ) {
-                val title = if (showFullPathOfNotes || !gridNote.isUnique) {
-                    gridNote.note.relativePath
-                } else {
-                    gridNote.note.nameWithoutExtension()
-                }
-                Text(
-                    text = title,
-                    modifier = Modifier.padding(bottom = 6.dp),
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                    ),
-                    color = MaterialTheme.colorScheme.tertiary
-                )
-
-                if (gridNote.note.fileExtension() is FileExtension.Md) {
-
-                    MarkdownCustom(
-                        content = gridNote.note.content,
-                        onClick = {
-                            if (selectedNotes.isEmpty()) {
-                                onEditClick(
-                                    gridNote.note, EditType.Update
-                                )
-                            } else {
-                                vm.selectNote(
-                                    gridNote.note, add = !gridNote.selected
-                                )
-                            }
-                        }
-                    )
-                } else {
-                    Text(
-                        text = gridNote.note.content,
-                        modifier = Modifier,
-                        overflow = TextOverflow.Ellipsis,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
-        }
-    }
-}
 
 @Composable
 internal fun NoteActionsDropdown(

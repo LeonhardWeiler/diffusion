@@ -23,14 +23,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ViewList
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material.icons.rounded.ViewModule
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -43,7 +41,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.material3.TooltipBox
-import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.TooltipDefaults.rememberTooltipPositionProvider
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.rememberTooltipState
@@ -80,7 +77,6 @@ import io.github.wiiznokes.gitnote.manager.SyncState.Push
 import io.github.wiiznokes.gitnote.ui.component.CustomDropDown
 import io.github.wiiznokes.gitnote.ui.component.CustomDropDownModel
 import io.github.wiiznokes.gitnote.ui.component.SimpleIcon
-import io.github.wiiznokes.gitnote.ui.model.NoteViewType
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -102,7 +98,6 @@ fun TopBar(
     query: String,
     clearQuery: () -> Unit,
     search: (String) -> Unit,
-    noteViewType: NoteViewType,
     syncState: SyncState,
     consumeOkSyncState: () -> Unit,
     isReadOnlyModeActive: Boolean,
@@ -126,7 +121,6 @@ fun TopBar(
                 query = query,
                 clearQuery = clearQuery,
                 search = search,
-                noteViewType = noteViewType,
                 syncState = syncState,
                 consumeOkSyncState = consumeOkSyncState,
                 isReadOnlyModeActive = isReadOnlyModeActive,
@@ -155,7 +149,6 @@ private fun SearchBar(
     query: String,
     clearQuery: () -> Unit,
     search: (String) -> Unit,
-    noteViewType: NoteViewType,
     syncState: SyncState,
     consumeOkSyncState: () -> Unit,
     isReadOnlyModeActive: Boolean,
@@ -239,36 +232,6 @@ private fun SearchBar(
                     SyncStateIcon(
                         state = syncState,
                         onConsumeOkSyncState = consumeOkSyncState
-                    )
-                }
-
-                IconButton(
-                    modifier = Modifier.size(ButtonSize),
-                    onClick = {
-                        updateSettings {
-                            this.noteViewType.update(
-                                when (noteViewType) {
-                                    NoteViewType.Grid -> NoteViewType.List
-                                    NoteViewType.List -> NoteViewType.Grid
-                                }
-                            )
-                        }
-                    }
-                ) {
-                    SimpleIcon(
-                        imageVector = if (noteViewType == NoteViewType.Grid) {
-                            Icons.AutoMirrored.Rounded.ViewList
-                        } else {
-                            Icons.Rounded.ViewModule
-                        },
-                        tint = MaterialTheme.colorScheme.onSurface,
-                        contentDescription = stringResource(
-                            if (noteViewType == NoteViewType.Grid) {
-                                R.string.switch_to_list_view
-                            } else {
-                                R.string.switch_to_grid_view
-                            }
-                        )
                     )
                 }
 
@@ -518,7 +481,6 @@ private fun TopBarPreview() {
         query = "",
         clearQuery = { },
         search = {},
-        noteViewType = NoteViewType.Grid,
         syncState = SyncState.Error("hello"),
         consumeOkSyncState = {},
         isReadOnlyModeActive = true,
