@@ -275,6 +275,9 @@ class StorageManager {
         prefs.closeRepo()
         gitManager.closeRepo()
         dao.clearDatabase()
+        // the next repository starts without the last one's sync result, which
+        // otherwise greets it as an error it never had
+        _syncState.emit(SyncState.Idle)
     }
 
 

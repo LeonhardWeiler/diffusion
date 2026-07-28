@@ -49,6 +49,7 @@ fun SetupNav(
 
             SetupDestination.Main -> NewRepoMethodScreen(
                 openRepo = vm::openRepo,
+                checkPathForClone = vm::checkPathForClone,
                 makeToast = vm.uiHelper::makeToast,
                 navigate = navController::navigate,
                 onSetupSuccess = onSetupSuccess,

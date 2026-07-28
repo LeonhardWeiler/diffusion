@@ -199,16 +199,14 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
     ) {
         shouldCancel = false
 
-        val cloneConfig = storageConfig.withUrlName(remoteUrl)
-
-        cloneConfig.prepareStorageRepoPath().onFailure {
+        storageConfig.prepareStorageRepoPath().onFailure {
             _initState.emit(InitState.Error(it.message))
             return
         }
 
-        // Checked here and not only in the setup screen, because the check there is
-        // skipped when the repo name comes from the url.
-        NodeFs.Folder.fromPath(cloneConfig.repoPath()).isEmptyDirectory().onFailure {
+        // Checked again here, not only when the folder was chosen: the whole
+        // remote setup happens in between and could have filled it.
+        NodeFs.Folder.fromPath(storageConfig.repoPath()).isEmptyDirectory().onFailure {
             _initState.emit(InitState.Error(it.message))
             return
         }
@@ -216,7 +214,7 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
         _initState.emit(InitState.Cloning(0))
 
         gitManager.cloneRepo(
-            repoPath = cloneConfig.repoPath(),
+            repoPath = storageConfig.repoPath(),
             repoUrl = remoteUrl,
             cred = cred,
             progressCallback = {
@@ -224,16 +222,16 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
                 !shouldCancel
             }
         ).onFailure {
-            discardPartialClone(cloneConfig)
+            discardPartialClone(storageConfig)
             _initState.emit(InitState.Error(if (shouldCancel) "Clone canceled" else it.message))
             return
         }
         if (shouldCancel) {
-            discardPartialClone(cloneConfig)
+            discardPartialClone(storageConfig)
             return
         }
 
-        prefs.initRepo(cloneConfig)
+        prefs.initRepo(storageConfig)
         prefs.remoteUrl.update(remoteUrl)
 
         prefs.updateCred(cred)
