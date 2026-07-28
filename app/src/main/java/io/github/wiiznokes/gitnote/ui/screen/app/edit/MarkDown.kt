@@ -1,22 +1,22 @@
 package io.github.wiiznokes.gitnote.ui.screen.app.edit
 
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
@@ -40,27 +40,36 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import com.mikepenz.markdown.compose.LocalMarkdownColors
+import com.mikepenz.markdown.compose.LocalMarkdownDimens
 import com.mikepenz.markdown.compose.MarkdownElement
-import com.mikepenz.markdown.compose.components.CurrentComponentsBridge
 import com.mikepenz.markdown.compose.components.MarkdownComponentModel
 import com.mikepenz.markdown.compose.components.markdownComponents
+import com.mikepenz.markdown.compose.elements.MarkdownTableBasicText
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.model.rememberMarkdownState
 import io.github.wiiznokes.gitnote.ui.viewmodel.edit.MarkDownVM
+import org.intellij.markdown.flavours.gfm.GFMElementTypes
+import org.intellij.markdown.flavours.gfm.GFMTokenTypes
 
 private val CheckBoxSize = 20.dp
 
 /** Between the box and the words belonging to it, which otherwise touch. */
 private val CheckBoxTextGap = 8.dp
 
-/** What a table column is given before the table is allowed to scroll. */
-private val MinTableColumnWidth = 120.dp
+/** The most a column is given before what stands in it is made to wrap. */
+private val MaxTableColumnWidth = 280.dp
 
 @Composable
 fun MarkDownContent(
@@ -173,41 +182,121 @@ fun MarkDownContent(
 
 
 /**
- * A table as wide as its columns need, which the reader moves sideways over.
+ * A table whose columns are as wide as what stands in them.
  *
- * Laid out for the width of a phone, a table shares that width between its
- * columns however many there are, so past two or three the words in them break
- * a letter at a time and the ends of the cells are simply not shown. Given the
- * room instead, the whole of it is there to be read.
+ * The renderer's own table gives every column the same share of the screen and
+ * cuts whatever does not fit on one line off with an ellipsis, so a column of
+ * dates and a column of sentences were given the same room and neither could be
+ * read. Here every column is measured by its widest cell, text too long for the
+ * widest a column may get wraps instead of disappearing, and a table wider than
+ * the screen is moved sideways rather than squeezed into it.
  */
 @Composable
 private fun WideTable(model: MarkdownComponentModel) {
 
-    val columnCount = remember(model.node) { model.tableColumnCount() }
+    // The header is the first of the rows, not something beside them: it is laid
+    // out with the same columns and only reads differently.
+    val rows = remember(model.node) {
+        model.node.children
+            .filter { it.type == GFMElementTypes.HEADER || it.type == GFMElementTypes.ROW }
+            .map { row -> row.children.filter { it.type == GFMTokenTypes.CELL } }
+    }
 
-    BoxWithConstraints {
-        // never narrower than the screen: a two column table has no reason to
-        // leave a gap at the side, and nothing to scroll to in it
-        val width = maxOf(maxWidth, MinTableColumnWidth * columnCount)
+    val columnCount = remember(rows) { rows.maxOfOrNull { it.size } ?: 0 }
 
-        Box(modifier = Modifier.horizontalScroll(rememberScrollState())) {
-            Box(modifier = Modifier.width(width)) {
-                CurrentComponentsBridge.table(model)
+    if (columnCount == 0) return
+
+    val cellPadding = LocalMarkdownDimens.current.tableCellPadding
+    val cornerSize = LocalMarkdownDimens.current.tableCornerSize
+    val background = LocalMarkdownColors.current.tableBackground
+    val style = model.typography.table
+
+    Box(modifier = Modifier.horizontalScroll(rememberScrollState())) {
+        Layout(
+            modifier = Modifier.background(background, RoundedCornerShape(cornerSize)),
+            content = {
+                rows.forEachIndexed { rowIndex, cells ->
+                    // every row lays out the same number of cells, so that a
+                    // short one does not shift the columns of the whole table
+                    repeat(columnCount) { columnIndex ->
+                        Box(modifier = Modifier.padding(cellPadding)) {
+                            cells.getOrNull(columnIndex)?.let { cell ->
+                                MarkdownTableBasicText(
+                                    content = model.content,
+                                    cell = cell,
+                                    style = if (rowIndex == 0) {
+                                        style.copy(fontWeight = FontWeight.Bold)
+                                    } else {
+                                        style
+                                    },
+                                    maxLines = Int.MAX_VALUE,
+                                    overflow = TextOverflow.Clip,
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // last, so that the cells stay one block of children the index
+                // arithmetic below can walk
+                HorizontalDivider()
+            }
+        ) { measurables, constraints ->
+
+            val cells = measurables.subList(0, measurables.size - 1)
+            val divider = measurables.last()
+
+            val maxColumnWidth = MaxTableColumnWidth.roundToPx()
+
+            // what the widest cell of a column asks for, up to the point where
+            // one long sentence would push the rest of the table off the screen
+            val columnWidths = IntArray(columnCount) { column ->
+                rows.indices.maxOf { row ->
+                    cells[row * columnCount + column].maxIntrinsicWidth(Constraints.Infinity)
+                }.coerceAtMost(maxColumnWidth)
+            }
+
+            val tableWidth = columnWidths.sum()
+
+            // measured again against the column they ended up in: a cell that
+            // was given less than it asked for wraps, and only then is its
+            // height known
+            val placeables = cells.mapIndexed { index, measurable ->
+                measurable.measure(Constraints.fixedWidth(columnWidths[index % columnCount]))
+            }
+
+            val rowHeights = IntArray(rows.size) { row ->
+                (0 until columnCount).maxOf { column ->
+                    placeables[row * columnCount + column].height
+                }
+            }
+
+            val dividerPlaceable = divider.measure(Constraints.fixedWidth(tableWidth))
+
+            layout(
+                width = tableWidth.coerceAtLeast(constraints.minWidth),
+                height = rowHeights.sum() + dividerPlaceable.height
+            ) {
+                var y = 0
+                rowHeights.forEachIndexed { row, rowHeight ->
+                    var x = 0
+                    columnWidths.forEachIndexed { column, columnWidth ->
+                        placeables[row * columnCount + column].place(x, y)
+                        x += columnWidth
+                    }
+                    y += rowHeight
+
+                    // under the header, where the line of dashes stands in the
+                    // note itself
+                    if (row == 0) {
+                        dividerPlaceable.place(0, y)
+                        y += dividerPlaceable.height
+                    }
+                }
             }
         }
     }
 }
-
-/**
- * How many columns the table has, counted off its first line — which in a
- * markdown table is the header row, and says how wide every row below it is.
- */
-private fun MarkdownComponentModel.tableColumnCount(): Int =
-    content.substring(node.startOffset, node.endOffset)
-        .lineSequence().first()
-        .trim().trim('|')
-        .count { it == '|' }
-        .plus(1)
 
 @Composable
 fun TextFormatRow(
