@@ -89,6 +89,8 @@
 
 
 
+    <string name="edit_note">Edit the note</string>
+    <string name="view_note">View the note</string>
     <string name="read_only_mode_activate">Activate read only mode</string>
     <string name="read_only_mode_deactive">Deactivate read only mode</string>
     <string name="authorize_gitnote_title">Fetch repositories metadata</string>

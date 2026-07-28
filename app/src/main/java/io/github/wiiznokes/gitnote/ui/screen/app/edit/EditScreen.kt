@@ -12,9 +12,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.TextFormat
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -167,16 +167,17 @@ fun EditScreen(
                             vm.setReadOnlyMode(!isReadOnlyModeActive)
                         },
                     ) {
+                        // the icon shows what the tap does, not what the note is
                         SimpleIcon(
                             imageVector = if (isReadOnlyModeActive) {
-                                Icons.Default.Lock
+                                Icons.Default.Edit
                             } else {
-                                Icons.Default.LockOpen
+                                Icons.Default.Visibility
                             },
                             contentDescription = if (isReadOnlyModeActive) {
-                                stringResource(R.string.read_only_mode_deactive)
+                                stringResource(R.string.edit_note)
                             } else {
-                                stringResource(R.string.read_only_mode_activate)
+                                stringResource(R.string.view_note)
                             }
                         )
                     }
