@@ -106,6 +106,10 @@
     <string name="clone_repo">Clone Repository</string>
     <string name="copy_key_first">Copy the key first. Until it is a deploy key of the repository, the clone has nothing to authenticate with.</string>
     <string name="key_copied">Key copied</string>
+    <string name="clone_failed">The clone did not go through</string>
+    <string name="clone_failed_auth_hint">The remote refused these credentials. For a key generated here that almost always means it is not a deploy key of the repository yet — add it there with write access, then try again.</string>
+    <string name="clone_failed_network_hint">The remote could not be reached. Check the connection and the clone url, then try again.</string>
+    <string name="clone_failed_detail">What git said</string>
     <string name="we_need_ssh_keys_to_authenticate">Need SSH keys to authenticate</string>
     <string name="generate_new_keys">Generate new keys</string>
     <string name="custom_ssh_keys">Use custom SSH keys</string>
