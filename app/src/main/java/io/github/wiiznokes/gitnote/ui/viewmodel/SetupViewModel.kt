@@ -33,35 +33,6 @@ import kotlin.Result.Companion.success
 
 private const val TAG = "SetupViewModel"
 
-interface SetupViewModelI {
-
-    fun launch(f: suspend () -> Unit) {}
-
-    fun cloneRepo(
-        storageConfig: StorageConfiguration,
-        remoteUrl: String,
-        cred: Cred? = null,
-        onSuccess: () -> Unit
-    ) {
-    }
-
-    fun createRepoAutomatic(
-        repoName: String,
-        storageConfig: StorageConfiguration,
-        onSuccess: () -> Unit
-    ) {
-    }
-
-    fun cloneRepoAutomatic(
-        repoName: String,
-        storageConfig: StorageConfiguration,
-        onSuccess: () -> Unit
-    ) {
-    }
-}
-
-class SetupViewModelMock : SetupViewModelI
-
 class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewModelI {
 
     val prefs: AppPreferences = MyApp.appModule.appPreferences
@@ -378,35 +349,8 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
         storageConfig: StorageConfiguration,
         onSuccess: () -> Unit
     ) {
-
         runCloneJob {
-            val (publicKey, privateKey) = generateSshKeysLib()
-
-            _initState.emit(InitState.AddingDeployKey)
-            try {
-                provider!!.addDeployKeyToRepo(
-                    token = prefs.appAuthToken.get(),
-                    publicKey = publicKey,
-                    fullRepoName = repoName
-                )
-            } catch (e: Exception) {
-                Log.e(TAG, "addDeployKey: ${e.message}, $e")
-                _initState.emit(InitState.Error(e.message))
-                return@runCloneJob
-            }
-
-            cloneRepoInternal(
-                storageConfig = storageConfig,
-                remoteUrl = provider!!.sshCloneUrlFromRepoName(repoName),
-                cred = Cred.Ssh(
-                    publicKey = publicKey,
-                    privateKey = privateKey,
-                    passphrase = null
-                ),
-                onSuccess = {
-                    onSuccess()
-                }
-            )
+            cloneWithOwnDeployKey(repoName, storageConfig, onSuccess)
         }
     }
 
@@ -415,88 +359,48 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
         storageConfig: StorageConfiguration,
         onSuccess: () -> Unit
     ) {
-
         runCloneJob {
+            val token = prefs.appAuthToken.get()
 
             _initState.emit(InitState.CreatingRemoteRepo)
-            try {
-                provider!!.createNewRepo(
-                    token = prefs.appAuthToken.get(),
-                    repoName = repoName
-                )
-            } catch (e: Exception) {
-                Log.e(TAG, "createNewRepoOnRemoteGithub: ${e.message}, $e")
-                _initState.emit(InitState.Error(e.message))
-                return@runCloneJob
-            }
+            onProvider("createNewRepo") {
+                createNewRepo(token = token, repoName = repoName)
+            }.getOrElse { return@runCloneJob }
 
-            val (publicKey, privateKey) = generateSshKeysLib()
+            cloneWithOwnDeployKey(repoName, storageConfig, onSuccess)
+        }
+    }
 
-            _initState.emit(InitState.AddingDeployKey)
-            try {
-                provider!!.addDeployKeyToRepo(
-                    token = prefs.appAuthToken.get(),
-                    publicKey = publicKey,
-                    fullRepoName = repoName
-                )
-            } catch (e: Exception) {
-                Log.e(TAG, "addDeployKey: ${e.message}, $e")
-                _initState.emit(InitState.Error(e.message))
-                return@runCloneJob
-            }
+    /**
+     * Gives the app a key of its own on the remote and clones over ssh with it,
+     * so that nothing the user has to type is kept on the device.
+     */
+    private suspend fun cloneWithOwnDeployKey(
+        repoName: String,
+        storageConfig: StorageConfiguration,
+        onSuccess: () -> Unit
+    ) {
+        val (publicKey, privateKey) = generateSshKeysLib()
+        val token = prefs.appAuthToken.get()
 
-            cloneRepoInternal(
-                storageConfig = storageConfig,
-                remoteUrl = provider!!.sshCloneUrlFromRepoName(repoName),
-                cred = Cred.Ssh(
-                    publicKey = publicKey,
-                    privateKey = privateKey,
-                    passphrase = null
-                ),
-                onSuccess = {
-                    onSuccess()
-                }
+        _initState.emit(InitState.AddingDeployKey)
+        onProvider("addDeployKeyToRepo") {
+            addDeployKeyToRepo(
+                token = token,
+                publicKey = publicKey,
+                fullRepoName = repoName
             )
-        }
+        }.getOrElse { return }
+
+        cloneRepoInternal(
+            storageConfig = storageConfig,
+            remoteUrl = provider!!.sshCloneUrlFromRepoName(repoName),
+            cred = Cred.Ssh(
+                publicKey = publicKey,
+                privateKey = privateKey,
+                passphrase = null
+            ),
+            onSuccess = onSuccess
+        )
     }
-
-}
-
-
-sealed class InitState {
-    data object Idle : InitState()
-    data class Error(val message: String? = null) : InitState()
-
-    data object GettingAccessToken : InitState()
-    data object FetchingRepos : InitState()
-    data object GettingUserInfo : InitState()
-
-    data object FetchingInfosSuccess : InitState()
-
-    data object CreatingRemoteRepo : InitState()
-    data object AddingDeployKey : InitState()
-
-    data class Cloning(val percent: Int) : InitState()
-
-    data object CalculatingTimestamps : InitState()
-    data class GeneratingDatabase(val path: String) : InitState()
-
-
-    fun message(): String {
-        return when (this) {
-            AddingDeployKey -> "Adding deploy key"
-            CalculatingTimestamps -> "Calculating timestamps"
-            is Cloning -> "Cloning: $percent %"
-            CreatingRemoteRepo -> "Creating repository"
-            is Error -> if (message != null) "Error: $message" else "Error"
-            FetchingRepos -> "Fetching repositories"
-            is GeneratingDatabase -> "Generating database, path: $path"
-            GettingAccessToken -> "Getting the access token"
-            GettingUserInfo -> "Getting user information"
-            Idle -> ""
-            FetchingInfosSuccess -> ""
-        }
-    }
-
-    fun isLoading(): Boolean = this !is Idle && this !is Error && this !is FetchingInfosSuccess
 }
