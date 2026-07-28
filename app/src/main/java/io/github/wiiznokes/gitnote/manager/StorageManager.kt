@@ -8,14 +8,23 @@ import io.github.wiiznokes.gitnote.data.AppPreferences
 import io.github.wiiznokes.gitnote.data.room.Note
 import io.github.wiiznokes.gitnote.data.room.NoteFolder
 import io.github.wiiznokes.gitnote.data.room.RepoDatabase
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.Result.Companion.failure
 import kotlin.Result.Companion.success
 
 private const val TAG = "StorageManager"
+
+/**
+ * How long a local change waits for the next one before the repo is synced with
+ * the remote. Ticking a row of checkboxes should cost one sync, not one per tick.
+ */
+private const val REMOTE_SYNC_DEBOUNCE_MS = 3_000L
 
 sealed interface SyncState {
 
@@ -61,20 +70,29 @@ class StorageManager {
 
     private val locker = Mutex()
 
+    private val appScope = MyApp.appModule.appScope
+
+    /**
+     * The sync that is waiting for the debounce to run out, if any.
+     */
+    private var pendingRemoteSync: Job? = null
+
     private val _syncState: MutableStateFlow<SyncState> = MutableStateFlow(SyncState.Ok(true))
     val syncState: StateFlow<SyncState> = _syncState
 
 
+    /**
+     * Syncs with the remote right away instead of waiting for the debounce, and
+     * therefore also covers whatever [scheduleRemoteSync] still had queued.
+     * Used on start up and for pull to refresh.
+     */
     suspend fun updateDatabaseAndRepo(): Result<Unit> = locker.withLock {
         Log.d(TAG, "updateDatabaseAndRepo")
 
-        val cred = prefs.cred()
-        val remoteUrl = prefs.remoteUrl.get()
-        val author = prefs.gitAuthor()
-        var isError = false
+        pendingRemoteSync?.cancel()
 
         gitManager.commitAll(
-            author,
+            prefs.gitAuthor(),
             "commit from gitnote to update the repo of the app"
         ).onFailure { err ->
             err.message?.let { Log.e(TAG, it) }
@@ -82,31 +100,7 @@ class StorageManager {
             return@withLock failure(err)
         }
 
-        if (remoteUrl.isNotEmpty()) {
-            _syncState.emit(SyncState.Pull)
-            gitManager.pull(cred, author).onFailure { err ->
-                isError = true
-                err.message?.let { Log.e(TAG, it) }
-                _syncState.emit(SyncState.Error(err.message))
-            }
-        }
-
-        if (remoteUrl.isNotEmpty()) {
-            _syncState.emit(SyncState.Push)
-            // todo: maybe async this call
-            gitManager.push(cred).onFailure { err ->
-                isError = true
-                err.message?.let { Log.e(TAG, it) }
-                _syncState.emit(SyncState.Error(err.message))
-            }
-        }
-
-        if (!isError)
-            _syncState.emit(SyncState.Ok(false))
-
-        updateDatabaseWithoutLocker()
-
-        return success(Unit)
+        return syncWithRemoteWithoutLocker()
     }
 
     /**
@@ -312,22 +306,28 @@ class StorageManager {
     }
 
     suspend fun closeRepo() = locker.withLock {
+        pendingRemoteSync?.cancel()
         prefs.closeRepo()
         gitManager.closeRepo()
         dao.clearDatabase()
     }
 
 
+    /**
+     * Applies a change and commits it locally. Committing is cheap and stays
+     * on the caller's path, so the files on disk and the repo never drift apart.
+     *
+     * Talking to the remote is not part of this: it is handed to
+     * [scheduleRemoteSync], which bundles the changes that follow shortly after.
+     * Otherwise every saved note, every deleted file and every ticked checkbox
+     * would be a full network roundtrip while the mutex is held.
+     */
     private suspend fun <T> update(
         commitMessage: String,
         f: suspend () -> Result<T>
     ): Result<T> {
 
-        val cred = prefs.cred()
-        val remoteUrl = prefs.remoteUrl.get()
         val author = prefs.gitAuthor()
-
-        var isError = false
 
         gitManager.commitAll(
             author,
@@ -336,15 +336,6 @@ class StorageManager {
             err.message?.let { Log.e(TAG, it) }
             _syncState.emit(SyncState.Error(err.message))
             return failure(err)
-        }
-
-        if (remoteUrl.isNotEmpty()) {
-            _syncState.emit(SyncState.Pull)
-            gitManager.pull(cred, author).onFailure { err ->
-                isError = true
-                err.message?.let { Log.e(TAG, it) }
-                _syncState.emit(SyncState.Error(err.message))
-            }
         }
 
         updateDatabaseWithoutLocker().onFailure { err ->
@@ -371,18 +362,65 @@ class StorageManager {
 
         prefs.databaseCommit.update(gitManager.lastCommit())
 
-        if (remoteUrl.isNotEmpty()) {
-            _syncState.emit(SyncState.Push)
-            gitManager.push(cred).onFailure { err ->
+        scheduleRemoteSync()
+
+        return success(payload)
+    }
+
+    /**
+     * Queues a sync with the remote, replacing one that has not run yet. The
+     * caller may hold [locker]: this only starts the timer, the sync itself
+     * takes the lock when it runs.
+     *
+     * A change that is still queued when the process dies is not lost, it is
+     * only not pushed yet — [updateDatabaseAndRepo] on the next start picks it up.
+     */
+    private fun scheduleRemoteSync() {
+        pendingRemoteSync?.cancel()
+        pendingRemoteSync = appScope.launch {
+            delay(REMOTE_SYNC_DEBOUNCE_MS)
+            syncWithRemote()
+        }
+    }
+
+    private suspend fun syncWithRemote(): Result<Unit> = locker.withLock {
+        syncWithRemoteWithoutLocker()
+    }
+
+    private suspend fun syncWithRemoteWithoutLocker(): Result<Unit> {
+        val hasRemote = prefs.remoteUrl.get().isNotEmpty()
+        val cred = prefs.cred()
+        var isError = false
+
+        if (hasRemote) {
+            _syncState.emit(SyncState.Pull)
+            gitManager.pull(cred, prefs.gitAuthor()).onFailure { err ->
                 isError = true
                 err.message?.let { Log.e(TAG, it) }
                 _syncState.emit(SyncState.Error(err.message))
             }
         }
 
-        if (!isError)
-            _syncState.emit(SyncState.Ok(false))
-        return success(payload)
+        // Also runs without a remote: the local commits still have to reach the database.
+        updateDatabaseWithoutLocker().onFailure { err ->
+            err.message?.let { Log.e(TAG, it) }
+            _syncState.emit(SyncState.Error(err.message))
+            return failure(err)
+        }
+
+        if (hasRemote) {
+            _syncState.emit(SyncState.Push)
+            gitManager.push(cred).onFailure { err ->
+                isError = true
+                err.message?.let { Log.e(TAG, it) }
+                _syncState.emit(SyncState.Error(err.message))
+            }
+
+            if (!isError)
+                _syncState.emit(SyncState.Ok(false))
+        }
+
+        return success(Unit)
     }
 
     suspend fun consumeOkSyncState() {
