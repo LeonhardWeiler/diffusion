@@ -38,9 +38,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.TextFieldValue
@@ -268,6 +270,9 @@ fun EditScreen(
     }
 }
 
+/** How long the place being read is held against the caret being brought into view. */
+private const val KEEP_SCROLL_FRAMES = 4
+
 /**
  * The note as something to type in.
  *
@@ -291,11 +296,39 @@ fun GenericTextField(
         // below the last line is where one taps to start writing
         val minHeight = maxHeight
 
+        // Where the note was being read when the field took focus.
+        //
+        // A field that is given focus asks for its caret to be brought into
+        // view, and the caret of a note that has only been scrolled through is
+        // still on the first line — so the ask arrives as "scroll back to the
+        // top". The tap sets the caret afterwards and lands where it was aimed,
+        // which is why the caret was right and the note was not where it had
+        // been. Once the caret is somewhere on screen the ask is answered by
+        // doing nothing, so this only ever concerns the first tap.
+        var placeBeingRead by remember { mutableStateOf<Int?>(null) }
+
+        LaunchedEffect(placeBeingRead) {
+            val place = placeBeingRead ?: return@LaunchedEffect
+
+            // The ask is made over the next frames and it animates, so putting
+            // the note back once would only race it. Held for a few frames it
+            // is the last word — and short enough that the keyboard, which
+            // arrives later, can still move a caret it would cover into sight.
+            repeat(KEEP_SCROLL_FRAMES) {
+                withFrameNanos { }
+                if (scrollState.value != place) scrollState.scrollTo(place)
+            }
+            placeBeingRead = null
+        }
+
         Column(modifier = Modifier.verticalScroll(scrollState)) {
             TextField(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = minHeight)
+                    .onFocusChanged { state ->
+                        if (state.isFocused) placeBeingRead = scrollState.value
+                    }
                     .focusRequester(textFocusRequester),
                 value = textContent,
                 onValueChange = { vm.onValueChange(it) },
