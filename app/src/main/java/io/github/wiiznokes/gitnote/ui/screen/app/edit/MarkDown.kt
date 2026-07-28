@@ -3,13 +3,16 @@ package io.github.wiiznokes.gitnote.ui.screen.app.edit
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.scrollable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -44,6 +47,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import com.mikepenz.markdown.compose.MarkdownElement
+import com.mikepenz.markdown.compose.components.CurrentComponentsBridge
+import com.mikepenz.markdown.compose.components.MarkdownComponentModel
 import com.mikepenz.markdown.compose.components.markdownComponents
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.model.rememberMarkdownState
@@ -53,6 +58,9 @@ private val CheckBoxSize = 20.dp
 
 /** Between the box and the words belonging to it, which otherwise touch. */
 private val CheckBoxTextGap = 8.dp
+
+/** What a table column is given before the table is allowed to scroll. */
+private val MinTableColumnWidth = 120.dp
 
 @Composable
 fun MarkDownContent(
@@ -89,6 +97,7 @@ fun MarkDownContent(
                 markdownState = markdownState,
                 modifier = Modifier.fillMaxSize(),
                 components = markdownComponents(
+                    table = { model -> WideTable(model) },
                     checkbox = { model ->
                         val node = model.node
                         val asParsed = model.content
@@ -156,6 +165,43 @@ fun MarkDownContent(
     }
 }
 
+
+/**
+ * A table as wide as its columns need, which the reader moves sideways over.
+ *
+ * Laid out for the width of a phone, a table shares that width between its
+ * columns however many there are, so past two or three the words in them break
+ * a letter at a time and the ends of the cells are simply not shown. Given the
+ * room instead, the whole of it is there to be read.
+ */
+@Composable
+private fun WideTable(model: MarkdownComponentModel) {
+
+    val columnCount = remember(model.node) { model.tableColumnCount() }
+
+    BoxWithConstraints {
+        // never narrower than the screen: a two column table has no reason to
+        // leave a gap at the side, and nothing to scroll to in it
+        val width = maxOf(maxWidth, MinTableColumnWidth * columnCount)
+
+        Box(modifier = Modifier.horizontalScroll(rememberScrollState())) {
+            Box(modifier = Modifier.width(width)) {
+                CurrentComponentsBridge.table(model)
+            }
+        }
+    }
+}
+
+/**
+ * How many columns the table has, counted off its first line — which in a
+ * markdown table is the header row, and says how wide every row below it is.
+ */
+private fun MarkdownComponentModel.tableColumnCount(): Int =
+    content.substring(node.startOffset, node.endOffset)
+        .lineSequence().first()
+        .trim().trim('|')
+        .count { it == '|' }
+        .plus(1)
 
 @Composable
 fun TextFormatRow(
