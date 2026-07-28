@@ -9,6 +9,7 @@
     <string name="oldest_sort_order">Oldest</string>
     <string name="new_folder_label">New folder name</string>
     <string name="create_new_folder">Create new folder</string>
+    <string name="create_new_note">Create new note</string>
     <string name="yes">Yes</string>
     <string name="no">No</string>
     <string name="save">Save</string>
