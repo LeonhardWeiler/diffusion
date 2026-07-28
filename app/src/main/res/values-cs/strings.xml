@@ -13,19 +13,12 @@
     <string name="user_interface">Uživatelské rozhraní</string>
     <string name="dynamic_colors">Dynamické barvy</string>
     <string name="sort_order">Pořadí řazení</string>
-    <string name="minimal_note_width">Minimální šířka poznámky</string>
-    <string name="show_long_notes">Úplně zobrazit dlouhé poznámky</string>
     <string name="remember_last_opened_folder">Pamatovat si naposledy otevřenou složku</string>
     <string name="show_the_full_notes_path">Vždy zobrazit celou cestu k poznámkám</string>
     <string name="show_the_full_notes_path_subtitle">Upozorňujeme, že ve výchozím nastavení se cesta vypíše pouze v případě, že více než dvě poznámky mají stejný název</string>
-    <string name="folder_filters">Filtry složek</string>
-    <string name="folder_filters_subtitle">Definovat regex pro filtrování složek repozitáře</string>
     <string name="edit">Úpravy</string>
     <string name="default_note_extension">Výchozí přípona poznámek</string>
-    <string name="show_lines_number">Zobrazit číslo řádku</string>
     <string name="repository">Repozitář</string>
-    <string name="password">Heslo</string>
-    <string name="username">Uživatelské jméno</string>
     <string name="remote_url">Vzdálené url</string>
     <string name="close_repository">Zavřít repozitář</string>
     <string name="close_repository_confirmation">Opravdu chcete zavřít repozitář?</string>
@@ -33,7 +26,6 @@
     <string name="show_logs">Zobrazit logy</string>
     <string name="report_an_issue">Nahlásit problém</string>
     <string name="source_code">Zdrojový kód</string>
-    <string name="libraries">Knihovny</string>
     <string name="copy_all_logs">Zkopírovat všechny logy</string>
     <string name="note_name">Název poznámky</string>
     <string name="delete_this_folder">Smazat tuto složku</string>
@@ -56,7 +48,6 @@
     <string name="error_invalid_name">Název je neplatný</string>
     <string name="error_invalid_extension">Rozšíření je neplatné</string>
     <string name="error_folder_already_exist">Složka již existuje</string>
-    <string name="error_note_is_the_same">Žádná změna</string>
     <string name="grid">Mřížka</string>
     <string name="about">O</string>
     <string name="app_page_choose_method">Zvolit metodu</string>
@@ -71,25 +62,9 @@
     <string name="create_repo_explorer">Vytvořit repozitář v této složce</string>
     <string name="open_repo_explorer">Otevřít tento repozitář</string>
     <string name="clone_repo_explorer">Klonovat repozitář v této složce</string>
-    <string name="quick_links">Rychlé odkazy</string>
-    <string name="quick_links_home_page">Úvodní stránka</string>
-    <string name="quick_links_create_repo">Vytvoření repozitáře</string>
-    <string name="quick_links_create_token">Vytvoření Tokenu</string>
-    <string name="quick_links_see_repos">Zobrazení repozitářů</string>
-    <string name="app_page_clone_repository">Klonovat repozitář</string>
-    <string name="where_repo_is_cloned">Cesta, kam bude repozitář klonován</string>
-    <string name="clone_step_url">1. Zadat url adresu repozitáře (https)</string>
     <string name="clone_step_url_label">url</string>
-    <string name="with_credentials">S přihlašovacími údaji</string>
-    <string name="clone_step_username">2. Uživatelské jméno</string>
-    <string name="clone_step_username_label">Uživatelské jméno</string>
-    <string name="clone_step_password">3. Heslo (dev. token)</string>
-    <string name="clone_step_password_label">Heslo</string>
-    <string name="clone_repo_button">klonovat repozitář</string>
     <string name="error_path_not_directory">Cesta není adresář</string>
     <string name="error_path_not_empty">Složka není prázná</string>
-    <string name="success_note_update">Poznámka úspěšně aktualizována</string>
-    <string name="success_note_create">Poznámka úspěšně vytvořena</string>
     <string name="error_delete_folder">Nelze smazat složku: %1$s</string>
 
     <plurals name="delete_selected_notes">
@@ -97,15 +72,7 @@
         <item quantity="other">Smazat vybrané poznámky</item>
     </plurals>
 
-    <plurals name="success_notes_delete">
-        <item quantity="one">Poznámka byla úspěšně smazána</item>
-        <item quantity="other">Poznámky byly úspěšně smazány</item>
-    </plurals>
 
-    <plurals name="success_noteFolders_delete">
-        <item quantity="one">Složka byla úspěšně smazána</item>
-        <item quantity="other">Složky byly úspěšně smazány</item>
-    </plurals>
 
     <string name="read_only_mode_activate">Aktivovat režim jen pro čtení</string>
     <string name="read_only_mode_deactive">Deaktivovat režim jen pro čtení</string>

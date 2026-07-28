@@ -29,19 +29,12 @@
 
     <string name="sort_order">Odre du tri</string>
     <string name="defaultPathForNewNote">Chemin par défaut pour les nouvelles notes</string>
-    <string name="minimal_note_width">Largeur minimal d\'une note</string>
-    <string name="show_long_notes">Montrer les longues notes entièrement</string>
     <string name="remember_last_opened_folder">Se souvenir du dernier dossier ouvert</string>
     <string name="show_the_full_notes_path">Montrer le chemin entier des notes</string>
     <string name="show_the_full_notes_path_subtitle">Notez que le comportement par défaut montrera le chemin entier si plus de deux notes partage le même nom</string>
-    <string name="folder_filters">Filtre de dossier</string>
-    <string name="folder_filters_subtitle">Définir des regex pour filtrer certain dossier du dépôt</string>
     <string name="edit">Édition</string>
     <string name="default_note_extension">Extension par défaut des notes</string>
-    <string name="show_lines_number">Montrer le numéro des lignes</string>
     <string name="repository">Dépôt</string>
-    <string name="password">Mot de passe</string>
-    <string name="username">Nom d\'utilisateur</string>
     <string name="remote_url">Url du dépôt distant</string>
     <string name="git_author_email">Mail de l\'auteur Git</string>
     <string name="close_repository">Fermer le dépôt</string>
@@ -51,7 +44,6 @@
     <string name="success_reload">La base de donnée a été rechargé avec succès</string>
     <string name="report_an_issue">Signaler un problème</string>
     <string name="source_code">Code source</string>
-    <string name="libraries">Bibliothèques open source</string>
     <string name="copy_all_logs">Copiez tous les logs</string>
     <string name="note_name">Nom de la note</string>
     <string name="delete_this_folder">Supprimer ce dossier</string>
@@ -71,9 +63,7 @@
     <string name="error_clone_repo">Impossible de clone: %1$s</string>
     <string name="error_open_repo">Impossible d\'ouvrir le dépôt: %1$s</string>
     <string name="error_create_repo">Impossible de créer le dépôt: %1$s</string>
-    <string name="error_note_is_the_same">Aucune modification</string>
     <string name="grid">Grille</string>
-    <string name="switch_to_grid_view">Passer à l\'affichage en grille</string>
     <string name="about">À propos</string>
     <string name="app_page_choose_method">Choisir la méthode</string>
     <string name="create_local_repo">Créer un dépôt local</string>
@@ -88,41 +78,17 @@
     <string name="open_repo_explorer">Ouvrir ce dépôt</string>
     <string name="clone_repo_explorer">Cloner le dépôt dans ce dossier</string>
     <string name="clone_repo_explorer_use_url_for_root_folder">Clonez le dépôt dans ce dossier et utilisez l\'URL comme nom du dossier racine</string>
-    <string name="quick_links">Liens rapides</string>
-    <string name="quick_links_home_page">Page d\'accueil</string>
-    <string name="quick_links_create_repo">Créer dépôt</string>
-    <string name="quick_links_create_token">Créer token</string>
-    <string name="quick_links_see_repos">Voir les référentiel</string>
-    <string name="app_page_clone_repository">Cloner le référentiel</string>
-    <string name="where_repo_is_cloned">Chemin où le référentiel sera cloné</string>
-    <string name="clone_step_url">1. Entrez l\'url du référentiel (https)</string>
     <string name="clone_step_url_label">url</string>
-    <string name="with_credentials">Avec identifiants</string>
-    <string name="clone_step_username">2. Nom d\'utilisateur</string>
-    <string name="clone_step_username_label">Nom d\'utilisateur</string>
-    <string name="clone_step_password">3. Mot de passe (dev. token)</string>
-    <string name="clone_step_password_label">Mot de passe</string>
-    <string name="clone_repo_button">Cloner le référentiel</string>
     <string name="error_path_not_directory">Le chemin n\'est pas un répertoire</string>
     <string name="error_path_not_empty">Le dossier n\'est pas vide</string>
-    <string name="success_note_update">Note mise à jour avec succès</string>
-    <string name="success_note_create">Note créée avec succès</string>
 
     <plurals name="delete_selected_notes" tools:ignore="MissingQuantity">
         <item quantity="one" tools:ignore="ImpliedQuantity">Supprimer la note selectionnée</item>
         <item quantity="other">Supprimer les notes selectionnées</item>
     </plurals>
 
-    <plurals name="success_notes_delete" tools:ignore="MissingQuantity">
-        <item quantity="one" tools:ignore="ImpliedQuantity">Note supprimée avec succès</item>
-        <item quantity="other">Notes supprimées avec succès</item>
-    </plurals>
     <string name="error_delete_folder">Impossible de supprimer le dossier: %1$s</string>
 
-    <plurals name="success_noteFolders_delete" tools:ignore="MissingQuantity">
-        <item quantity="one" tools:ignore="ImpliedQuantity">Dossier supprimé avec succès</item>
-        <item quantity="other">Dossiers supprimés avec succès</item>
-    </plurals>
 
     <string name="read_only_mode_activate">Activer la lecture seule</string>
     <string name="read_only_mode_deactive">Desactiver la lecture seule</string>
@@ -164,8 +130,6 @@
     <string name="sort_order_folder">Odre du tri des dossiers</string>
     <string name="git_author_name">Nom de l\'auteur Git</string>
     <string name="reload_database">Recharger la base de donnée</string>
-    <string name="list">Liste</string>
-    <string name="switch_to_list_view">Passer à l\'affichage en liste</string>
     <string name="authorize_gitnote_title">Récupérer les métadonnées des dépôts</string>
     <string name="custom_ssh_keys">Utiliser des clés SSH personnalisées</string>
     <string name="parent_path">Dossier parent: %1$s</string>
