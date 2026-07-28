@@ -146,16 +146,14 @@ open class TextVM() : ViewModel() {
         FlagDoNotRemove
     }
 
-    // https://medium.com/androiddevelopers/effective-state-management-for-textfield-in-compose-d6e5b070fbe5
-    // even if we are not doing anything async, sometime, when we long press enter for example,
-    // the value v will not be the last one set by `content.value`. This will instead by an internal copy
-    // of the TextField implementation (see article for more info)
-    // todo: report this to google
-
-    // another bug if when we long press the delete key and we pass in the delete padding feature,
-    // we stop receiving `onValueChange` call. This seems unrelated to the issue above, e.i, idt it's a race
-    // condition
-    // todo: report this to google
+    /**
+     * The value handed in is not always the one last written to [content]: the
+     * TextField keeps an internal copy and can answer with that, which shows up
+     * when a key is held down. Long pressing delete can also stop the calls
+     * coming altogether.
+     *
+     * https://medium.com/androiddevelopers/effective-state-management-for-textfield-in-compose-d6e5b070fbe5
+     */
     open fun onValueChange(v: TextFieldValue) {
 
         if (history.size == 1 && content.value.text == v.text) {

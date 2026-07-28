@@ -8,10 +8,7 @@ import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.floatPreferencesKey
-import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.wiiznokes.gitnote.manager.PreferencesManager.Companion.editor
@@ -33,15 +30,6 @@ abstract class PreferencesManager(private val context: Context, name: String) {
 
     protected fun booleanPreference(key: String, default: Boolean) =
         BooleanPreference(dataStore, key, default)
-
-    protected fun intPreference(key: String, default: Int) = IntPreference(dataStore, key, default)
-
-    protected fun floatPreference(key: String, default: Float) =
-        FloatPreference(dataStore, key, default)
-
-
-    protected fun setPreference(key: String, default: Set<String>) =
-        SetPreference(dataStore, key, default)
 
     protected inline fun <reified E : Enum<E>> enumPreference(
         key: String,
@@ -131,30 +119,6 @@ class BooleanPreference(
     default: Boolean
 ) : BasePreference<Boolean>(dataStore, default) {
     override val key = booleanPreferencesKey(key)
-}
-
-class IntPreference(
-    dataStore: DataStore<Preferences>,
-    key: String,
-    default: Int
-) : BasePreference<Int>(dataStore, default) {
-    override val key = intPreferencesKey(key)
-}
-
-class FloatPreference(
-    dataStore: DataStore<Preferences>,
-    key: String,
-    default: Float
-) : BasePreference<Float>(dataStore, default) {
-    override val key = floatPreferencesKey(key)
-}
-
-class SetPreference(
-    dataStore: DataStore<Preferences>,
-    key: String,
-    default: Set<String>
-) : BasePreference<Set<String>>(dataStore, default) {
-    override val key = stringSetPreferencesKey(key)
 }
 
 

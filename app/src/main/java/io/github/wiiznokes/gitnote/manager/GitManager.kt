@@ -149,7 +149,6 @@ class GitManager {
 
     }
 
-    // todo: update this shit
     suspend fun lastCommit(): String = safelyAccessLibGit2 {
         Log.d(TAG, "last commit")
         if (!isRepoInitialized) throw GitException(GitExceptionType.RepoNotInit)

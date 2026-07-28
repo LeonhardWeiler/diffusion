@@ -23,13 +23,11 @@ class FileExplorerViewModel(val path: String?) : ViewModel() {
 
 
     var currentDir: NodeFs.Folder = path?.let { path ->
-        // todo: check if exist
         NodeFs.Folder.fromPath(path).let {
             if (it.exist()) it else null
         }
     } ?: FileSystem.defaultDir
 
-    // todo: maybe use flow here
     val folders: SnapshotStateList<NodeFs.Folder> = mutableStateListOf()
 
     init {
@@ -46,11 +44,14 @@ class FileExplorerViewModel(val path: String?) : ViewModel() {
 
     fun createDir(name: String): Boolean {
 
-        // todo: add it to the list
         currentDir.createFolder(name).onFailure {
             uiHelper.makeToast(it.message)
             return false
         }
+
+        // the list is read once when the screen opens, so a folder created
+        // afterwards would only show up on the way back into this directory
+        folders.add(NodeFs.Folder.fromPath(currentDir.path, name))
 
         Log.d(TAG, "$name created")
         return true

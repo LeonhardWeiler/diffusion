@@ -6,6 +6,7 @@ import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Query
 import androidx.room.RawQuery
+import androidx.room.Transaction
 import androidx.room.Upsert
 import androidx.sqlite.db.SimpleSQLiteQuery
 import androidx.sqlite.db.SupportSQLiteQuery
@@ -28,8 +29,12 @@ private const val LIMIT_FILE_SIZE_DB = 2 * 1024 * 1024
 @Dao
 interface RepoDatabaseDao {
 
-    // todo: use @Transaction
-    // todo: don't clear the all database each time
+    /**
+     * Rebuilds the whole index from the files, which are the source of truth.
+     * Nothing here is worth keeping: a row that disagrees with its file is
+     * exactly what this is meant to get rid of.
+     */
+    @Transaction
     suspend fun clearAndInit(
         rootPath: String,
         timestamps: HashMap<String, Long>,
@@ -156,7 +161,8 @@ interface RepoDatabaseDao {
 
         fun ftsEscape(query: String): String {
 
-            // todo: change this when FTS5 is supported by room https://issuetracker.google.com/issues/146824830
+            // Room only supports FTS4, whose MATCH syntax gives these characters
+            // a meaning the user did not type: quote the query when one shows up.
             val specialChars: List<CharSequence> =
                 listOf("\"", "*", "-", "(", ")", "<", ">", ":", "^", "~", "'", "AND", "OR", "NOT")
 
@@ -220,25 +226,6 @@ interface RepoDatabaseDao {
 
         val query = SimpleSQLiteQuery(sql, arrayOf(currentNoteFolderRelativePath))
         return this.foldersRaw(query)
-    }
-
-    @RawQuery(observedEntities = [Note::class, NoteFolder::class])
-    fun noteFoldersRaw(query: SupportSQLiteQuery): Flow<List<NoteFolder>>
-
-    // todo: use pages
-    fun noteFolders(
-        currentNoteFolderRelativePath: String,
-    ): Flow<List<NoteFolder>> {
-
-        val sql = """
-            SELECT relativePath, id, fullName(relativePath) as folderName
-            FROM NoteFolders
-            WHERE parentPath(relativePath) = ?
-            ORDER BY folderName ASC
-        """.trimIndent()
-
-        val query = SimpleSQLiteQuery(sql, arrayOf(currentNoteFolderRelativePath))
-        return this.noteFoldersRaw(query)
     }
 
     @Upsert

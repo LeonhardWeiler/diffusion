@@ -7,7 +7,6 @@ import androidx.compose.ui.unit.dp
 
 val IconDefaultSize = 50.dp
 
-// todo: use more this class
 data class Spaces(
     val dialogSeparation: Dp = 80.dp,
     val smallPadding: Dp = 10.dp,

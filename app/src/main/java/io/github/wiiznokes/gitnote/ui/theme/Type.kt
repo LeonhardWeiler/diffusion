@@ -8,7 +8,6 @@ import androidx.compose.ui.unit.sp
 
 private val defaultTypo = Typography()
 
-// todo: use the defaultTypo everywhere
 val Typography = Typography(
     titleMedium = TextStyle(
         fontFamily = FontFamily.SansSerif,

@@ -176,9 +176,6 @@ private fun GridView(
         }
     ) {
 
-        // todo: scroll even when there is nothing to scroll
-        // todo: add scroll bar
-
         val listState = rememberLazyListState()
 
         LaunchedEffect(query.value) {

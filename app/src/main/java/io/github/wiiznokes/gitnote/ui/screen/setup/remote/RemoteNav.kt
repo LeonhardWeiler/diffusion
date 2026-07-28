@@ -25,6 +25,7 @@ import io.github.wiiznokes.gitnote.ui.destination.RemoteDestination.SelectSetupA
 import io.github.wiiznokes.gitnote.ui.destination.SettingsDestination
 import io.github.wiiznokes.gitnote.ui.model.StorageConfiguration
 import io.github.wiiznokes.gitnote.ui.screen.settings.LogsScreen
+import io.github.wiiznokes.gitnote.ui.utils.crossFade
 import io.github.wiiznokes.gitnote.ui.utils.slide
 import io.github.wiiznokes.gitnote.ui.viewmodel.SetupViewModel
 
@@ -207,10 +208,13 @@ private object RemoteNavTransitionSpec : NavTransitionSpec<RemoteDestination> {
         to: RemoteDestination
     ): ContentTransform {
 
+        // Navigate and Pop are the two the setup produces itself. The rest —
+        // Replace, and the Idle a restored backstack comes back with — has no
+        // direction to it, and used to end the app with a NotImplementedError.
         return when (action) {
             is NavAction.Navigate -> slide()
             is NavAction.Pop -> slide(backWard = true)
-            else -> TODO()
+            else -> crossFade()
         }
 
     }

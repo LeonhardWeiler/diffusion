@@ -5,7 +5,6 @@ import java.util.Vector
 
 private const val TAG = "Fuzzy"
 
-// todo: highlight matching part (maybe by return List<Note, FuzzyMatch>> to avoid wrapping the note struct
 fun fuzzySort(
     query: String,
     notes: List<Note>

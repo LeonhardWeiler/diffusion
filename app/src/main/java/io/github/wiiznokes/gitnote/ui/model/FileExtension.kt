@@ -5,10 +5,6 @@ import kotlinx.parcelize.Parcelize
 import java.io.Serializable
 
 
-// todo: add more or find another solution
-// https://www.reddit.com/r/Kotlin/comments/195k46c/lib_for_filtering_ascii_files/
-
-
 @Parcelize
 sealed class FileExtension(val text: String) : Parcelable, Serializable {
 
