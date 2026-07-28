@@ -1,7 +1,9 @@
 package io.github.wiiznokes.gitnote.ui.screen.app.grid
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -35,7 +37,9 @@ fun TopBar(
 ) {
 
     AnimatedContent(
-        modifier = modifier,
+        // the bar floats above the list, so without a background of its own the
+        // rows would be readable through it as they scroll past underneath
+        modifier = modifier.background(MaterialTheme.colorScheme.background),
         targetState = selectedNotesNumber == 0,
         label = "",
     ) { shouldShowSearchBar ->
