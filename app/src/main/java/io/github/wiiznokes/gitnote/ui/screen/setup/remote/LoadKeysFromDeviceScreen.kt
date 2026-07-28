@@ -18,6 +18,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import io.github.wiiznokes.gitnote.R
 import io.github.wiiznokes.gitnote.ui.component.AppPage
+import io.github.wiiznokes.gitnote.helper.SshKeyValidation
 import io.github.wiiznokes.gitnote.ui.component.SetupButton
 import io.github.wiiznokes.gitnote.ui.component.SetupLine
 import io.github.wiiznokes.gitnote.ui.component.SetupPage
@@ -28,9 +29,6 @@ import io.github.wiiznokes.gitnote.ui.viewmodel.SetupViewModelI
 import io.github.wiiznokes.gitnote.ui.viewmodel.SetupViewModelMock
 
 
-private fun isKeyCorrect(key: String): Boolean {
-    return true
-}
 
 
 @Composable
@@ -78,7 +76,7 @@ fun LoadKeysFromDeviceScreen(
                     label = {
                         Text(text = stringResource(R.string.public_key))
                     },
-                    isError = !isKeyCorrect(publicKey.value.text),
+                    isError = !SshKeyValidation.isPublicKey(publicKey.value.text),
                 )
 
                 LoadFileButton(
@@ -101,7 +99,7 @@ fun LoadKeysFromDeviceScreen(
                     label = {
                         Text(text = stringResource(R.string.private_key))
                     },
-                    isError = !isKeyCorrect(privateKey.value.text),
+                    isError = !SshKeyValidation.isPrivateKey(privateKey.value.text),
                 )
 
                 LoadFileButton(
@@ -131,7 +129,7 @@ fun LoadKeysFromDeviceScreen(
             ) {
                 SetupButton(
                     text = stringResource(R.string.clone_repo),
-                    enabled = isKeyCorrect(publicKey.value.text) && isKeyCorrect(privateKey.value.text),
+                    enabled = SshKeyValidation.isKeyPair(publicKey.value.text, privateKey.value.text),
                     onClick = {
                         vm.cloneRepo(
                             storageConfig = storageConfig,

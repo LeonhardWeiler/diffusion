@@ -27,6 +27,7 @@ import io.github.wiiznokes.gitnote.R
 import io.github.wiiznokes.gitnote.provider.GithubProvider
 import io.github.wiiznokes.gitnote.provider.Provider
 import io.github.wiiznokes.gitnote.ui.component.AppPage
+import io.github.wiiznokes.gitnote.helper.SshKeyValidation
 import io.github.wiiznokes.gitnote.ui.component.SetupButton
 import io.github.wiiznokes.gitnote.ui.component.SetupLine
 import io.github.wiiznokes.gitnote.ui.component.SetupPage
@@ -163,6 +164,9 @@ fun GenerateNewSshKeysScreen(
 
                 SetupButton(
                     text = stringResource(R.string.clone_repo),
+                    // the keys are generated off the composition, so for a moment
+                    // there is nothing here to authenticate with
+                    enabled = SshKeyValidation.isKeyPair(publicKey.value, privateKey.value),
                     onClick = {
                         vm.cloneRepo(
                             storageConfig = storageConfig,
