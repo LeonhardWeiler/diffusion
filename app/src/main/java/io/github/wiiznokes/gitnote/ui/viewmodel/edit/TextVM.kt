@@ -226,7 +226,10 @@ open class TextVM() : ViewModel() {
         // undone back to what it was, so what was written may be nothing at all
         val restored = isOpenedNoteTheSame()
 
-        appScope.launch {
+        // through the storage manager rather than straight into the app's scope:
+        // leaving the app writes and syncs at the same moment, and the sync
+        // waits for the write it can see
+        storageManager.startWrite {
             if (isNew) {
                 storageManager.createNote(note)
             } else {

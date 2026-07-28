@@ -125,15 +125,18 @@ class MainActivity : ComponentActivity() {
      * somebody remembers the button.
      *
      * super first, so that the editor has been told to write what it holds
-     * before the sync goes looking for it. It runs in the app's scope, which
-     * outlives the activity — being stopped is what starts it, so a scope tied
-     * to the activity would end it at the same moment.
+     * before the sync goes looking for it — the sync itself then waits for that
+     * write to finish. It runs in the app's scope, which outlives the activity —
+     * being stopped is what starts it, so a scope tied to the activity would end
+     * it at the same moment.
      */
     override fun onStop() {
         super.onStop()
         Log.d(TAG, "onStop")
 
         MyApp.appModule.appScope.launch {
+            if (!MyApp.appModule.appPreferences.syncOnOpenAndClose.get()) return@launch
+
             MyApp.appModule.storageManager.syncWithRemote(announceErrors = false)
         }
     }

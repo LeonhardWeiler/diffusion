@@ -10,8 +10,10 @@ import io.github.wiiznokes.gitnote.data.platform.NodeFs
 import io.github.wiiznokes.gitnote.data.room.Note
 import io.github.wiiznokes.gitnote.data.room.NoteFolder
 import io.github.wiiznokes.gitnote.data.room.RepoDatabase
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.Result.Companion.failure
@@ -44,6 +46,9 @@ class StorageManager {
     private val dao = this.db.repoDatabaseDao
 
     private val gitManager: GitManager = MyApp.appModule.gitManager
+
+    /** Writes must not be cancelled by the screen that started them going away. */
+    private val appScope = MyApp.appModule.appScope
 
     private val locker = Mutex()
 
@@ -101,7 +106,28 @@ class StorageManager {
      * @param announceErrors see [SyncState.Error]. False for the syncs that run
      * on their own when the app is opened and closed.
      */
-    suspend fun syncWithRemote(announceErrors: Boolean = true): Result<Unit> = locker.withLock {
+    suspend fun syncWithRemote(announceErrors: Boolean = true): Result<Unit> {
+        // Leaving the app tells the editor to write what it holds and starts a
+        // sync, both in the same scope on the same dispatcher. Whoever reached
+        // the lock first used to win, and when that was the sync, the last thing
+        // typed was not in the commit — it was not lost, it went out one sync
+        // later, which is exactly one sync too late.
+        lastWrite?.join()
+
+        return syncWithRemoteLocked(announceErrors)
+    }
+
+    /**
+     * A note write in the app's scope, which [syncWithRemote] lets finish before
+     * it commits. Every write of a note goes through here for that reason.
+     */
+    fun startWrite(f: suspend () -> Unit): Job =
+        appScope.launch { f() }.also { lastWrite = it }
+
+    @Volatile
+    private var lastWrite: Job? = null
+
+    private suspend fun syncWithRemoteLocked(announceErrors: Boolean): Result<Unit> = locker.withLock {
         Log.d(TAG, "syncWithRemote")
 
         // There is nothing to sync before a repository has been opened, and

@@ -139,6 +139,15 @@ class AppPreferences(
 
     val provider = enumPreference("provider", ProviderType.GitHub)
 
+    /**
+     * Whether the app syncs by itself when it is opened and when it is left.
+     *
+     * On, because that is what takes the last step off the user — but
+     * it is a transfer nobody asked for at the moment it happens, and on mobile
+     * data or with a repository one only reads that is a reason to say no.
+     */
+    val syncOnOpenAndClose = booleanPreference("syncOnOpenAndClose", true)
+
     val defaultExtension = stringPreference("defaultExtension", "md")
     val showLinesNumber = booleanPreference("showLinesNumber", false)
 

@@ -51,9 +51,12 @@ class MainViewModel : ViewModel() {
         // Opening the app is one of the two moments a sync does not have to be
         // asked for — what another device wrote is what one opens the app to
         // read. It brings the database in line on the way through, and says
-        // nothing if the network is not there.
-        appScope.launch {
-            storageManager.syncWithRemote(announceErrors = false)
+        // nothing if the network is not there. Unless it was turned off: a
+        // transfer nobody asked for is not always wanted.
+        if (prefs.syncOnOpenAndClose.get()) {
+            appScope.launch {
+                storageManager.syncWithRemote(announceErrors = false)
+            }
         }
 
         return true

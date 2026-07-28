@@ -166,6 +166,16 @@ fun SettingsScreen(
                 keyboardType = KeyboardType.Uri
             )
 
+            val syncOnOpenAndClose by vm.prefs.syncOnOpenAndClose.getAsState()
+            ToggleableSettings(
+                title = stringResource(R.string.sync_automatically),
+                subtitle = stringResource(R.string.sync_automatically_subtitle),
+                checked = syncOnOpenAndClose,
+                onCheckedChange = {
+                    vm.update { vm.prefs.syncOnOpenAndClose.update(it) }
+                }
+            )
+
             val expanded = rememberSaveable {
                 mutableStateOf(false)
             }
