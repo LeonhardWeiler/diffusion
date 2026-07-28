@@ -10,6 +10,14 @@ sealed class InitState {
 
     data class Cloning(val percent: Int) : InitState()
 
+    /**
+     * Reading a repository that is already on the device. Between the tap on
+     * the folder and the next screen there is a second or two of libgit2 and of
+     * walking the whole working tree, and without this the app looked like it
+     * had ignored the tap.
+     */
+    data object OpeningRepo : InitState()
+
     data class GeneratingDatabase(val path: String) : InitState()
 
 
@@ -18,6 +26,7 @@ sealed class InitState {
             is Cloning -> "Cloning: $percent %"
             is Error -> if (message != null) "Error: $message" else "Error"
             is GeneratingDatabase -> "Generating database, path: $path"
+            OpeningRepo -> "Opening the repository…"
             Idle -> ""
         }
     }

@@ -2,6 +2,7 @@ package io.github.leonhardweiler.gitnote.ui.screen.setup
 
 import androidx.compose.animation.ContentTransform
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.olshevski.navigation.reimagined.AnimatedNavHost
 import dev.olshevski.navigation.reimagined.NavAction
@@ -44,6 +45,7 @@ fun SetupNav(
                 makeToast = vm.uiHelper::makeToast,
                 navigate = navController::navigate,
                 onSetupSuccess = onSetupSuccess,
+                initState = vm.initState.collectAsState().value,
             )
 
             is SetupDestination.Remote -> RemoteScreen(

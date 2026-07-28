@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -21,6 +22,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import io.github.leonhardweiler.gitnote.MyApp
@@ -33,6 +35,7 @@ import io.github.leonhardweiler.gitnote.ui.component.RequestConfirmationDialog
 import io.github.leonhardweiler.gitnote.ui.destination.NewRepoMethod
 import io.github.leonhardweiler.gitnote.ui.destination.SetupDestination
 import io.github.leonhardweiler.gitnote.ui.model.StorageConfiguration
+import io.github.leonhardweiler.gitnote.ui.viewmodel.InitState
 import kotlinx.coroutines.launch
 
 
@@ -45,7 +48,8 @@ fun NewRepoMethodScreen(
     checkPathForClone: (String) -> Result<Unit>,
     makeToast: (String) -> Unit,
     navigate: (SetupDestination) -> Unit,
-    onSetupSuccess: () -> Unit
+    onSetupSuccess: () -> Unit,
+    initState: InitState = InitState.Idle,
 ) {
 
 
@@ -115,6 +119,26 @@ fun NewRepoMethodScreen(
         verticalArrangement = Arrangement.spacedBy(80.dp, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+
+        // Opening a repository is a second or two of libgit2 and of reading the
+        // whole working tree, and it happens after the folder picker has closed
+        // — so without this the app was back on this screen doing nothing
+        // visible, and the obvious thing to do was to tap again.
+        if (initState.isLoading()) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                CircularProgressIndicator()
+                Text(
+                    text = initState.message(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            return@AppPage
+        }
 
         Button(
             onClick = {

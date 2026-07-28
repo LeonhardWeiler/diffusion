@@ -68,10 +68,17 @@ class SetupViewModel : ViewModel(), SetupViewModelI {
     ) {
 
         appScope.launch {
+            // Everything below can take a second or two — libgit2 opening the
+            // repository, and the whole working tree being read into the
+            // database. Until this said so, the tap on the folder looked like it
+            // had been ignored.
+            _initState.emit(InitState.OpeningRepo)
+
             val folder = NodeFs.Folder.fromPath(storageConfig.repoPath())
 
             if (!folder.exist()) {
                 uiHelper.makeToast(uiHelper.getString(R.string.error_path_not_directory))
+                _initState.emit(InitState.Idle)
                 return@launch
             }
 
@@ -79,11 +86,13 @@ class SetupViewModel : ViewModel(), SetupViewModelI {
             // names the symptom rather than what to do about it
             if (!NodeFs.Folder.fromPath(folder.path, GIT_DIR).exist()) {
                 uiHelper.makeToast(uiHelper.getString(R.string.error_not_a_repository))
+                _initState.emit(InitState.Idle)
                 return@launch
             }
 
             gitManager.openRepo(storageConfig.repoPath()).onFailure {
                 uiHelper.makeToast(it.message)
+                _initState.emit(InitState.Idle)
                 return@launch
             }
 
@@ -103,12 +112,16 @@ class SetupViewModel : ViewModel(), SetupViewModelI {
 
             // the repo has just been opened, so the database is built from
             // whatever is on disk, committed or not
-            storageManager.updateDatabase(force = true)
+            storageManager.updateDatabase(
+                force = true,
+                progressCb = { announceProgress(it) }
+            )
 
             // whether it already syncs somewhere or not, the setup goes on from
             // here rather than finishing: a repository without a remote is a
             // choice, not a conclusion
             repoIsAlreadyOnDevice = true
+            _initState.emit(InitState.Idle)
             withContext(Dispatchers.Main) {
                 if (remoteUrl.isEmpty()) onNoRemote() else onRemoteFound(remoteUrl)
             }
@@ -242,18 +255,24 @@ class SetupViewModel : ViewModel(), SetupViewModelI {
         prefs.updateCred(cred)
         prefs.applyGitAuthorDefaults(gitManager.currentSignature())
 
-        storageManager.updateDatabase(
-            progressCb = {
-                viewModelScope.launch {
-                    when (it) {
-                        is Progress.GeneratingDatabase ->
-                            _initState.emit(InitState.GeneratingDatabase(it.path))
-                    }
-                }
-            }
-        )
+        storageManager.updateDatabase(progressCb = { announceProgress(it) })
 
         finishSetup(onSuccess)
 
+    }
+
+    /**
+     * Says which folder the database is being built from. In the app's scope
+     * rather than this view model's: the setup screen is left while this is
+     * still running, and a report that dies with it would take the last state
+     * the screen was shown in with it.
+     */
+    private fun announceProgress(progress: Progress) {
+        appScope.launch {
+            when (progress) {
+                is Progress.GeneratingDatabase ->
+                    _initState.emit(InitState.GeneratingDatabase(progress.path))
+            }
+        }
     }
 }
