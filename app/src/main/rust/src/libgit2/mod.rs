@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     fs,
     path::Path,
     str::FromStr,
@@ -412,77 +412,57 @@ pub fn is_change() -> Result<bool, Error> {
     Ok(count > 0)
 }
 
-fn find_timestamp(repo: &Repository, file_path: String) -> anyhow::Result<Option<(String, i64)>> {
-    // Use revwalk to find the last commit that touched this path
-    let mut revwalk = repo.revwalk()?;
-    revwalk.push_head()?;
-    revwalk.set_sorting(git2::Sort::TIME)?;
-
-    for oid_result in revwalk {
-        let oid = oid_result?;
-        let commit = repo.find_commit(oid)?;
-
-        // Check if this commit touches the file
-        if commit
-            .tree()?
-            .get_path(std::path::Path::new(&file_path))
-            .is_ok()
-        {
-            // We want to check if this commit modified the file_path compared to its parent(s)
-            let parent = commit.parents().next();
-
-            let is_modified = match parent {
-                Some(parent) => {
-                    // Compare trees between commit and its first parent
-                    let parent_tree = parent.tree()?;
-                    let current_tree = commit.tree()?;
-
-                    let diff = repo.diff_tree_to_tree(
-                        Some(&parent_tree),
-                        Some(&current_tree),
-                        Some(git2::DiffOptions::new().pathspec(&file_path)),
-                    )?;
-
-                    diff.deltas().len() > 0
-                }
-                // Initial commit, consider as modified
-                None => true,
-            };
-
-            if is_modified {
-                return Ok(Some((file_path, commit.time().seconds() * 1000)));
-            }
-        }
-    }
-    Ok(None)
-}
-
 pub fn get_timestamps() -> Result<HashMap<String, i64>, Error> {
     let repo = REPO.lock().expect("repo lock");
     let repo = repo.as_ref().expect("repo");
 
-    // Get HEAD commit
     let head = repo.head()?.peel_to_commit()?;
 
-    let mut file_timestamps = HashMap::new();
+    let mut pending = HashSet::new();
 
-    // Get the list of files in the repo at HEAD
-    let tree = head.tree()?;
-
-    tree.walk(TreeWalkMode::PreOrder, |root, entry| {
+    head.tree()?.walk(TreeWalkMode::PreOrder, |root, entry| {
         if entry.kind() == Some(git2::ObjectType::Blob)
             && let Ok(name) = entry.name()
             && let Some(extension) = Path::new(name).extension()
             && let Some(extension) = extension.to_str()
             && is_extension_supported(extension)
         {
-            let path = format!("{root}{name}");
-            if let Ok(Some((path, time))) = find_timestamp(repo, path) {
-                file_timestamps.insert(path, time);
-            }
+            pending.insert(format!("{root}{name}"));
         }
         TreeWalkResult::Ok
     })?;
+
+    let mut file_timestamps = HashMap::new();
+
+    // One walk over the history, taking the first commit that touches a path.
+    // Walking it once per file does the same work again for every file.
+    let mut revwalk = repo.revwalk()?;
+    revwalk.push_head()?;
+    revwalk.set_sorting(git2::Sort::TIME)?;
+
+    for oid in revwalk {
+        if pending.is_empty() {
+            break;
+        }
+
+        let commit = repo.find_commit(oid?)?;
+        let parent_tree = commit
+            .parents()
+            .next()
+            .map(|parent| parent.tree())
+            .transpose()?;
+
+        let diff = repo.diff_tree_to_tree(parent_tree.as_ref(), Some(&commit.tree()?), None)?;
+        let time = commit.time().seconds() * 1000;
+
+        for delta in diff.deltas() {
+            if let Some(path) = delta.new_file().path().and_then(|path| path.to_str())
+                && pending.remove(path)
+            {
+                file_timestamps.insert(path.to_string(), time);
+            }
+        }
+    }
 
     Ok(file_timestamps)
 }
