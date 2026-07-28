@@ -90,6 +90,17 @@ class StorageManager {
     suspend fun syncWithRemote(announceErrors: Boolean = true): Result<Unit> = locker.withLock {
         Log.d(TAG, "syncWithRemote")
 
+        // There is nothing to sync before a repository has been opened, and
+        // saying so is worse than saying nothing: the app is stopped several
+        // times on the way through the setup — the folder picker and the
+        // browser both do it — and the sync that runs then failed with
+        // "RepoNotInit", which the cloud button was still showing when the
+        // freshly cloned notes arrived.
+        if (!gitManager.isRepoInitialized) {
+            Log.d(TAG, "syncWithRemote: no repository open")
+            return@withLock success(Unit)
+        }
+
         announceSyncErrors = announceErrors
 
         gitManager.commitAll(
