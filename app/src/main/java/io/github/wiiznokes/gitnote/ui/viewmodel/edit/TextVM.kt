@@ -301,7 +301,7 @@ open class TextVM() : ViewModel() {
 
         when (editType) {
             EditType.Create -> create(
-                parentPath = previousNote.parentPath(),
+                parentPath = previousNote.parentPath,
                 name = name.value.text,
                 fileExtension = previousNote.fileExtension(),
                 content = content.value.text,
@@ -314,7 +314,7 @@ open class TextVM() : ViewModel() {
 
             EditType.Update -> update(
                 previousNote = previousNote,
-                parentPath = previousNote.parentPath(),
+                parentPath = previousNote.parentPath,
                 name = name.value.text,
                 fileExtension = previousNote.fileExtension(),
                 content = content.value.text,

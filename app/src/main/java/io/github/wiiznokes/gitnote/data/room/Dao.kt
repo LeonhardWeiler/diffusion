@@ -124,18 +124,16 @@ interface RepoDatabaseDao {
             SortOrder.Oldest -> "lastModifiedTimeMillis" to "ASC"
         }
 
+        // parentPath and fileName are stored columns with an index, so neither the
+        // filter nor the partition has to be computed for every row.
         val sql = """
-            WITH notes_with_filename AS (
-                SELECT *, fullName(relativePath) AS fileName
-                FROM Notes
-                WHERE parentPath(relativePath) = :currentNoteFolderRelativePath
-            )
             SELECT *,
-                   CASE 
+                   CASE
                        WHEN COUNT(*) OVER (PARTITION BY fileName) = 1 THEN 1
                        ELSE 0
                    END AS isUnique
-            FROM notes_with_filename
+            FROM Notes
+            WHERE parentPath = :currentNoteFolderRelativePath
             ORDER BY $sortColumn $order
         """.trimIndent()
 
@@ -172,7 +170,7 @@ interface RepoDatabaseDao {
 
         val sql = """
             WITH notes_with_filename AS (
-                SELECT Notes.*, rank(matchinfo(NotesFts, 'pcx')) AS score, fullName(Notes.relativePath) as fileName
+                SELECT Notes.*, rank(matchinfo(NotesFts, 'pcx')) AS score
                 FROM Notes
                 JOIN NotesFts ON NotesFts.rowid = Notes.rowid
                 WHERE

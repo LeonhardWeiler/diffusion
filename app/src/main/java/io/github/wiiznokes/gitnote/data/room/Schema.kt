@@ -3,6 +3,7 @@ package io.github.wiiznokes.gitnote.data.room
 import android.os.Parcelable
 import androidx.room.Entity
 import androidx.room.Fts4
+import androidx.room.Index
 import io.github.wiiznokes.gitnote.BuildConfig
 import io.github.wiiznokes.gitnote.data.platform.NodeFs
 import io.github.wiiznokes.gitnote.data.removeFirstAndLastSlash
@@ -69,13 +70,21 @@ data class NoteFolder(
 @Entity(
     tableName = "Notes",
     primaryKeys = ["relativePath"],
+    indices = [Index("parentPath"), Index("fileName")]
 )
 @Parcelize
 data class Note(
     val relativePath: String,
     val content: String,
     val lastModifiedTimeMillis: Long,
-    val id: Int
+    val id: Int,
+    /**
+     * Derived from [relativePath], but stored and indexed instead of computed per
+     * query: the note list filters on [parentPath] and partitions on [fileName],
+     * and a value SQLite has to compute for every row cannot use an index.
+     */
+    val parentPath: String = relativePath.substringBeforeLast("/", missingDelimiterValue = ""),
+    val fileName: String = relativePath.substringAfterLast("/"),
 ) : Parcelable, Serializable {
 
     companion object {
@@ -94,13 +103,7 @@ data class Note(
         }
     }
 
-    fun fullName(): String {
-        return relativePath.substringAfterLast("/")
-    }
-
-    fun parentPath(): String {
-        return relativePath.substringBeforeLast("/", missingDelimiterValue = "")
-    }
+    fun fullName(): String = fileName
 
     fun fileExtension(): FileExtension {
         return relativePath.substringAfterLast(".", missingDelimiterValue = "")
@@ -119,8 +122,8 @@ data class Note(
         if (BuildConfig.DEBUG) {
             require(relativePath.isNotEmpty())
             requireNotEndOrStartWithSlash(relativePath)
-            requireNotEndOrStartWithSlash(parentPath())
-            requireNotEndOrStartWithSlash(fullName())
+            requireNotEndOrStartWithSlash(parentPath)
+            requireNotEndOrStartWithSlash(fileName)
             requireNotEndOrStartWithSlash(nameWithoutExtension())
         }
     }
