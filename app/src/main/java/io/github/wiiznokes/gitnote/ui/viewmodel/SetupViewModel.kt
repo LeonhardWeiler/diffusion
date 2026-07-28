@@ -28,6 +28,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.Result.Companion.failure
+import kotlin.Result.Companion.success
 
 private const val TAG = "SetupViewModel"
 
@@ -315,18 +317,36 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
     }
 
 
+    /**
+     * The provider talks to the network with blocking calls, so none of them may
+     * run on the main thread: Android answers that with a
+     * NetworkOnMainThreadException whose message is null, which used to end up as
+     * an error nobody could see.
+     */
+    private suspend fun <T> onProvider(
+        what: String,
+        f: Provider.() -> T
+    ): Result<T> = withContext(Dispatchers.IO) {
+        try {
+            success(provider!!.f())
+        } catch (e: Exception) {
+            val message = e.message ?: e.toString()
+            Log.e(TAG, "$what: $message, $e")
+            _initState.emit(InitState.Error(message))
+            uiHelper.makeToast(message)
+            failure(e)
+        }
+    }
+
     fun onReceiveCode(code: String) {
 
         viewModelScope.launch {
 
             _initState.emit(InitState.GettingAccessToken)
-            val token = try {
-                provider!!.exchangeCodeForAccessToken(code)
-            } catch (e: Exception) {
-                Log.e(TAG, "exchangeCodeForAccessToken: ${e.message}, $e")
-                _initState.emit(InitState.Error(e.message))
-                return@launch
-            }
+            val token = onProvider("exchangeCodeForAccessToken") {
+                exchangeCodeForAccessToken(code)
+            }.getOrElse { return@launch }
+
             prefs.appAuthToken.update(token)
 
             fetchInfos(token = token)
@@ -338,22 +358,15 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
 
             _initState.emit(InitState.FetchingRepos)
 
-            repos = try {
-                provider!!.fetchUserRepos(token = token)
-            } catch (e: Exception) {
-                Log.e(TAG, "fetchUserRepos: ${e.message}, $e")
-                _initState.emit(InitState.Error(e.message))
-                return@launch
-            }
+            repos = onProvider("fetchUserRepos") {
+                fetchUserRepos(token = token)
+            }.getOrElse { return@launch }
+
             _initState.emit(InitState.GettingUserInfo)
 
-            userInfo = try {
-                provider!!.getUserInfo(token = token)
-            } catch (e: Exception) {
-                Log.e(TAG, "getUserInfo: ${e.message}, $e")
-                _initState.emit(InitState.Error(e.message))
-                return@launch
-            }
+            userInfo = onProvider("getUserInfo") {
+                getUserInfo(token = token)
+            }.getOrElse { return@launch }
 
             Log.d(TAG, "emit: Success")
             _initState.emit(InitState.FetchingInfosSuccess)
