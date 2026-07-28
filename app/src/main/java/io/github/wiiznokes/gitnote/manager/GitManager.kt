@@ -23,6 +23,13 @@ enum class GitExceptionType {
      * even though HEAD has not moved.
      */
     MergeConflict,
+
+    /**
+     * A note that came out of such a conflict still holds the markers.
+     * Committing it would write them into the history, so the sync stops and
+     * says which note has to be edited first.
+     */
+    UnresolvedConflict,
     Other
 }
 
@@ -54,6 +61,13 @@ class GitManager {
          * Not a libgit2 code, see MERGE_CONFLICT in rust/src/lib.rs.
          */
         private const val MERGE_CONFLICT = -1000
+
+        /**
+         * Returned by the rust side when the working tree still holds conflict
+         * markers, so that they are not committed. See UNRESOLVED_CONFLICT in
+         * rust/src/error.rs.
+         */
+        private const val UNRESOLVED_CONFLICT = -1001
 
         init {
             Log.d(TAG, "init")
@@ -197,6 +211,16 @@ class GitManager {
         }
 
         res = commitAllLib(author.name, author.email, message)
+
+        if (res == UNRESOLVED_CONFLICT) {
+            // the detail names the notes that still have the markers in them,
+            // which is where the user has to go
+            throw GitException(
+                GitExceptionType.UnresolvedConflict,
+                uiHelper.getString(R.string.error_unresolved_conflict, errorDetail(res))
+            )
+        }
+
         if (res < 0) {
             throw GitException(uiHelper.getString(R.string.error_commit_repo, errorDetail(res)))
         }

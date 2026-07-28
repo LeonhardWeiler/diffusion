@@ -7,6 +7,7 @@ use crate::cred::GitAuthor;
 use crate::error::Error;
 use crate::libgit2::date_pulled_notes;
 use crate::libgit2::merge::do_merge;
+use crate::libgit2::unresolved_conflicts;
 
 fn clear_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
     for entry in fs::read_dir(path)? {
@@ -284,5 +285,52 @@ fn test_pull_dates_only_what_it_wrote() {
         modified(&repo, "there.md"),
         SystemTime::UNIX_EPOCH + Duration::from_secs(commit_time as u64),
         "the note that came in was not dated by the commit that wrote it"
+    );
+}
+
+/// A conflict that has not been edited down is not something to commit: the
+/// markers would go into the history, and with the sync running by itself that
+/// would take no tap at all.
+#[test]
+fn test_conflict_markers_are_seen_until_they_are_gone() {
+    let path = "repo_test/markers_repo";
+    let _ = clear_dir(path);
+    let repo = Repository::init(path).unwrap();
+
+    add_file(&repo, "note.md", "shared line");
+    let oid1 = commit_current_state(&repo, "Initial commit on master");
+
+    let commit1 = repo.find_commit(oid1).unwrap();
+    repo.branch("dev", &commit1, false).unwrap();
+    switch_to_branch(&repo, "dev");
+
+    add_file(&repo, "note.md", "changed on dev");
+    commit_current_state(&repo, "Modif note on dev");
+
+    switch_to_branch(&repo, "master");
+    add_file(&repo, "note.md", "changed on master");
+    commit_current_state(&repo, "Modif note on master");
+
+    let annotated_dev = {
+        let dev_ref = repo.find_reference("refs/heads/dev").unwrap();
+        repo.reference_to_annotated_commit(&dev_ref).unwrap()
+    };
+
+    let author = GitAuthor::from(signature());
+    do_merge(&repo, "dev", annotated_dev, &author).expect_err("the merge must not go through");
+
+    let index = repo.index().unwrap();
+    assert_eq!(
+        unresolved_conflicts(&repo, &index),
+        vec!["note.md".to_string()],
+        "the note with the markers in it was not noticed"
+    );
+
+    // edited down to the version to keep, which is what ends the merge
+    fs::write(repo.workdir().unwrap().join("note.md"), "changed on master").unwrap();
+
+    assert!(
+        unresolved_conflicts(&repo, &index).is_empty(),
+        "a note that was edited still counted as conflicted"
     );
 }

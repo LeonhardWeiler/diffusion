@@ -229,11 +229,65 @@ fn commit_parents(repo: &Repository) -> Result<Vec<git2::Commit<'_>>, Error> {
     Ok(parents)
 }
 
+/// The lines a conflict leaves behind that no note would hold otherwise.
+///
+/// "=======" is not among them: seven equals signs at the start of a line are
+/// how markdown underlines a heading, and a note that has one is not a note with
+/// a conflict in it.
+const CONFLICT_MARKERS: [&str; 2] = ["<<<<<<<", ">>>>>>>"];
+
+/// The notes still holding the markers a conflict wrote into them.
+///
+/// Only the ones the merge could not merge are looked at: they are the only
+/// ones a marker could have got into, and reading the whole repository to find
+/// that out would be paid for on every sync.
+fn unresolved_conflicts(repo: &Repository, index: &git2::Index) -> Vec<String> {
+    let Some(workdir) = repo.workdir() else {
+        return Vec::new();
+    };
+
+    let Ok(conflicts) = index.conflicts() else {
+        return Vec::new();
+    };
+
+    let mut paths: Vec<String> = conflicts
+        .filter_map(|conflict| conflict.ok())
+        .filter_map(|conflict| conflict.our.or(conflict.their).or(conflict.ancestor))
+        .map(|entry| String::from_utf8_lossy(&entry.path).into_owned())
+        .filter(|path| {
+            // a note that was deleted rather than edited resolved the conflict
+            // as well, and reading it is how that is noticed
+            fs::read_to_string(workdir.join(path)).is_ok_and(|content| {
+                content.lines().any(|line| {
+                    CONFLICT_MARKERS
+                        .iter()
+                        .any(|marker| line.starts_with(marker))
+                })
+            })
+        })
+        .collect();
+
+    paths.sort();
+    paths.dedup();
+    paths
+}
+
 pub fn commit_all(name: &str, email: &str, message: &str) -> Result<(), Error> {
     let repo = REPO.lock().expect("repo lock");
     let repo = repo.as_ref().expect("repo");
 
     let mut index = repo.index().map_err(|e| Error::git2(e, "index"))?;
+
+    // A conflict is fixed by editing the note, and the sync after that is what
+    // ends the merge. Nothing says the note was edited, though, and this commits
+    // the working tree as it stands — so without asking, closing the app would
+    // be enough to write "<<<<<<<" and both versions into the history, and the
+    // automatic sync means it takes no tap at all.
+    let unresolved = unresolved_conflicts(repo, &index);
+    if !unresolved.is_empty() {
+        error!("conflict markers still in: {}", unresolved.join(", "));
+        return Err(Error::UnresolvedConflict { paths: unresolved });
+    }
 
     // Takes the working tree as it stands, conflicted paths included: a note
     // whose markers the user edited away is thereby resolved, which is what

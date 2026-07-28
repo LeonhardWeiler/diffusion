@@ -15,15 +15,24 @@ pub(crate) const OK: jint = 0;
 /// Kotlin knows this value as GitManager.MERGE_CONFLICT.
 pub(crate) const MERGE_CONFLICT: jint = -1000;
 
+/// Returned when a commit would carry conflict markers into the history.
+/// Kotlin knows this value as GitManager.UNRESOLVED_CONFLICT.
+pub(crate) const UNRESOLVED_CONFLICT: jint = -1001;
+
 #[derive(Debug)]
 pub(crate) enum Error {
     Git2 {
         error: git2::Error,
         msg: String,
     },
-    /// The remote and the local side changed the same lines. The working tree
-    /// is left untouched, the caller has to resolve this outside of the app.
+    /// The remote and the local side changed the same lines. Both versions are
+    /// now in the notes, between markers, for the user to edit down.
     MergeConflict {
+        paths: Vec<String>,
+    },
+    /// A note left from such a conflict still holds the markers. Committing it
+    /// would write them into the history, so the sync stops instead.
+    UnresolvedConflict {
         paths: Vec<String>,
     },
 }
@@ -49,6 +58,7 @@ impl Error {
                 msg: format!("{}: {}", msg1, msg),
             },
             Error::MergeConflict { paths } => Error::MergeConflict { paths },
+            Error::UnresolvedConflict { paths } => Error::UnresolvedConflict { paths },
         }
     }
 }
@@ -67,6 +77,7 @@ impl From<Error> for jint {
         match value {
             Error::Git2 { error, .. } => error.raw_code(),
             Error::MergeConflict { .. } => MERGE_CONFLICT,
+            Error::UnresolvedConflict { .. } => UNRESOLVED_CONFLICT,
         }
     }
 }
@@ -79,6 +90,9 @@ impl Display for Error {
             }
             Error::MergeConflict { paths } => {
                 write!(f, "merge conflict in: {}", paths.join(", "))
+            }
+            Error::UnresolvedConflict { paths } => {
+                write!(f, "{}", paths.join(", "))
             }
         }
     }
