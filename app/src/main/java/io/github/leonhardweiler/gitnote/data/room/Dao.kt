@@ -4,10 +4,12 @@ import android.util.Log
 import androidx.paging.PagingSource
 import androidx.room.Dao
 import androidx.room.Delete
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.RawQuery
 import androidx.room.Transaction
-import androidx.room.Upsert
+import androidx.room.Update
 import androidx.sqlite.db.SimpleSQLiteQuery
 import androidx.sqlite.db.SupportSQLiteQuery
 import io.github.leonhardweiler.gitnote.data.platform.NodeFs
@@ -79,7 +81,7 @@ interface RepoDatabaseDao {
         val rootFolder = NoteFolder.new(
             relativePath = "",
         )
-        insertNoteFolder(rootFolder)
+        insertNoteFolderRow(rootFolder)
 
         val rootLength = rootFs.path.length + 1
 
@@ -113,7 +115,9 @@ interface RepoDatabaseDao {
                             lastModifiedTimeMillis = nodeFs.lastModifiedTime().toMillis(),
                             content = nodeFs.readText(),
                         )
-                        insertNote(note)
+                        // straight in: the table was cleared a moment ago, so
+                        // there is nothing here that could already be there
+                        insertNoteRow(note)
                         //Log.d(TAG, "add note: $note")
                     }
 
@@ -125,7 +129,7 @@ interface RepoDatabaseDao {
                             relativePath = nodeFs.path.substring(startIndex = rootLength),
                         )
                         //Log.d(TAG, "add noteFolder: $noteFolder")
-                        insertNoteFolder(noteFolder)
+                        insertNoteFolderRow(noteFolder)
                         progressCb?.invoke(Progress.GeneratingDatabase(noteFolder.relativePath))
                         initRec(nodeFs)
                     }
@@ -260,8 +264,27 @@ interface RepoDatabaseDao {
     ): List<FolderModel> =
         folderListRaw(foldersQuery(currentNoteFolderRelativePath, sortOrder))
 
-    @Upsert
-    suspend fun insertNoteFolder(noteFolder: NoteFolder)
+    /**
+     * The row goes in, whether or not one is already there.
+     *
+     * Not `@Upsert`, which Room implements by inserting and catching the
+     * constraint violation when that fails. Every note write did that, so
+     * logcat carried a "UNIQUE constraint failed: Notes.relativePath" twice a
+     * second while somebody was typing — and behind each one an exception
+     * thrown and caught, and the whole row, content and all, bound twice.
+     * Updating first costs one statement in the case that actually happens: a
+     * note that is being written again.
+     */
+    @Transaction
+    suspend fun insertNoteFolder(noteFolder: NoteFolder) {
+        if (updateNoteFolderRow(noteFolder) == 0) insertNoteFolderRow(noteFolder)
+    }
+
+    @Update
+    suspend fun updateNoteFolderRow(noteFolder: NoteFolder): Int
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertNoteFolderRow(noteFolder: NoteFolder)
 
     /**
      * Delete all notes inside the note folder, its subfolders, and the note
@@ -298,8 +321,17 @@ interface RepoDatabaseDao {
     @Delete
     suspend fun internalDeleteNoteFolder(noteFolder: NoteFolder)
 
-    @Upsert
-    suspend fun insertNote(note: Note)
+    /** See [insertNoteFolder] for why this is not an `@Upsert`. */
+    @Transaction
+    suspend fun insertNote(note: Note) {
+        if (updateNoteRow(note) == 0) insertNoteRow(note)
+    }
+
+    @Update
+    suspend fun updateNoteRow(note: Note): Int
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertNoteRow(note: Note)
 
     @Delete
     suspend fun removeNote(note: Note)
