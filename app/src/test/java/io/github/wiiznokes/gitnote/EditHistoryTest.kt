@@ -1,6 +1,7 @@
 package io.github.wiiznokes.gitnote
 
 import io.github.wiiznokes.gitnote.helper.EditHistory
+import io.github.wiiznokes.gitnote.helper.EditHistoryStore
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -146,5 +147,35 @@ class EditHistoryTest {
 
         assertEquals(null, history.stateAt(-1))
         assertEquals(null, history.stateAt(history.size))
+    }
+}
+
+/**
+ * The histories outlive the editor, so something has to say how long. These say
+ * how many notes are kept and which one is let go of first.
+ */
+class EditHistoryStoreTest {
+
+    @Test
+    fun onlyTheLastFewNotesAreRemembered() {
+        val store = EditHistoryStore()
+
+        repeat(6) { note -> store.of(note).seed(edit("note $note|")) }
+
+        assertEquals(5, store.size)
+        assertEquals(0, store.of(0).size, "the note opened first should have been let go of")
+    }
+
+    @Test
+    fun theNoteComeBackToIsNotTheOneLetGoOf() {
+        val store = EditHistoryStore()
+        repeat(5) { note -> store.of(note).seed(edit("note $note|")) }
+
+        // opened again, which is what the store is for
+        store.of(0)
+        store.of(5).seed(edit("note 5|"))
+
+        assertEquals(1, store.of(0).size, "the note come back to was let go of")
+        assertEquals(0, store.of(1).size, "the note nobody came back to should be gone")
     }
 }

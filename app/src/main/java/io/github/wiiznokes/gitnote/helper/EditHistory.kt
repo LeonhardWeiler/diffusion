@@ -148,14 +148,39 @@ private fun sameEdit(from: HistoryItem, to: HistoryItem, caretMayHaveJumped: Boo
 }
 
 /**
+ * How many notes keep their history at once.
+ *
+ * Every one of them holds up to 51 whole copies of a note, so the store is not
+ * something to let run on: twenty notes of ten kilobytes would be ten megabytes
+ * lying there until the process ends. Five covers what the store is for —
+ * leaving a note and coming back to it, and the note before that.
+ */
+private const val MAX_REMEMBERED_NOTES = 5
+
+/**
  * The undo histories of the notes edited since the app was started. They live
  * here rather than in the edit view model, which is thrown away as soon as a
  * note is left, so coming back to a note can still undo what was typed there.
  * Nothing is written down: when the process ends, the histories are gone.
+ *
+ * Only the last [MAX_REMEMBERED_NOTES] are kept. Going back far enough into
+ * other notes is how one stops meaning to undo the one left behind.
  */
 class EditHistoryStore {
 
-    private val histories = mutableMapOf<Int, EditHistory>()
+    // in access order, so the note that drops out is the one nobody has come
+    // back to for longest rather than the one opened first
+    private val histories = object : LinkedHashMap<Int, EditHistory>(
+        MAX_REMEMBERED_NOTES + 1,
+        1f,
+        true
+    ) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Int, EditHistory>) =
+            size > MAX_REMEMBERED_NOTES
+    }
+
+    /** How many notes are currently remembered. */
+    val size: Int get() = histories.size
 
     fun of(noteId: Int): EditHistory = histories.getOrPut(noteId) { EditHistory() }
 }
