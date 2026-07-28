@@ -11,12 +11,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContent
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.pullrefresh.PullRefreshIndicator
-import androidx.compose.material.pullrefresh.pullRefresh
-import androidx.compose.material.pullrefresh.rememberPullRefreshState
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableFloatState
@@ -147,7 +147,7 @@ fun GridScreen(
 
 @OptIn(
     ExperimentalFoundationApi::class,
-    ExperimentalMaterialApi::class,
+    ExperimentalMaterial3Api::class,
     ExperimentalComposeUiApi::class
 )
 @Composable
@@ -165,22 +165,33 @@ private fun GridView(
 
 
     val isRefreshing by vm.isRefreshing.collectAsStateWithLifecycle()
-    val pullRefreshState = rememberPullRefreshState(isRefreshing, {
-        Log.d(TAG, "pull refresh")
-        vm.refresh()
-    })
+    val pullToRefreshState = rememberPullToRefreshState()
 
     val showFullPathOfNotes = vm.prefs.showFullPathOfNotes.getAsState()
 
-    Box {
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = {
+            Log.d(TAG, "pull refresh")
+            vm.refresh()
+        },
+        modifier = Modifier.fillMaxSize(),
+        state = pullToRefreshState,
+        indicator = {
+            PullToRefreshDefaults.Indicator(
+                state = pullToRefreshState,
+                isRefreshing = isRefreshing,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = topBarHeight + padding.calculateTopPadding()),
+                containerColor = MaterialTheme.colorScheme.primary,
+                color = MaterialTheme.colorScheme.onPrimary,
+            )
+        }
+    ) {
 
         // todo: scroll even when there is nothing to scroll
         // todo: add scroll bar
-
-        val commonModifier = Modifier
-            .fillMaxSize()
-            .pullRefresh(pullRefreshState)
-            .nestedScroll(nestedScrollConnection)
 
         val listState = rememberLazyListState()
 
@@ -194,7 +205,9 @@ private fun GridView(
             currentFolderPath = currentFolderPath,
             topSpacerHeight = topSpacerHeight,
             listState = listState,
-            modifier = commonModifier,
+            modifier = Modifier
+                .fillMaxSize()
+                .nestedScroll(nestedScrollConnection),
             selectedNotes = selectedNotes,
             showFullPathOfNotes = showFullPathOfNotes.value,
             onEditClick = onEditClick,
@@ -202,20 +215,7 @@ private fun GridView(
             onFolderDelete = vm::deleteFolder,
             vm = vm,
         )
-
-        // fix me: https://stackoverflow.com/questions/74594418/pullrefreshindicator-overlaps-with-scrollabletabrow
-        PullRefreshIndicator(
-            refreshing = isRefreshing,
-            state = pullRefreshState,
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = topBarHeight + padding.calculateTopPadding()),
-            backgroundColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
-            scale = true
-        )
     }
-
 }
 
 
