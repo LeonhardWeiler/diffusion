@@ -1,6 +1,7 @@
 package io.github.wiiznokes.gitnote.manager
 
 import android.util.Log
+import androidx.room.withTransaction
 import io.github.wiiznokes.gitnote.MyApp
 import io.github.wiiznokes.gitnote.R
 import io.github.wiiznokes.gitnote.data.AppPreferences
@@ -138,7 +139,9 @@ class StorageManager {
         progressCb?.invoke(Progress.Timestamps)
         val timestamps = gitManager.getTimestamps().getOrThrow()
 
-        dao.clearAndInit(repoPath, timestamps, progressCb)
+        db.withTransaction {
+            dao.clearAndInit(repoPath, timestamps, progressCb)
+        }
         prefs.databaseCommit.update(fsCommit)
 
         return success(Unit)
