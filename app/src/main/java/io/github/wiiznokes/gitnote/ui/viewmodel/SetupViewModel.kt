@@ -196,6 +196,25 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
         }
     }
 
+    /**
+     * Throws away what a canceled or failed clone left in the repo directory.
+     * Safe to delete: the directory was verified to be empty right before the
+     * clone started, so everything in it now was written by that clone. The
+     * empty directory itself is kept, so the next attempt starts out the same
+     * way this one did.
+     */
+    private fun discardPartialClone(storageConfig: StorageConfiguration) {
+        val folder = NodeFs.Folder.fromPath(storageConfig.repoPath())
+
+        folder.delete().onFailure {
+            Log.e(TAG, "could not discard the partial clone: ${it.message}")
+            return
+        }
+        folder.create().onFailure {
+            Log.e(TAG, "could not recreate the repo directory: ${it.message}")
+        }
+    }
+
     suspend fun cloneRepoInternal(
         storageConfig: StorageConfiguration,
         remoteUrl: String,
@@ -204,16 +223,16 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
     ) {
         shouldCancel = false
 
-        storageConfig.applyUrlName(remoteUrl)
+        val cloneConfig = storageConfig.withUrlName(remoteUrl)
 
-        storageConfig.prepareStorageRepoPath().onFailure {
+        cloneConfig.prepareStorageRepoPath().onFailure {
             _initState.emit(InitState.Error(it.message))
             return
         }
 
         // Checked here and not only in the setup screen, because the check there is
         // skipped when the repo name comes from the url.
-        NodeFs.Folder.fromPath(storageConfig.repoPath()).isEmptyDirectory().onFailure {
+        NodeFs.Folder.fromPath(cloneConfig.repoPath()).isEmptyDirectory().onFailure {
             _initState.emit(InitState.Error(it.message))
             return
         }
@@ -221,7 +240,7 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
         _initState.emit(InitState.Cloning(0))
 
         gitManager.cloneRepo(
-            repoPath = storageConfig.repoPath(),
+            repoPath = cloneConfig.repoPath(),
             repoUrl = remoteUrl,
             cred = cred,
             progressCallback = {
@@ -229,12 +248,16 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
                 !shouldCancel
             }
         ).onFailure {
+            discardPartialClone(cloneConfig)
             _initState.emit(InitState.Error(if (shouldCancel) "Clone canceled" else it.message))
             return
         }
-        if (shouldCancel) return
+        if (shouldCancel) {
+            discardPartialClone(cloneConfig)
+            return
+        }
 
-        prefs.initRepo(storageConfig)
+        prefs.initRepo(cloneConfig)
         prefs.remoteUrl.update(remoteUrl)
 
         prefs.updateCred(cred)

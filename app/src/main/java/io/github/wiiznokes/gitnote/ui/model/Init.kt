@@ -39,7 +39,7 @@ enum class CredType {
 @Parcelize
 sealed class StorageConfiguration : Parcelable {
     data object App : StorageConfiguration()
-    class Device(var path: String, val useUrlForRootFolder: Boolean = false) :
+    class Device(val path: String, val useUrlForRootFolder: Boolean = false) :
         StorageConfiguration()
 
     fun repoPath(): String {
@@ -49,14 +49,23 @@ sealed class StorageConfiguration : Parcelable {
         }
     }
 
-    fun applyUrlName(url: String) {
-        if (this is Device && useUrlForRootFolder) {
-            val name = url
-                .substringAfterLast('/')
-                .substringBeforeLast(".git")
-
-            path = "$path/$name"
+    /**
+     * Returns the configuration to actually clone into. When the repo name is
+     * taken from the url, that name becomes a sub directory of the chosen path.
+     *
+     * Returns a new instance instead of mutating, so that a second attempt after
+     * a canceled clone does not append the name twice.
+     */
+    fun withUrlName(url: String): StorageConfiguration {
+        if (this !is Device || !useUrlForRootFolder) {
+            return this
         }
+
+        val name = url
+            .substringAfterLast('/')
+            .substringBeforeLast(".git")
+
+        return Device("$path/$name")
     }
 
     /**
