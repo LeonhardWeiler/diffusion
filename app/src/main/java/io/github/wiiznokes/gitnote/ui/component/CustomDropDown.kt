@@ -40,6 +40,10 @@ fun CustomDropDown(
         mutableStateOf(Offset.Zero)
     }
 ) {
+    // A closed menu is invisible but not free: it provides its own MaterialTheme
+    // and composes a DropdownMenu. On a list that is one of each per row.
+    if (!expanded.value) return
+
     val density = LocalDensity.current
     val offset = with(density) {
         DpOffset(clickPosition.value.x.toDp(), clickPosition.value.y.toDp())

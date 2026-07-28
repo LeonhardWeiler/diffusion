@@ -34,6 +34,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
 import androidx.compose.ui.res.stringResource
 import io.github.wiiznokes.gitnote.R
@@ -71,6 +72,9 @@ internal fun NoteListView(
     vm: GridViewModel,
 ) {
 
+    // one formatter for the whole list rather than one per row
+    val dateFormat = remember { DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT) }
+
     LazyColumn(
         modifier = modifier,
         state = listState
@@ -81,7 +85,10 @@ internal fun NoteListView(
 
         items(
             count = gridItems.itemCount,
-            key = gridItems.itemKey { it.key() }
+            key = gridItems.itemKey { it.key() },
+            // folders and notes lay out differently; telling them apart lets a
+            // scrolled row be reused instead of built again
+            contentType = gridItems.itemContentType { it::class }
         ) { index ->
             when (val gridItem = gridItems[index]) {
                 is GridItem.ParentFolder -> ParentFolderRow(
@@ -100,6 +107,7 @@ internal fun NoteListView(
                     onEditClick = onEditClick,
                     selectedNotes = selectedNotes,
                     isSearching = isSearching,
+                    dateFormat = dateFormat,
                 )
 
                 null -> Unit
@@ -170,7 +178,7 @@ private fun FolderRow(
         Box {
             // need this box for clickPosition
             Box {
-                CustomDropDown(
+                if (dropDownExpanded.value) CustomDropDown(
                     expanded = dropDownExpanded,
                     shape = MaterialTheme.shapes.medium,
                     options = listOf(
@@ -233,13 +241,13 @@ private fun NoteListRow(
     onEditClick: (Note, EditType) -> Unit,
     selectedNotes: List<NoteHeader>,
     isSearching: Boolean,
+    dateFormat: DateFormat,
 ) {
     val dropDownExpanded = remember { mutableStateOf(false) }
     val clickPosition = remember { mutableStateOf(Offset.Zero) }
 
     val formattedDate = remember(gridNote.note.lastModifiedTimeMillis) {
-        DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
-            .format(Date(gridNote.note.lastModifiedTimeMillis))
+        dateFormat.format(Date(gridNote.note.lastModifiedTimeMillis))
     }
 
     // A search spans the whole repository, so the name alone does not say which

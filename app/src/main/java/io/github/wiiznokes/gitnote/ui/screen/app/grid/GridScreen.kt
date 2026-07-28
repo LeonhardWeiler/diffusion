@@ -182,6 +182,10 @@ internal fun NoteActionsDropdown(
     clickPosition: MutableState<Offset>,
 ) {
 
+    // building the options means reading strings, which is worth doing only for
+    // the row whose menu is actually open
+    if (!dropDownExpanded.value) return
+
     // need this box for clickPosition
     Box {
         CustomDropDown(
