@@ -47,8 +47,14 @@ class EditException(
 
 private const val TAG = "TextVM"
 
-/** How long typing pauses before the note is written to disk. */
+/** How long typing pauses before a note of ordinary size is written to disk. */
 private const val SAVE_DEBOUNCE_MS = 500L
+
+/** Up to here a note is written after the usual pause, whatever it holds. */
+private const val CHEAP_NOTE_CHARS = 16 * 1024
+
+/** However large a note gets, this is the longest it goes unwritten while typing. */
+private const val MAX_SAVE_DEBOUNCE_MS = 3_000L
 
 open class TextVM() : ViewModel() {
 
@@ -323,9 +329,30 @@ open class TextVM() : ViewModel() {
     private fun scheduleSave() {
         saveJob?.cancel()
         saveJob = viewModelScope.launch {
-            delay(SAVE_DEBOUNCE_MS)
+            delay(saveDelayMillis())
             saveNow()
         }
+    }
+
+    /**
+     * The pause grows with the note.
+     *
+     * A save is not free: the whole file is written out, the row is rewritten,
+     * and the full text search index is built again from it. Half a second is
+     * nothing to ask of a note of a few kilobytes and quite a lot to ask of one
+     * with a book pasted into it — that one was rewritten twice a second for as
+     * long as somebody kept typing in it, which is the disk being busy
+     * underneath the thing that is trying to draw.
+     *
+     * Nothing is risked by waiting longer: leaving the editor, leaving the app
+     * and the view model being cleared all write straight away.
+     */
+    private fun saveDelayMillis(): Long {
+        val length = content.value.text.length
+        if (length <= CHEAP_NOTE_CHARS) return SAVE_DEBOUNCE_MS
+
+        return (SAVE_DEBOUNCE_MS * length / CHEAP_NOTE_CHARS)
+            .coerceAtMost(MAX_SAVE_DEBOUNCE_MS)
     }
 
     /** The name that was last complained about, so the toast is shown once. */

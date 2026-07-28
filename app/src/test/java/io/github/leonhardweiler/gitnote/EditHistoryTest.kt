@@ -142,6 +142,23 @@ class EditHistoryTest {
     }
 
     @Test
+    fun aLongNoteKeepsFewerStepsThanAShortOne() {
+        // 200 kB a step, so three of them are already past the budget
+        val chunk = "x".repeat(200 * 1024)
+
+        val history = EditHistory()
+        history.seed(edit("|"))
+        repeat(10) { history.record(edit("$chunk\n".repeat(1) + "$it|")) }
+
+        assertTrue(
+            history.size < 10,
+            "a note this size should be undone less far, not remembered whole ten times"
+        )
+        assertEquals(history.size - 1, history.index, "undo has to stand at the newest state")
+        assertTrue(history.size >= 2, "there must still be something to undo to")
+    }
+
+    @Test
     fun undoAndRedoStopAtTheEnds() {
         val history = typing("word")
 

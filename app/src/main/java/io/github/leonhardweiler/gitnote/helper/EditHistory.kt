@@ -10,6 +10,24 @@ import kotlin.math.absoluteValue
  */
 private const val MAX_UNDO_STEPS = 50
 
+/**
+ * How much text all the states of one note may add up to.
+ *
+ * A step is a whole copy of the note, because that is what undo puts back. For
+ * a note of a few hundred kilobytes — an imported chunk of text — fifty of them
+ * are tens of megabytes held for as long as the note is open, and every
+ * keystroke adds another copy of the whole thing. What that costs is not the
+ * memory, it is the collector coming round for it in the middle of typing.
+ *
+ * Half a megabyte is roughly fifty steps of a ten kilobyte note, which is what
+ * the step count was written for, and four steps of a note of a hundred and
+ * twenty. A long note is undone less far; it is not undone more slowly.
+ */
+private const val MAX_UNDO_CHARS = 512 * 1024
+
+/** Below this, the two states undo needs to do anything at all. */
+private const val MIN_UNDO_STEPS = 2
+
 /** How much text has to appear or vanish at once to count as its own step. */
 private const val BIG_EDIT = 10
 
@@ -100,12 +118,25 @@ class EditHistory {
         }
     }
 
-    /** Forgets the oldest states once there are more of them than we keep. */
+    /**
+     * Forgets the oldest states once there are more of them than we keep, or
+     * once they weigh more together than [MAX_UNDO_CHARS].
+     */
     private fun trim() {
         while (items.size > MAX_UNDO_STEPS + 1) {
-            items.removeAt(0)
-            if (index > 0) index--
+            dropOldest()
         }
+
+        var weight = items.sumOf { it.v.text.length }
+        while (items.size > MIN_UNDO_STEPS && weight > MAX_UNDO_CHARS) {
+            weight -= items[0].v.text.length
+            dropOldest()
+        }
+    }
+
+    private fun dropOldest() {
+        items.removeAt(0)
+        if (index > 0) index--
     }
 }
 
