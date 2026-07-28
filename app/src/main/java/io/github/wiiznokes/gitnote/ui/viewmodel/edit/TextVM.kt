@@ -14,7 +14,6 @@ import io.github.wiiznokes.gitnote.MyApp
 import io.github.wiiznokes.gitnote.R
 import io.github.wiiznokes.gitnote.data.room.Note
 import io.github.wiiznokes.gitnote.helper.EditHistory
-import io.github.wiiznokes.gitnote.helper.HistoryItem
 import io.github.wiiznokes.gitnote.helper.NameValidation
 import io.github.wiiznokes.gitnote.helper.NoteSaver
 import io.github.wiiznokes.gitnote.helper.UiHelper
@@ -23,7 +22,6 @@ import io.github.wiiznokes.gitnote.ui.destination.EditParams
 import io.github.wiiznokes.gitnote.ui.model.EditType
 import io.github.wiiznokes.gitnote.ui.model.FileExtension
 import io.github.wiiznokes.gitnote.ui.viewmodel.viewModelFactory
-import io.github.wiiznokes.gitnote.utils.endsWith
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,7 +31,6 @@ import kotlinx.coroutines.launch
 import java.util.zip.DataFormatException
 import kotlin.Result.Companion.failure
 import kotlin.Result.Companion.success
-import kotlin.math.absoluteValue
 
 data class History(
     val index: Int,
@@ -72,7 +69,6 @@ open class TextVM() : ViewModel() {
      * opening it again can still undo what was typed before.
      */
     private lateinit var editHistory: EditHistory
-    private val history: MutableList<HistoryItem> get() = editHistory.items
 
     private val _historyManager: MutableStateFlow<History> =
         MutableStateFlow(History(index = 0, size = 1))
@@ -87,7 +83,7 @@ open class TextVM() : ViewModel() {
 
     private fun publishHistory() {
         _historyManager.value = History(
-            size = history.size,
+            size = editHistory.size,
             index = editHistory.index,
         )
     }
@@ -140,12 +136,6 @@ open class TextVM() : ViewModel() {
         Log.d(TAG, "init saved: $previousNote, $editType")
     }
 
-    enum class IsSimilarResult {
-        Yes,
-        No,
-        FlagDoNotRemove
-    }
-
     /**
      * The value handed in is not always the one last written to [content]: the
      * TextField keeps an internal copy and can answer with that, which shows up
@@ -155,97 +145,13 @@ open class TextVM() : ViewModel() {
      * https://medium.com/androiddevelopers/effective-state-management-for-textfield-in-compose-d6e5b070fbe5
      */
     open fun onValueChange(v: TextFieldValue) {
-
-        if (history.size == 1 && content.value.text == v.text) {
-            _content.value = v.copy()
-            history[0] = HistoryItem(v.copy())
-            return
-        }
         _content.value = v.copy()
 
-        val historyManager = historyManager.value
+        // moving the caret before anything was typed changes nothing worth
+        // saving, and the history says so
+        if (!editHistory.record(v.copy())) return
 
-        var i = (history.size - 1) - historyManager.index
-        while (i > 0) {
-            history.removeAt(history.lastIndex)
-            i--
-        }
-
-        fun isSimilar(v1: HistoryItem, v2: HistoryItem, firstPass: Boolean): IsSimilarResult {
-
-            if (v2.flagDoNotRemove) {
-                return IsSimilarResult.No
-            }
-
-            if (firstPass) {
-                if ((v2.v.selection.start - v1.v.selection.start).absoluteValue > 1
-                    || (v2.v.selection.end - v1.v.selection.end).absoluteValue > 1
-                ) {
-                    return IsSimilarResult.FlagDoNotRemove
-                }
-
-                if (v2.v.text.endsWith(".", startIndex = v2.v.selection.max)) {
-                    return IsSimilarResult.No
-                }
-
-                if (!v2.v.text.endsWith(
-                        ". ",
-                        startIndex = v2.v.selection.max
-                    ) && v2.v.text.endsWith(" ", startIndex = v2.v.selection.max)
-                ) {
-                    return IsSimilarResult.No
-                }
-
-                if (v2.v.text.endsWith("-", startIndex = v2.v.selection.max)) {
-                    return IsSimilarResult.No
-                }
-            }
-
-            if (v2.v.text.endsWith("\n", startIndex = v2.v.selection.max)) {
-                return IsSimilarResult.No
-            }
-            if ((v2.v.text.length - v1.v.text.length).absoluteValue >= 10) {
-                return IsSimilarResult.No
-            }
-
-            return IsSimilarResult.Yes
-        }
-
-        history.add(HistoryItem(v.copy()))
-
-        fun cleanHistory() {
-
-            // we don't want to remove the last and first index of the history
-            // [_,a,ab] -> the size is 3, "a" will be removed
-            if (history.size < 3) return
-
-            val secondLast = history.size - 2
-            val last = history.size - 1
-
-            when (isSimilar(history[secondLast], history[last], true)) {
-                IsSimilarResult.Yes -> {
-                    if (isSimilar(
-                            history[secondLast - 1],
-                            history[secondLast],
-                            false
-                        ) == IsSimilarResult.Yes
-                    ) {
-                        history.removeAt(secondLast)
-                    }
-                }
-
-                IsSimilarResult.No -> {}
-                IsSimilarResult.FlagDoNotRemove -> {
-                    history[last] = history[last].copy(flagDoNotRemove = true)
-                }
-            }
-        }
-
-        cleanHistory()
-        editHistory.trim()
-        editHistory.index = history.size - 1
         publishHistory()
-
         scheduleSave()
     }
 
@@ -264,11 +170,11 @@ open class TextVM() : ViewModel() {
     }
 
     private fun moveInHistory(index: Int) {
-        if (index !in history.indices) return
+        val state = editHistory.stateAt(index) ?: return
 
         editHistory.index = index
         publishHistory()
-        _content.value = history[index].v.copy()
+        _content.value = state.copy()
         scheduleSave()
     }
 
