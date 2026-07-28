@@ -133,8 +133,8 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
             prefs.applyGitAuthorDefaults(userInfo, gitManager.currentSignature())
             prefs.initRepo(storageConfig, remoteUrl)
 
-            // the repo has just been opened or cloned, so the database is built
-            // from whatever is on disk, committed or not
+            // the repo has just been opened, so the database is built from
+            // whatever is on disk, committed or not
             storageManager.updateDatabase(force = true)
 
             // whether it already syncs somewhere or not, the setup goes on from

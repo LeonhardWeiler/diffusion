@@ -24,6 +24,15 @@ private const val TAG = "StorageManager"
  */
 private const val GIT_KEEP = ".gitkeep"
 
+/**
+ * Stands in [AppPreferences.databaseCommit] for a repository that has no commit
+ * yet. It has to be something other than the empty string, which is what the
+ * preference holds before the database has ever been built: a freshly cloned
+ * repository that reports no HEAD would otherwise look like one whose commit is
+ * already loaded, and the note list would stay empty until a reload.
+ */
+private const val NO_COMMIT = "none"
+
 sealed interface SyncState {
 
     /** Nothing has been synced in this session yet. */
@@ -111,7 +120,10 @@ class StorageManager {
         progressCb: ((Progress) -> Unit)? = null
     ): Result<Unit> {
 
-        val fsCommit = gitManager.lastCommit()
+        // A repository that cannot be read is not one that has nothing new: the
+        // failure has to travel, or the rebuild is skipped for a reason nobody
+        // ever sees.
+        val fsCommit = gitManager.lastCommit().getOrElse { return failure(it) } ?: NO_COMMIT
         val databaseCommit = prefs.databaseCommit.get()
 
         Log.d(TAG, "fsCommit: $fsCommit, databaseCommit: $databaseCommit")

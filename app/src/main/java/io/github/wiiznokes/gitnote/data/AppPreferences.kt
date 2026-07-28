@@ -129,7 +129,14 @@ class AppPreferences(
      * inherit the other one's remote.
      */
     suspend fun initRepo(storageConfig: StorageConfiguration, remoteUrl: String = "") {
-        databaseCommit.update("")
+        // The index belongs to the repository it was built from, so a different
+        // path invalidates it. The same path does not: opening a repository that
+        // turns out to have a remote comes back through here after the database
+        // was already built, and rebuilding it a second time is the slowest part
+        // of a setup that should not be felt at all.
+        if (repoPath.get() != storageConfig.path) {
+            databaseCommit.update("")
+        }
         isInit.update(true)
         this.remoteUrl.update(remoteUrl)
 

@@ -138,11 +138,18 @@ class GitManager {
 
     }
 
-    suspend fun lastCommit(): String = safelyAccessLibGit2 {
+    /**
+     * What HEAD points at, or null for a repository that has no commit yet.
+     *
+     * The failure is kept apart from the null on purpose: a repository that
+     * cannot be read at all is not a repository that has nothing to say, and
+     * the database used to take the one for the other and stay empty.
+     */
+    suspend fun lastCommit(): Result<String?> = safelyAccessLibGit2 {
         Log.d(TAG, "last commit")
         if (!isRepoInitialized) throw GitException(GitExceptionType.RepoNotInit)
         lastCommitLib()
-    }.getOrDefault("") ?: ""
+    }
 
     /** What the repository already knows about its remote, if it has one. */
     suspend fun remoteUrl(): String? = safelyAccessLibGit2 {
