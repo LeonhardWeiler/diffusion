@@ -118,7 +118,7 @@ fun GridScreen(
             onReloadDatabase = {
                 vm.reloadDatabase()
             },
-            query = vm.query.collectAsState().value,
+            query = vm.query,
             clearQuery = vm::clearQuery,
             search = vm::search,
             syncState = vm.syncState.collectAsState().value,
