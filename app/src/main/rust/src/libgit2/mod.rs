@@ -70,7 +70,6 @@ pub fn init_lib(home_path: String) {
     };
 }
 
-
 pub fn open_repo(repo_path: &str) -> Result<(), Error> {
     let repo = Repository::open(repo_path).map_err(|e| Error::git2(e, "Repository::open"))?;
 
@@ -132,6 +131,17 @@ pub fn clone_repo(
     REPO.lock().unwrap().replace(repo);
 
     Ok(())
+}
+
+/// The url the repository pushes to and pulls from, as it is configured. None
+/// when the repository has no remote at all, which a purely local one has not.
+pub fn remote_url() -> Option<String> {
+    let repo = REPO.lock().expect("repo lock");
+    let repo = repo.as_ref()?;
+
+    let remote = repo.find_remote(REMOTE).ok()?;
+
+    remote.url().map(str::to_string).ok()
 }
 
 pub fn last_commit() -> Option<String> {

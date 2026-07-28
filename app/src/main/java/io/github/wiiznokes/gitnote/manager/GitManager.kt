@@ -144,6 +144,13 @@ class GitManager {
         lastCommitLib()
     }.getOrDefault("") ?: ""
 
+    /** What the repository already knows about its remote, if it has one. */
+    suspend fun remoteUrl(): String? = safelyAccessLibGit2 {
+        Log.d(TAG, "remote url")
+        if (!isRepoInitialized) throw GitException(GitExceptionType.RepoNotInit)
+        remoteUrlLib()
+    }.getOrNull()
+
     suspend fun commitAll(author: GitAuthor, message: String): Result<Unit> = safelyAccessLibGit2 {
         Log.d(TAG, "commit all: ${author.name}")
         if (!isRepoInitialized) throw GitException(GitExceptionType.RepoNotInit)
@@ -248,6 +255,8 @@ private external fun cloneRepoLib(
 
 private external fun lastCommitLib(): String?
 
+private external fun remoteUrlLib(): String?
+
 private external fun commitAllLib(name: String, email: String, message: String): Int
 private external fun currentSignatureLib(): Pair<String, String>?
 private external fun pushLib(cred: Cred?): Int
@@ -272,4 +281,10 @@ external fun generateSshKeysLib(): Pair<String, String>
 
 // return true if url is ssh
 external fun getUrlInfoLib(url: String): Boolean?
+
+/**
+ * The remote url as something a browser can follow, or null if it cannot be
+ * read as a repository url at all.
+ */
+external fun browserUrlLib(url: String): String?
 

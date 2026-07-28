@@ -38,13 +38,28 @@ fun RemoteScreen(
     vm: SetupViewModel,
     storageConfig: StorageConfiguration,
     onInitSuccess: () -> Unit,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    openedRemoteUrl: String? = null,
 ) {
 
+    // A repository that is already on the device brings its remote with it, so
+    // the questions leading up to a url have nothing left to ask.
+    val startDestination = when {
+        openedRemoteUrl == null -> SelectProvider
+        isUrlSsh(openedRemoteUrl) -> SelectGenerateNewSshKeys(url = openedRemoteUrl)
+        else -> RemoteDestination.Credentials(url = openedRemoteUrl)
+    }
+
     val navController: NavController<RemoteDestination> =
-        rememberNavController(startDestination = SelectProvider)
+        rememberNavController(startDestination = startDestination)
 
     NavBackHandler(navController)
+
+    // a credential screen can be the first thing shown, and popping the only
+    // entry would leave an empty backstack behind
+    fun back() {
+        if (navController.backstack.entries.size > 1) navController.pop() else onBackClick()
+    }
 
     val initState = vm.initState.collectAsState().value
 
@@ -126,7 +141,7 @@ fun RemoteScreen(
             )
 
             is SelectGenerateNewSshKeys -> SelectGenerateNewSshKeysScreen(
-                onBackClick = { navController.pop() },
+                onBackClick = { back() },
                 onGenerate = {
                     navController.navigate(
                         GenerateNewKeys(
@@ -166,7 +181,7 @@ fun RemoteScreen(
             )
 
             is RemoteDestination.Credentials -> CredentialsScreen(
-                onBackClick = { navController.pop() },
+                onBackClick = { back() },
                 storageConfig = storageConfig,
                 url = remoteDestination.url,
                 provider = vm.provider,

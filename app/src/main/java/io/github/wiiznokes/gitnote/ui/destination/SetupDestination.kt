@@ -10,8 +10,16 @@ sealed interface SetupDestination : Parcelable {
     @Parcelize
     data object Main : SetupDestination
 
+    /**
+     * @param openedRemoteUrl set when the repository is already on the device and
+     * only the credentials for its remote are missing, so the setup can skip
+     * straight to asking for them.
+     */
     @Parcelize
-    data class Remote(val storageConfig: StorageConfiguration) : SetupDestination
+    data class Remote(
+        val storageConfig: StorageConfiguration,
+        val openedRemoteUrl: String? = null,
+    ) : SetupDestination
 
 }
 

@@ -129,10 +129,15 @@ class AppPreferences(
 
     val storageConfig = enumPreference("storageConfig", StorageConfig.App)
 
-    suspend fun initRepo(storageConfig: StorageConfiguration) {
+    /**
+     * @param remoteUrl what this repository pushes to, empty for one that has no
+     * remote. Always written, so that a repository opened after another does not
+     * inherit the other one's remote.
+     */
+    suspend fun initRepo(storageConfig: StorageConfiguration, remoteUrl: String = "") {
         databaseCommit.update("")
         isInit.update(true)
-        remoteUrl.reset()
+        this.remoteUrl.update(remoteUrl)
 
         when (storageConfig) {
             StorageConfiguration.App -> {

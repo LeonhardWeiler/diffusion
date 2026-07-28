@@ -58,6 +58,7 @@ fun SetupNav(
             is SetupDestination.Remote -> RemoteScreen(
                 vm = vm,
                 storageConfig = setupDestination.storageConfig,
+                openedRemoteUrl = setupDestination.openedRemoteUrl,
                 onInitSuccess = onSetupSuccess,
                 onBackClick = {
                     navController.pop()

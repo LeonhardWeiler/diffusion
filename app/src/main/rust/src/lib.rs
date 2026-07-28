@@ -29,7 +29,6 @@ const _INIT_LIB_METHOD: NativeMethod = native_method! {
     static extern fn init_lib(home_path: JString) -> jint,
 };
 
-
 const _OPEN_REPO_LIB_METHOD: NativeMethod = native_method! {
     java_type = "io.github.wiiznokes.gitnote.manager.GitManagerKt",
     static extern fn open_repo_lib(repo_path: JString) -> jint,
@@ -44,6 +43,11 @@ const _CLONE_REPO_LIB_METHOD: NativeMethod = native_method! {
 const _LAST_COMMIT_LIB_METHOD: NativeMethod = native_method! {
     java_type = "io.github.wiiznokes.gitnote.manager.GitManagerKt",
     static extern fn last_commit_lib() -> JString,
+};
+
+const _REMOTE_URL_LIB_METHOD: NativeMethod = native_method! {
+    java_type = "io.github.wiiznokes.gitnote.manager.GitManagerKt",
+    static extern fn remote_url_lib() -> JString,
 };
 
 const _COMMIT_ALL_LIB_METHOD: NativeMethod = native_method! {
@@ -110,6 +114,11 @@ const _GET_URL_INFO_LIB_METHOD: NativeMethod = native_method! {
     java_type = "io.github.wiiznokes.gitnote.manager.GitManagerKt",
     export = "Java_io_github_wiiznokes_gitnote_manager_GitManagerKt_getUrlInfoLib",
     static extern fn get_url_info_lib(url: JString) -> JObject,
+};
+
+const _BROWSER_URL_LIB_METHOD: NativeMethod = native_method! {
+    java_type = "io.github.wiiznokes.gitnote.manager.GitManagerKt",
+    static extern fn browser_url_lib(url: JString) -> JString,
 };
 
 const _LAST_ERROR_MESSAGE_LIB_METHOD: NativeMethod = native_method! {
@@ -197,6 +206,18 @@ fn last_commit_lib<'local>(
 
     Ok(s)
 }
+fn remote_url_lib<'local>(
+    env: &mut Env<'local>,
+    _class: JClass<'local>,
+) -> Result<JString<'local>, jni::errors::Error> {
+    let url = match libgit2::remote_url() {
+        Some(url) => url,
+        None => return Ok(JString::null()),
+    };
+
+    Ok(env.new_string(url).expect("Couldn't create Java string!"))
+}
+
 fn commit_all_lib<'local>(
     env: &mut Env<'local>,
     _class: JClass<'local>,
@@ -409,6 +430,26 @@ fn is_extension_supported_lib<'local>(
 
     let res = mime_types::is_extension_supported(extension.as_str());
     Ok(res)
+}
+
+fn browser_url_lib<'local>(
+    env: &mut Env<'local>,
+    _class: JClass<'local>,
+    url: JString<'local>,
+) -> Result<JString<'local>, jni::errors::Error> {
+    let url = url.try_to_string(env).unwrap();
+
+    let browser_url = match url::browser_url(&url) {
+        Ok(url) => url,
+        Err(e) => {
+            error!("browser_url: {e}");
+            return Ok(JString::null());
+        }
+    };
+
+    Ok(env
+        .new_string(browser_url)
+        .expect("Couldn't create Java string!"))
 }
 
 fn get_url_info_lib<'local>(

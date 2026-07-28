@@ -53,6 +53,13 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
     var provider: Provider? = null
         private set
 
+    /**
+     * Set when a repository that was opened turns out to have a remote. The
+     * credential screens are the same ones the clone uses, but there is nothing
+     * left to clone — only the credentials for that remote are missing.
+     */
+    private var repoIsAlreadyOnDevice = false
+
     var repos = listOf<RepoInfo>()
         private set
 
@@ -86,7 +93,15 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
     }
 
 
-    fun openRepo(storageConfig: StorageConfiguration, onSuccess: () -> Unit) {
+    /**
+     * @param onRemoteFound called with the url when the repository turns out to
+     * have a remote, so the setup can go on and ask for credentials for it.
+     */
+    fun openRepo(
+        storageConfig: StorageConfiguration,
+        onSuccess: () -> Unit,
+        onRemoteFound: (String) -> Unit,
+    ) {
 
         appScope.launch {
             val folder = NodeFs.Folder.fromPath(storageConfig.repoPath())
@@ -108,14 +123,28 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
                 return@launch
             }
 
+            // what the repository already knows about itself, rather than
+            // asking for it again
+            val remoteUrl = gitManager.remoteUrl().orEmpty()
+
             prefs.applyGitAuthorDefaults(userInfo, gitManager.currentSignature())
-            prefs.initRepo(storageConfig)
+            prefs.initRepo(storageConfig, remoteUrl)
 
             // the repo has just been opened or cloned, so the database is built
             // from whatever is on disk, committed or not
             storageManager.updateDatabase(force = true)
 
-            finishSetup(onSuccess)
+            if (remoteUrl.isEmpty()) {
+                finishSetup(onSuccess)
+                return@launch
+            }
+
+            // it has a remote, so it will want to push: the credentials for it
+            // are the one thing the repository cannot tell us
+            repoIsAlreadyOnDevice = true
+            withContext(Dispatchers.Main) {
+                onRemoteFound(remoteUrl)
+            }
         }
 
     }
@@ -199,41 +228,41 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
     ) {
         shouldCancel = false
 
-        storageConfig.prepareStorageRepoPath().onFailure {
-            _initState.emit(InitState.Error(it.message))
-            return
-        }
-
-        // Checked again here, not only when the folder was chosen: the whole
-        // remote setup happens in between and could have filled it.
-        NodeFs.Folder.fromPath(storageConfig.repoPath()).isEmptyDirectory().onFailure {
-            _initState.emit(InitState.Error(it.message))
-            return
-        }
-
-        _initState.emit(InitState.Cloning(0))
-
-        gitManager.cloneRepo(
-            repoPath = storageConfig.repoPath(),
-            repoUrl = remoteUrl,
-            cred = cred,
-            progressCallback = {
-                _initState.tryEmit(InitState.Cloning(it))
-                !shouldCancel
+        if (!repoIsAlreadyOnDevice) {
+            storageConfig.prepareStorageRepoPath().onFailure {
+                _initState.emit(InitState.Error(it.message))
+                return
             }
-        ).onFailure {
-            discardPartialClone(storageConfig)
-            _initState.emit(InitState.Error(if (shouldCancel) "Clone canceled" else it.message))
-            return
-        }
-        if (shouldCancel) {
-            discardPartialClone(storageConfig)
-            return
+
+            // Checked again here, not only when the folder was chosen: the whole
+            // remote setup happens in between and could have filled it.
+            NodeFs.Folder.fromPath(storageConfig.repoPath()).isEmptyDirectory().onFailure {
+                _initState.emit(InitState.Error(it.message))
+                return
+            }
+
+            _initState.emit(InitState.Cloning(0))
+
+            gitManager.cloneRepo(
+                repoPath = storageConfig.repoPath(),
+                repoUrl = remoteUrl,
+                cred = cred,
+                progressCallback = {
+                    _initState.tryEmit(InitState.Cloning(it))
+                    !shouldCancel
+                }
+            ).onFailure {
+                discardPartialClone(storageConfig)
+                _initState.emit(InitState.Error(if (shouldCancel) "Clone canceled" else it.message))
+                return
+            }
+            if (shouldCancel) {
+                discardPartialClone(storageConfig)
+                return
+            }
         }
 
-        prefs.initRepo(storageConfig)
-        prefs.remoteUrl.update(remoteUrl)
-
+        prefs.initRepo(storageConfig, remoteUrl)
         prefs.updateCred(cred)
         prefs.applyGitAuthorDefaults(userInfo, gitManager.currentSignature())
 

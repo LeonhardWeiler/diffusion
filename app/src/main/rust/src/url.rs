@@ -1,4 +1,4 @@
-use anyhow::bail;
+use anyhow::{Context, bail};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UrlKind {
@@ -18,8 +18,6 @@ pub fn parse_url(url: &str) -> anyhow::Result<UrlInfo> {
 
     let url = gix_url::parse(str)?;
 
-    dbg!(&url);
-
     let kind = match &url.scheme {
         gix_url::Scheme::Ssh => UrlKind::Ssh,
         gix_url::Scheme::Http => UrlKind::Http,
@@ -31,6 +29,21 @@ pub fn parse_url(url: &str) -> anyhow::Result<UrlInfo> {
         kind,
         path: url.path.to_string(),
     })
+}
+
+/// The same repository as a web address.
+///
+/// An ssh url names a host and a path but no scheme a browser can follow, so
+/// opening one as it stands fails. Rebuilt as https it leads to the page the
+/// repository is served from.
+pub fn browser_url(url: &str) -> anyhow::Result<String> {
+    let parsed = gix_url::parse(bstr::BStr::new(url))?;
+
+    let host = parsed.host().context("url has no host")?;
+    let path = parsed.path.to_string();
+    let path = path.trim_start_matches('/').trim_end_matches(".git");
+
+    Ok(format!("https://{host}/{path}"))
 }
 
 #[cfg(test)]
@@ -67,5 +80,21 @@ mod test {
 
         let url = parse_url("name@git.dom.hu:repos/name.git").unwrap();
         assert_eq!(&url.kind, &UrlKind::Ssh);
+    }
+
+    #[test]
+    fn ssh_urls_become_web_addresses() {
+        assert_eq!(
+            browser_url("git@github.com:wiiznokes/gitnote.git").unwrap(),
+            "https://github.com/wiiznokes/gitnote"
+        );
+        assert_eq!(
+            browser_url("ssh://git@github.com:22/wiiznokes/gitnote.git").unwrap(),
+            "https://github.com/wiiznokes/gitnote"
+        );
+        assert_eq!(
+            browser_url("https://github.com/wiiznokes/gitnote.git").unwrap(),
+            "https://github.com/wiiznokes/gitnote"
+        );
     }
 }

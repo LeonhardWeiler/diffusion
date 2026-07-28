@@ -25,6 +25,7 @@ import dev.olshevski.navigation.reimagined.NavController
 import dev.olshevski.navigation.reimagined.navigate
 import io.github.wiiznokes.gitnote.BuildConfig
 import io.github.wiiznokes.gitnote.R
+import io.github.wiiznokes.gitnote.manager.browserUrlLib
 import io.github.wiiznokes.gitnote.ui.component.AppPage
 import io.github.wiiznokes.gitnote.ui.component.DefaultSettingsRow
 import io.github.wiiznokes.gitnote.ui.component.MultipleChoiceSettings
@@ -140,8 +141,15 @@ fun SettingsScreen(
                     val uriHandler = LocalUriHandler.current
                     Button(
                         onClick = {
+                            // an ssh remote is not an address a browser can
+                            // follow, so it is offered the https form of it
+                            val link = browserUrlLib(remoteUrl)
+                            if (link == null) {
+                                vm.uiHelper.makeToast(vm.uiHelper.getString(R.string.error_invalid_link))
+                                return@Button
+                            }
                             try {
-                                uriHandler.openUri(remoteUrl)
+                                uriHandler.openUri(link)
                             } catch (_: Exception) {
                                 vm.uiHelper.makeToast(vm.uiHelper.getString(R.string.error_invalid_link))
                             }

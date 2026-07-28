@@ -40,7 +40,7 @@ private const val TAG = "NewRepoMethodScreen"
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewRepoMethodScreen(
-    openRepo: (StorageConfiguration, () -> Unit) -> Unit,
+    openRepo: (StorageConfiguration, () -> Unit, (String) -> Unit) -> Unit,
     checkPathForClone: (String) -> Result<Unit>,
     makeToast: (String) -> Unit,
     navigate: (SetupDestination) -> Unit,
@@ -72,7 +72,9 @@ fun NewRepoMethodScreen(
 
             val storageConfig = StorageConfiguration.Device(path)
             when (newRepoMethod.value!!) {
-                NewRepoMethod.Open -> openRepo(storageConfig, onSetupSuccess)
+                NewRepoMethod.Open -> openRepo(storageConfig, onSetupSuccess) { remoteUrl ->
+                    navigate(SetupDestination.Remote(storageConfig, remoteUrl))
+                }
 
                 // said now rather than after the remote has been set up
                 NewRepoMethod.Clone ->
@@ -158,7 +160,10 @@ fun NewRepoMethodScreen(
 
                     val storageConfig = StorageConfiguration.App
                     when (newRepoMethod.value!!) {
-                        NewRepoMethod.Open -> openRepo(storageConfig, onSetupSuccess)
+                        NewRepoMethod.Open -> openRepo(storageConfig, onSetupSuccess) { remoteUrl ->
+                            navigate(SetupDestination.Remote(storageConfig, remoteUrl))
+                        }
+
                         NewRepoMethod.Clone -> navigate(SetupDestination.Remote(storageConfig))
                     }
                 }
@@ -204,7 +209,7 @@ fun NewRepoMethodScreen(
 private fun NewRepoMethodScreenPreview() {
 
     NewRepoMethodScreen(
-        openRepo = { _, _ -> },
+        openRepo = { _, _, _ -> },
         checkPathForClone = { Result.success(Unit) },
         makeToast = {},
         navigate = {},
