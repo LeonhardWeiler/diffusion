@@ -19,11 +19,9 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.MutableFloatState
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -58,7 +56,6 @@ import io.github.wiiznokes.gitnote.utils.getParentPath
 
 private const val TAG = "GridScreen"
 
-private const val maxOffset = -500f
 internal val topBarHeight = 80.dp
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -85,8 +82,6 @@ fun GridScreen(
 
     val searchFocusRequester = remember { FocusRequester() }
 
-    val offset = remember { mutableFloatStateOf(0f) }
-
     // the bar floats above the list, so the list needs to start below it
     var topBarSize by remember { mutableStateOf(IntSize.Zero) }
     val topSpacerHeight = with(LocalDensity.current) { topBarSize.height.toDp() }
@@ -99,17 +94,13 @@ fun GridScreen(
             if (selectedNotes.isEmpty()) {
                 FloatingActionButtons(
                     vm = vm,
-                    offset = { offset.floatValue },
                     onEditClick = onEditClick,
                 )
             }
 
         }) { padding ->
 
-        val nestedScrollConnection = rememberNestedScrollConnection(
-            offset = offset,
-        )
-
+        val nestedScrollConnection = rememberNestedScrollConnection()
 
         GridView(
             vm = vm,
@@ -123,7 +114,6 @@ fun GridScreen(
 
         TopBar(
             modifier = Modifier.onSizeChanged { topBarSize = it },
-            offset = { offset.floatValue },
             selectedNotesNumber = selectedNotes.size,
             onSettingsClick = onSettingsClick,
             searchFocusRequester = searchFocusRequester,
@@ -246,15 +236,15 @@ internal fun NoteActionsDropdown(
     }
 }
 
-// https://stackoverflow.com/questions/73079388/android-jetpack-compose-keyboard-not-close
-// https://medium.com/@debdut.saha.1/top-app-bar-animation-using-nestedscrollconnection-like-facebook-jetpack-compose-b446c109ee52
-// todo: fix scroll is blocked when the full size of the grid is the screen,
-//  the stretching will cause tbe offset to not change
+/**
+ * Hides the keyboard once the user starts scrolling the list. The scroll that
+ * carries a fling is left alone, otherwise the keyboard would close again right
+ * after the user reopened it by tapping the search field.
+ *
+ * https://stackoverflow.com/questions/73079388/android-jetpack-compose-keyboard-not-close
+ */
 @Composable
-private fun rememberNestedScrollConnection(
-    offset: MutableFloatState,
-): NestedScrollConnection {
-
+private fun rememberNestedScrollConnection(): NestedScrollConnection {
 
     val keyboardController = LocalSoftwareKeyboardController.current
 
@@ -262,24 +252,10 @@ private fun rememberNestedScrollConnection(
         var shouldBlock = false
 
         object : NestedScrollConnection {
-            fun calculateOffset(delta: Float): Offset {
-                offset.floatValue = (offset.floatValue + delta).coerceIn(maxOffset, 0f)
-                //Log.d(TAG, "calculateOffset(newOffset: ${offset.floatValue}, delta: $delta)")
-                return Offset.Zero
-            }
 
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                //Log.d(TAG, "onPreScroll(available: ${available.y})")
                 if (!shouldBlock) keyboardController?.hide()
-
-                return calculateOffset(available.y)
-            }
-
-            override fun onPostScroll(
-                consumed: Offset, available: Offset, source: NestedScrollSource
-            ): Offset {
-                //Log.d(TAG, "onPostScroll(consumed: ${consumed.y}, available: ${available.y})")
-                return calculateOffset(available.y)
+                return Offset.Zero
             }
 
             override suspend fun onPreFling(available: Velocity): Velocity {

@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -61,7 +60,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import io.github.wiiznokes.gitnote.BuildConfig
 import io.github.wiiznokes.gitnote.R
@@ -75,7 +73,6 @@ import io.github.wiiznokes.gitnote.ui.component.CustomDropDownModel
 import io.github.wiiznokes.gitnote.ui.component.SimpleIcon
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 
 
 private const val TAG = "TopGridScreen"
@@ -86,7 +83,6 @@ private val ButtonSize = 35.dp
 fun TopBar(
     modifier: Modifier = Modifier,
     padding: PaddingValues,
-    offset: () -> Float,
     selectedNotesNumber: Int,
     onSettingsClick: () -> Unit,
     searchFocusRequester: FocusRequester,
@@ -110,7 +106,6 @@ fun TopBar(
         if (shouldShowSearchBar) {
             SearchBar(
                 padding = padding,
-                offset = offset,
                 onSettingsClick = onSettingsClick,
                 searchFocusRequester = searchFocusRequester,
                 onReloadDatabase = onReloadDatabase,
@@ -137,7 +132,6 @@ fun TopBar(
 @Composable
 private fun SearchBar(
     padding: PaddingValues,
-    offset: () -> Float,
     onSettingsClick: () -> Unit,
     searchFocusRequester: FocusRequester,
     onReloadDatabase: () -> Unit,
@@ -180,7 +174,6 @@ private fun SearchBar(
             .padding(padding)
             .padding(horizontal = 10.dp)
             .padding(top = 15.dp)
-            .offset { IntOffset(x = 0, y = offset().roundToInt()) }
             .focusRequester(searchFocusRequester),
         value = queryTextField.value,
         onValueChange = {
@@ -456,7 +449,6 @@ private fun SyncStateIcon(
 private fun TopBarPreview() {
     TopBar(
         padding = PaddingValues(),
-        offset = { 0f },
         onSettingsClick = {},
         searchFocusRequester = remember { FocusRequester() },
         onReloadDatabase = { },
