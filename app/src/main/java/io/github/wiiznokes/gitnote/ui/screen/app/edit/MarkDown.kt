@@ -120,7 +120,22 @@ fun MarkDownContent(
                         state = readScrollState,
                         contentPadding = PaddingValues(15.dp),
                     ) {
-                        items(state.node.children) { node ->
+                        items(
+                            items = state.node.children,
+                            // Where a block starts names it for as long as the
+                            // text stands still, which it does here — the
+                            // reader parses once and is not typed into. Without
+                            // it a block is known by its position in the list,
+                            // so scrolling threw away and rebuilt blocks that
+                            // had not changed at all.
+                            key = { node -> node.startOffset },
+                            // A paragraph and a heading lay out differently, two
+                            // paragraphs do not: saying which is which lets one
+                            // that scrolled off the top be filled in again with
+                            // the one coming in at the bottom instead of built
+                            // from nothing.
+                            contentType = { node -> node.type },
+                        ) { node ->
                             MarkdownElement(
                                 node = node,
                                 components = components,
