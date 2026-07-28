@@ -24,10 +24,14 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -35,6 +39,8 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -54,8 +60,6 @@ private const val TAG = "GridScreen"
 
 private const val maxOffset = -500f
 internal val topBarHeight = 80.dp
-
-internal val topSpacerHeight = topBarHeight + 40.dp + 15.dp
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
@@ -83,6 +87,10 @@ fun GridScreen(
 
     val offset = remember { mutableFloatStateOf(0f) }
 
+    // the bar floats above the list, so the list needs to start below it
+    var topBarSize by remember { mutableStateOf(IntSize.Zero) }
+    val topSpacerHeight = with(LocalDensity.current) { topBarSize.height.toDp() }
+
     Scaffold(
         contentWindowInsets = WindowInsets.safeContent,
         containerColor = MaterialTheme.colorScheme.background,
@@ -105,6 +113,7 @@ fun GridScreen(
 
         GridView(
             vm = vm,
+            topSpacerHeight = topSpacerHeight,
             onEditClick = onEditClick,
             selectedNotes = selectedNotes,
             currentFolderPath = currentFolderPath,
@@ -113,6 +122,7 @@ fun GridScreen(
         )
 
         TopBar(
+            modifier = Modifier.onSizeChanged { topBarSize = it },
             offset = { offset.floatValue },
             selectedNotesNumber = selectedNotes.size,
             onSettingsClick = onSettingsClick,
@@ -147,6 +157,7 @@ private fun GridView(
     onEditClick: (Note, EditType) -> Unit,
     selectedNotes: List<Note>,
     currentFolderPath: String,
+    topSpacerHeight: Dp,
     padding: PaddingValues,
 ) {
     val gridNotes = vm.gridNotes.collectAsLazyPagingItems()
@@ -181,6 +192,7 @@ private fun GridView(
             gridNotes = gridNotes,
             folders = vm.folders.collectAsState().value,
             currentFolderPath = currentFolderPath,
+            topSpacerHeight = topSpacerHeight,
             listState = listState,
             modifier = commonModifier,
             selectedNotes = selectedNotes,

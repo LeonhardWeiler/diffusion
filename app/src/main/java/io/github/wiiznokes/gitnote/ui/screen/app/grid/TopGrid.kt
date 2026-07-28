@@ -84,6 +84,7 @@ private val ButtonSize = 35.dp
 
 @Composable
 fun TopBar(
+    modifier: Modifier = Modifier,
     padding: PaddingValues,
     offset: () -> Float,
     selectedNotesNumber: Int,
@@ -102,6 +103,7 @@ fun TopBar(
 ) {
 
     AnimatedContent(
+        modifier = modifier,
         targetState = selectedNotesNumber == 0,
         label = "",
     ) { shouldShowSearchBar ->

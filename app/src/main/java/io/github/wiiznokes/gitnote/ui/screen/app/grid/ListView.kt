@@ -32,6 +32,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemKey
@@ -56,6 +57,7 @@ internal fun NoteListView(
     gridNotes: LazyPagingItems<GridNote>,
     folders: List<FolderModel>,
     currentFolderPath: String,
+    topSpacerHeight: Dp,
     listState: LazyListState,
     modifier: Modifier = Modifier,
     selectedNotes: List<Note>,
