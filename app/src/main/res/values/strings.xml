@@ -104,6 +104,8 @@
     <string name="paste_deploy_key_no_provider">Add the public key to the git provider</string>
     <string name="try_cloning">Try Cloning…</string>
     <string name="clone_repo">Clone Repository</string>
+    <string name="copy_key_first">Copy the key first. Until it is a deploy key of the repository, the clone has nothing to authenticate with.</string>
+    <string name="key_copied">Key copied</string>
     <string name="we_need_ssh_keys_to_authenticate">Need SSH keys to authenticate</string>
     <string name="generate_new_keys">Generate new keys</string>
     <string name="custom_ssh_keys">Use custom SSH keys</string>

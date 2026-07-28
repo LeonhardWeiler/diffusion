@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -59,6 +60,12 @@ fun GenerateNewSshKeysScreen(
         val publicKey = rememberSaveable { mutableStateOf("") }
         val privateKey = rememberSaveable { mutableStateOf("") }
 
+        // A clone with a key the far end has never seen fails with an
+        // authentication error that says nothing about the one step that was
+        // skipped, so the clone waits until the key has at least been taken
+        // away from here.
+        val keyCopied = rememberSaveable { mutableStateOf(false) }
+
         LaunchedEffect(true) {
             val (public, private) = generateSshKeys()
             Log.d(TAG, public)
@@ -92,7 +99,11 @@ fun GenerateNewSshKeysScreen(
                 val clipboardManager = LocalClipboard.current
 
                 SetupButton(
-                    text = stringResource(R.string.copy_key),
+                    text = if (keyCopied.value) {
+                        stringResource(R.string.key_copied)
+                    } else {
+                        stringResource(R.string.copy_key)
+                    },
                     onClick = {
                         val data = ClipData(
                             ClipDescription(
@@ -104,6 +115,7 @@ fun GenerateNewSshKeysScreen(
 
                         vm.launch {
                             clipboardManager.setClipEntry(ClipEntry(data))
+                            keyCopied.value = true
                         }
                     }
                 )
@@ -114,6 +126,8 @@ fun GenerateNewSshKeysScreen(
                         val (public, private) = generateSshKeys()
                         publicKey.value = public
                         privateKey.value = private
+                        // the key that was copied is not this one anymore
+                        keyCopied.value = false
                     }
                 )
             }
@@ -130,11 +144,22 @@ fun GenerateNewSshKeysScreen(
                 text = "3. " + stringResource(R.string.try_cloning)
             ) {
 
+                if (!keyCopied.value) {
+                    Text(
+                        modifier = Modifier.padding(bottom = 8.dp),
+                        text = stringResource(R.string.copy_key_first),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+
                 SetupButton(
                     text = stringResource(R.string.clone_repo),
                     // the keys are generated off the composition, so for a moment
-                    // there is nothing here to authenticate with
-                    enabled = SshKeyValidation.isKeyPair(publicKey.value, privateKey.value),
+                    // there is nothing here to authenticate with — and until the
+                    // key has been copied it is nowhere the remote could know it
+                    enabled = keyCopied.value
+                            && SshKeyValidation.isKeyPair(publicKey.value, privateKey.value),
                     onClick = {
                         vm.cloneRepo(
                             storageConfig = storageConfig,
