@@ -194,7 +194,10 @@ fn test_conflicting_merge_is_reported() {
     // Both versions are in the file, between markers, for someone to choose
     // between in the editor.
     let content = fs::read_to_string(repo.workdir().unwrap().join("file1.txt")).unwrap();
-    assert!(content.contains("<<<<<<<"), "no conflict markers in {content}");
+    assert!(
+        content.contains("<<<<<<<"),
+        "no conflict markers in {content}"
+    );
     assert!(content.contains("changed on master"), "ours missing");
     assert!(content.contains("changed on dev"), "theirs missing");
 

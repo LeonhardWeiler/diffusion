@@ -326,7 +326,10 @@ fn apply_commit_timestamps_lib<'local>(
     _env: &mut Env<'local>,
     _class: JClass<'local>,
 ) -> Result<jint, jni::errors::Error> {
-    unwrap_or_log!(libgit2::apply_commit_timestamps(), "apply_commit_timestamps");
+    unwrap_or_log!(
+        libgit2::apply_commit_timestamps(),
+        "apply_commit_timestamps"
+    );
 
     Ok(OK)
 }

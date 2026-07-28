@@ -490,5 +490,8 @@ fn apply_commit_timestamps_to(repo: &Repository) -> Result<(), Error> {
 }
 
 fn set_modified(path: &Path, time: SystemTime) -> Result<(), std::io::Error> {
-    fs::File::options().write(true).open(path)?.set_modified(time)
+    fs::File::options()
+        .write(true)
+        .open(path)?
+        .set_modified(time)
 }
