@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.time.Instant
 import java.util.zip.DataFormatException
 import kotlin.Result.Companion.failure
 import kotlin.Result.Companion.success
@@ -56,6 +57,15 @@ open class TextVM() : ViewModel() {
 
     lateinit var previousNote: Note
         private set
+
+    /**
+     * The note as it stood when the editor was opened, date and all.
+     *
+     * Undoing every change ends at exactly this, and a note that is back to what
+     * it was was not written just now. [previousNote] cannot answer that — it
+     * moves along with every save.
+     */
+    private lateinit var openedNote: Note
 
     private val _name = mutableStateOf(TextFieldValue())
     val name: State<TextFieldValue> get() = _name
@@ -96,6 +106,7 @@ open class TextVM() : ViewModel() {
 
         this.editType = editType
         this.previousNote = previousNote
+        this.openedNote = previousNote
 
         _name.value = previousNote.nameWithoutExtension().let {
             TextFieldValue(it, selection = TextRange(it.length))
@@ -123,6 +134,7 @@ open class TextVM() : ViewModel() {
 
         this.editType = editType
         this.previousNote = previousNote
+        this.openedNote = previousNote
         _name.value = TextFieldValue(name, selection = TextRange(name.length))
         val textFieldValue = TextFieldValue(
             content,
@@ -211,6 +223,8 @@ open class TextVM() : ViewModel() {
 
         val previous = previousNote
         val isNew = editType == EditType.Create
+        // undone back to what it was, so what was written may be nothing at all
+        val restored = isOpenedNoteTheSame()
 
         appScope.launch {
             if (isNew) {
@@ -218,6 +232,12 @@ open class TextVM() : ViewModel() {
             } else {
                 storageManager.updateNote(new = note, previous = previous)
             }.onFailure { uiHelper.makeToast(it.message) }
+
+            // Writing a note means there is something to sync, except when the
+            // note is the one that was already there — then only git can say
+            // whether anything is left, and it is worth asking for the one
+            // write that can take a change back.
+            if (restored) storageManager.refreshChangeState()
         }
 
         // the note is now the one on disk, whatever the write makes of it: a
@@ -253,10 +273,24 @@ open class TextVM() : ViewModel() {
             Note.new(
                 relativePath = "${previousNote.parentPath}/$name.${extension.text}",
                 content = content.value.text,
+                lastModifiedTimeMillis = if (isOpenedNoteTheSame()) {
+                    openedNote.lastModifiedTimeMillis
+                } else {
+                    Instant.now().toEpochMilli()
+                },
                 id = previousNote.id,
             )
         )
     }
+
+    /**
+     * Whether the editor holds exactly what it was opened with, which is where
+     * undoing everything ends up. Such a note was not written today: it is the
+     * one it already was, and it keeps its date.
+     */
+    private fun isOpenedNoteTheSame(): Boolean =
+        openedNote.nameWithoutExtension() == NameValidation.removeEndingWhiteSpace(name.value.text)
+                && openedNote.content == content.value.text
 
     /**
      * Refuses a note whose file is already somebody else's.

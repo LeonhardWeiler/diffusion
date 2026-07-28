@@ -70,6 +70,20 @@ class StorageManager {
 
 
     /**
+     * Asks git whether anything is still uncommitted, rather than assuming it
+     * is because something was written.
+     *
+     * For the one write that can take a change back: a note undone to what it
+     * was leaves a working tree that agrees with the repository again, and the
+     * dot on the cloud button has nothing left to announce. Too expensive to do
+     * after every typing pause — it walks the whole working tree — which is why
+     * only that one write asks.
+     */
+    suspend fun refreshChangeState(): Unit = locker.withLock {
+        refreshLocalChanges()
+    }
+
+    /**
      * Whether a failure of the sync that is running should say so by itself.
      * Read only under [locker], which is also the only thing that runs a sync.
      */
@@ -197,6 +211,7 @@ class StorageManager {
             // is, so a shortened note does not keep its old tail
             val newFile = new.toFileFs(rootPath)
             newFile.write(new.content).orComplain(R.string.error_write_file)
+            newFile.dateBy(new)
 
             success(Unit)
         }
@@ -216,6 +231,7 @@ class StorageManager {
 
             file.create().orComplain(R.string.error_create_file)
             file.write(note.content).orComplain(R.string.error_write_file)
+            file.dateBy(note)
 
             success(Unit)
         }
@@ -301,6 +317,20 @@ class StorageManager {
         _syncState.emit(SyncState.Idle)
     }
 
+
+    /**
+     * Gives the file the date its note carries, which is usually the moment it
+     * was written and the write has already said so. It is not, for a note that
+     * was undone back to what it was: that one keeps the date it had, and the
+     * row and the file have to agree about it — the list reads the row now and
+     * the file after the next rebuild.
+     *
+     * Quietly: a note whose date could not be written still reads fine.
+     */
+    private fun NodeFs.File.dateBy(note: Note) =
+        setLastModifiedTime(note.lastModifiedTimeMillis).onFailure {
+            Log.w(TAG, "could not date $path: ${it.message}")
+        }
 
     /**
      * Says out loud that a step of a best effort change did not work. The reason

@@ -29,6 +29,7 @@ import kotlin.io.path.listDirectoryEntries
 import kotlin.io.path.name
 import kotlin.io.path.pathString
 import kotlin.io.path.readText
+import kotlin.io.path.setLastModifiedTime
 import kotlin.io.path.writeText
 
 
@@ -93,6 +94,18 @@ sealed class NodeFs(
 
         fun write(text: String): Result<Unit> {
             return toResult { pathFs.writeText(text) }
+        }
+
+        /**
+         * Says when the note was written.
+         *
+         * Writing a file dates it to the moment of the write, which is not
+         * always when the note was written: one that was undone back to what it
+         * was has not changed at all. The list reads its dates off the file and
+         * nowhere else, so this is where such a note gets its own date back.
+         */
+        fun setLastModifiedTime(timeMillis: Long): Result<Unit> {
+            return toResult { pathFs.setLastModifiedTime(FileTime.fromMillis(timeMillis)) }
         }
 
         fun readText(): String {
