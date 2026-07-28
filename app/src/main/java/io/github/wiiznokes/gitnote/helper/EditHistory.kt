@@ -51,10 +51,4 @@ class EditHistoryStore {
     private val histories = mutableMapOf<Int, EditHistory>()
 
     fun of(noteId: Int): EditHistory = histories.getOrPut(noteId) { EditHistory() }
-
-    /** Follows a note that was renamed, which gives it a new id. */
-    fun move(fromNoteId: Int, toNoteId: Int) {
-        if (fromNoteId == toNoteId) return
-        histories.remove(fromNoteId)?.let { histories[toNoteId] = it }
-    }
 }

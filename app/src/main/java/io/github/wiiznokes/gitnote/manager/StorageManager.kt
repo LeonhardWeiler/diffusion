@@ -149,27 +149,33 @@ class StorageManager {
         Log.d(TAG, "updateNote: previous = $previous")
         Log.d(TAG, "updateNote: new = $new")
 
+        val renamed = new.relativePath != previous.relativePath
+
         update {
-            dao.removeNote(previous)
+            // relativePath is the primary key, so as long as the note keeps its
+            // name the upsert rewrites the row in place. Only a rename needs the
+            // old row and the old file taken away first — and that is rare,
+            // while this runs on every typing pause.
+            if (renamed) {
+                dao.removeNote(previous)
+            }
             dao.insertNote(new)
 
             val rootPath = prefs.repoPath()
-            val previousFile = previous.toFileFs(rootPath)
 
-            previousFile.delete().onFailure {
-                val message =
-                    uiHelper.getString(R.string.error_delete_file, previousFile.path, it.message)
-                Log.e(TAG, message)
-                uiHelper.makeToast(message)
+            if (renamed) {
+                val previousFile = previous.toFileFs(rootPath)
+                previousFile.delete().onFailure {
+                    val message =
+                        uiHelper.getString(R.string.error_delete_file, previousFile.path, it.message)
+                    Log.e(TAG, message)
+                    uiHelper.makeToast(message)
+                }
             }
 
+            // write creates the file if it is not there and truncates it if it
+            // is, so a shortened note does not keep its old tail
             val newFile = new.toFileFs(rootPath)
-            newFile.create().onFailure {
-                val message = uiHelper.getString(R.string.error_create_file, it.message)
-                Log.e(TAG, message)
-                uiHelper.makeToast(message)
-            }
-
             newFile.write(new.content).onFailure {
                 val message = uiHelper.getString(R.string.error_write_file, it.message)
                 Log.e(TAG, message)

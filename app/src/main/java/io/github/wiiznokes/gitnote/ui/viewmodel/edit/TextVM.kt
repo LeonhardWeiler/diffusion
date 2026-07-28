@@ -314,9 +314,6 @@ open class TextVM() : ViewModel() {
                 fileExtension = previousNote.fileExtension(),
                 content = content.value.text,
             ).onSuccess {
-                // a saved note is a new row with a new id, and its history has
-                // to follow, or reopening the note would start from scratch
-                MyApp.appModule.editHistoryStore.move(previousNote.id, it.id)
                 previousNote = it
                 onSuccess()
             }
@@ -349,9 +346,13 @@ open class TextVM() : ViewModel() {
 
         val relativePath = "$parentPath/$name.${fileExtension.text}"
 
+        // the note keeps its id across a save. It is what the undo history and
+        // the list rows are keyed by, and with the editor saving every 500 ms a
+        // new id per keystroke meant moving both along every time.
         val newNote = Note.new(
             relativePath = relativePath,
             content = content,
+            id = previousNote.id,
         )
 
         prefs.repoPathBlocking().let { repoPath ->
