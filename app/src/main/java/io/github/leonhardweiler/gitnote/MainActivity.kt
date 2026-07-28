@@ -42,11 +42,13 @@ class MainActivity : ComponentActivity() {
 
             val theme by vm.prefs.theme.getAsState()
             val dynamicColor by vm.prefs.dynamicColor.getAsState()
+            val pureBlack by vm.prefs.pureBlack.getAsState()
 
 
             GitNoteTheme(
                 darkTheme = (theme == Theme.SYSTEM && isSystemInDarkTheme()) || theme == Theme.DARK,
-                dynamicColor = dynamicColor
+                dynamicColor = dynamicColor,
+                pureBlack = pureBlack,
             ) {
 
                 val startDestination: Destination = rememberSaveable {

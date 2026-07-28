@@ -1,6 +1,7 @@
 package io.github.leonhardweiler.gitnote.ui.theme
 
 import android.os.Build
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -80,13 +81,30 @@ private val DarkColors = darkColorScheme(
     scrim = md_theme_dark_scrim,
 )
 
+/**
+ * The dark scheme with everything a page is drawn on set to black.
+ *
+ * Only the surfaces the app actually covers the screen with, not the
+ * containers: an oled screen saves what it does not light, and a note behind a
+ * black background is the whole of it. The elevated surfaces stay derived —
+ * [surfaceColorAtElevation] tints upwards from `surface`, so a bar above a
+ * black page still reads as a bar.
+ */
+private fun ColorScheme.pureBlack(): ColorScheme = copy(
+    background = Color.Black,
+    surface = Color.Black,
+    surfaceContainerLowest = Color.Black,
+    surfaceContainerLow = Color.Black,
+)
+
 @Composable
 fun GitNoteTheme(
     darkTheme: Boolean,
     dynamicColor: Boolean,
+    pureBlack: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
+    var colorScheme = when {
         dynamicColor -> {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 val context = LocalContext.current
@@ -99,6 +117,10 @@ fun GitNoteTheme(
         darkTheme -> DarkColors
         else -> LightColors
     }
+
+    // A light theme has nothing to switch off, so the setting says nothing
+    // there rather than turning the app inside out.
+    if (darkTheme && pureBlack) colorScheme = colorScheme.pureBlack()
 
 
     CompositionLocalProvider(

@@ -23,6 +23,12 @@ class AppPreferences(
     val dynamicColor = booleanPreference("dynamicColor", true)
     val theme = enumPreference("theme", Theme.SYSTEM)
 
+    /**
+     * Black instead of dark grey, for screens where a black pixel is one that
+     * is switched off. Only does anything while the dark theme is showing.
+     */
+    val pureBlack = booleanPreference("pureBlack", false)
+
     val isInit = booleanPreference("isInit", false)
     val databaseCommit = stringPreference("")
 
