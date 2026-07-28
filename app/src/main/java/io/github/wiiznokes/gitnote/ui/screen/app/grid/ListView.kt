@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.KeyboardReturn
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material3.HorizontalDivider
@@ -129,7 +128,11 @@ private fun ParentFolderRow(
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surface)
-            .clickable(onClick = onClick)
+            // ".." alone says nothing when read out, so the row carries the label
+            .clickable(
+                onClickLabel = stringResource(R.string.parent_folder),
+                onClick = onClick
+            )
     ) {
         Row(
             modifier = Modifier
@@ -139,11 +142,6 @@ private fun ParentFolderRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Rounded.KeyboardReturn,
-                contentDescription = stringResource(R.string.parent_folder),
-                tint = MaterialTheme.colorScheme.onSurface
-            )
             Text(
                 text = "..",
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
