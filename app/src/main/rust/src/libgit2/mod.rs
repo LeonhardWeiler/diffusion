@@ -303,7 +303,11 @@ pub fn get_timestamps() -> Result<HashMap<String, i64>, Error> {
     let repo = REPO.lock().expect("repo lock");
     let repo = repo.as_ref().expect("repo");
 
-    let head = repo.head()?.peel_to_commit()?;
+    // A repository without commits has no HEAD to walk. It has no timestamps to
+    // offer either, so the files keep the ones the filesystem gives them.
+    let Ok(head) = repo.head().and_then(|head| head.peel_to_commit()) else {
+        return Ok(HashMap::new());
+    };
 
     let mut pending = HashSet::new();
 

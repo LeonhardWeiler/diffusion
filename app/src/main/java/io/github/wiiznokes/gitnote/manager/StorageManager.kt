@@ -124,7 +124,9 @@ class StorageManager {
         Log.d(TAG, "repoPath = $repoPath")
 
         progressCb?.invoke(Progress.Timestamps)
-        val timestamps = gitManager.getTimestamps().getOrThrow()
+        // A failure here used to be thrown out of the coroutine that started the
+        // update, which is nobody's to catch and takes the app down with it.
+        val timestamps = gitManager.getTimestamps().getOrElse { return failure(it) }
 
         db.withTransaction {
             dao.clearAndInit(repoPath, timestamps, progressCb)

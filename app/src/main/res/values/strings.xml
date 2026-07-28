@@ -74,6 +74,7 @@
     <string name="use_device_storage">Use device storage</string>
     <string name="use_device_storage_info">Requires permission to access the full device storage. You will be able to access the repository on your computer afterwards.</string>
     <string name="clone_step_url_label">url</string>
+    <string name="error_not_a_repository">This folder is not a git repository. Choose a folder that contains a .git directory, or clone one instead.</string>
     <string name="error_path_not_directory">The path is not a directory</string>
     <string name="error_path_not_empty">The folder is not empty</string>
     <string name="error_delete_folder">Can\'t delete folder: %1$s</string>

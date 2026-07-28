@@ -33,6 +33,9 @@ import kotlin.Result.Companion.success
 
 private const val TAG = "SetupViewModel"
 
+/** What makes a folder a repository. */
+private const val GIT_DIR = ".git"
+
 class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewModelI {
 
     val prefs: AppPreferences = MyApp.appModule.appPreferences
@@ -86,9 +89,17 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
     fun openRepo(storageConfig: StorageConfiguration, onSuccess: () -> Unit) {
 
         appScope.launch {
-            if (!NodeFs.Folder.fromPath(storageConfig.repoPath()).exist()) {
-                val msg = uiHelper.getString(R.string.error_path_not_directory)
-                uiHelper.makeToast(msg)
+            val folder = NodeFs.Folder.fromPath(storageConfig.repoPath())
+
+            if (!folder.exist()) {
+                uiHelper.makeToast(uiHelper.getString(R.string.error_path_not_directory))
+                return@launch
+            }
+
+            // libgit2 would answer this with "could not find repository", which
+            // names the symptom rather than what to do about it
+            if (!NodeFs.Folder.fromPath(folder.path, GIT_DIR).exist()) {
+                uiHelper.makeToast(uiHelper.getString(R.string.error_not_a_repository))
                 return@launch
             }
 
