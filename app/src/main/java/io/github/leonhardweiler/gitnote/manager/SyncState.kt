@@ -17,12 +17,23 @@ sealed interface SyncState {
      */
     data class Error(val msg: String?, val announce: Boolean = true) : SyncState
 
+    /**
+     * Between the tap and the first thing that reaches the network.
+     *
+     * That gap is not nothing: the sync waits for the editor's last write,
+     * then for the lock, then commits, and only then pulls. The button stood
+     * unchanged through all of it, which read as a tap that had not registered.
+     * Set by the tap itself rather than by the sync, so that it is there in the
+     * same frame the finger leaves the button.
+     */
+    data object Starting : SyncState
+
     data object Pull : SyncState
 
     data object Push : SyncState
 
     fun isLoading(): Boolean {
-        return this is Pull || this is Push
+        return this is Starting || this is Pull || this is Push
     }
 
     fun message(): String {
@@ -30,6 +41,7 @@ sealed interface SyncState {
             is Error -> this.msg ?: "Unknow Error"
             Idle -> "Sync with the remote"
             Ok -> "Sync done"
+            Starting -> "Syncing"
             Pull -> "Pulling"
             Push -> "Pushing"
         }

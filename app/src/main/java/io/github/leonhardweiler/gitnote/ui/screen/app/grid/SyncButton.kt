@@ -39,6 +39,7 @@ import io.github.leonhardweiler.gitnote.manager.SyncState.Idle
 import io.github.leonhardweiler.gitnote.manager.SyncState.Ok
 import io.github.leonhardweiler.gitnote.manager.SyncState.Pull
 import io.github.leonhardweiler.gitnote.manager.SyncState.Push
+import io.github.leonhardweiler.gitnote.manager.SyncState.Starting
 
 /** The mark that says the notes here have not reached the remote yet. */
 private val ChangeDotSize = 8.dp
@@ -110,7 +111,7 @@ internal fun SyncButton(
         ) {
             val icon = when (state) {
                 is SyncState.Error -> painterResource(R.drawable.cloud_alert_24px)
-                Idle -> rememberVectorPainter(Icons.Default.CloudSync)
+                Idle, Starting -> rememberVectorPainter(Icons.Default.CloudSync)
                 Ok -> rememberVectorPainter(Icons.Default.CloudDone)
                 Pull -> rememberVectorPainter(Icons.Default.CloudDownload)
                 Push -> rememberVectorPainter(Icons.Default.CloudUpload)

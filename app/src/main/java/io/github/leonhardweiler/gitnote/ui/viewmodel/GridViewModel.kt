@@ -60,6 +60,12 @@ class GridViewModel : ViewModel() {
 
     /** Commits what has been written since the last sync, then pulls and pushes. */
     fun syncWithRemote() {
+        // Before the coroutine, not inside it: this is the one sync somebody is
+        // watching, and the button has to have changed by the time the finger
+        // is lifted. Everything the sync does before it reaches the network is
+        // otherwise a button that looks like it was not pressed.
+        storageManager.announceSyncStart()
+
         appScope.launch {
             storageManager.syncWithRemote()
         }

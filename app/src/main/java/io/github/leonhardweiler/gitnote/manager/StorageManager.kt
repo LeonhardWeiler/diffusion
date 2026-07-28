@@ -120,6 +120,23 @@ class StorageManager {
     }
 
     /**
+     * Says that a sync is under way, without waiting for anything.
+     *
+     * For the one caller that is a finger on a button: everything before the
+     * first pull — the editor's last write, the lock, the commit — takes long
+     * enough on a large repository to look like the tap did nothing. Not
+     * suspending on purpose, so the tap handler itself can set it and the
+     * button has changed by the time the finger is lifted.
+     *
+     * The syncs that run on their own do not call this: they are not being
+     * watched, and a cloud pulsing for eight seconds because there is no
+     * network is worse than one that says nothing.
+     */
+    fun announceSyncStart() {
+        _syncState.value = SyncState.Starting
+    }
+
+    /**
      * A note write in the app's scope, which [syncWithRemote] lets finish before
      * it commits. Every write of a note goes through here for that reason.
      */
@@ -140,6 +157,8 @@ class StorageManager {
         // freshly cloned notes arrived.
         if (!gitManager.isRepoInitialized) {
             Log.d(TAG, "syncWithRemote: no repository open")
+            // whoever announced a sync is owed the button back
+            _syncState.emit(SyncState.Idle)
             return@withLock success(Unit)
         }
 
@@ -465,6 +484,10 @@ class StorageManager {
 
         if (hasRemote && !isError) {
             _syncState.emit(SyncState.Ok)
+        } else if (_syncState.value is SyncState.Starting) {
+            // nothing reached the network and nothing went wrong — a repository
+            // without a remote, and a button that would otherwise pulse forever
+            _syncState.emit(SyncState.Idle)
         }
 
         return success(Unit)
