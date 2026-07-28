@@ -27,10 +27,7 @@ import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material3.DrawerState
-import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -42,7 +39,6 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults.rememberTooltipPositionProvider
-import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
@@ -91,7 +87,6 @@ fun TopBar(
     padding: PaddingValues,
     offset: Float,
     selectedNotesNumber: Int,
-    drawerState: DrawerState,
     onSettingsClick: () -> Unit,
     searchFocusRequester: FocusRequester,
     onReloadDatabase: () -> Unit,
@@ -114,7 +109,6 @@ fun TopBar(
             SearchBar(
                 padding = padding,
                 offset = offset,
-                drawerState = drawerState,
                 onSettingsClick = onSettingsClick,
                 searchFocusRequester = searchFocusRequester,
                 onReloadDatabase = onReloadDatabase,
@@ -142,7 +136,6 @@ fun TopBar(
 private fun SearchBar(
     padding: PaddingValues,
     offset: Float,
-    drawerState: DrawerState,
     onSettingsClick: () -> Unit,
     searchFocusRequester: FocusRequester,
     onReloadDatabase: () -> Unit,
@@ -205,22 +198,6 @@ private fun SearchBar(
             Text(text = stringResource(R.string.search_in_notes))
         },
         singleLine = true,
-        leadingIcon = {
-            val scope = rememberCoroutineScope()
-
-            IconButton(
-                onClick = {
-                    scope.launch {
-                        drawerState.open()
-                    }
-                }
-            ) {
-                SimpleIcon(
-                    imageVector = Icons.Rounded.Menu,
-                    tint = MaterialTheme.colorScheme.onSurface
-                )
-            }
-        },
         trailingIcon = {
             Row(
                 verticalAlignment = Alignment.CenterVertically
@@ -474,7 +451,6 @@ private fun TopBarPreview() {
     TopBar(
         padding = PaddingValues(),
         offset = 0f,
-        drawerState = rememberDrawerState(DrawerValue.Closed),
         onSettingsClick = {},
         searchFocusRequester = remember { FocusRequester() },
         onReloadDatabase = { },

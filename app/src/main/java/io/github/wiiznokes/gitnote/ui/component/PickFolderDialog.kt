@@ -13,6 +13,18 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Folder
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.icons.rounded.CreateNewFolder
+import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Text
@@ -39,7 +51,6 @@ import io.github.wiiznokes.gitnote.data.room.NoteFolder
 import io.github.wiiznokes.gitnote.data.room.RepoDatabase
 import io.github.wiiznokes.gitnote.helper.NameValidation
 import io.github.wiiznokes.gitnote.manager.StorageManager
-import io.github.wiiznokes.gitnote.ui.screen.app.RowNFoldersNavigation
 import io.github.wiiznokes.gitnote.ui.theme.IconDefaultSize
 import io.github.wiiznokes.gitnote.ui.theme.LocalSpaces
 import io.github.wiiznokes.gitnote.utils.getParentPath
@@ -270,5 +281,98 @@ private fun PickFolderDialogPreview() {
             true
         },
         onSelectedFolder = {},
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RowNFoldersNavigation(
+    currentPath: String,
+    openFolder: (String) -> Unit,
+    createNoteFolder: (relativeParentPath: String, name: String) -> Boolean,
+) {
+    val containers = if (currentPath.isEmpty()) emptyList() else currentPath.split('/')
+
+    TopAppBar(
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            navigationIconContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            actionIconContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            titleContentColor = MaterialTheme.colorScheme.onSecondaryContainer
+        ),
+        navigationIcon = {
+            IconButton(
+                onClick = {
+                    openFolder("")
+                }
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Home,
+                    contentDescription = null,
+                )
+            }
+        },
+        title = {
+            LazyRow(
+                modifier = Modifier
+            ) {
+
+                itemsIndexed(containers) { index, item ->
+
+                    if (index != 0) Text(
+                        text = "/",
+                        maxLines = 1,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.tertiary,
+                    )
+
+                    Text(
+                        modifier = Modifier
+                            .clickable {
+                                val containersPart = containers.slice(0..index).iterator()
+                                var path = ""
+
+                                for (folder in containersPart) {
+                                    path += if (containersPart.hasNext()) {
+                                        "$folder/"
+                                    } else {
+                                        folder
+                                    }
+                                }
+                                openFolder(path)
+                            },
+                        text = item,
+                        maxLines = 1,
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            textDecoration = TextDecoration.Underline
+                        )
+                    )
+                }
+            }
+        },
+        actions = {
+            val showCreateNewFolder = rememberSaveable {
+                mutableStateOf(false)
+            }
+
+            IconButton(onClick = {
+                showCreateNewFolder.value = true
+            }) {
+                SimpleIcon(
+                    imageVector = Icons.Rounded.CreateNewFolder
+                )
+            }
+
+            GetStringDialog(
+                expanded = showCreateNewFolder,
+                label = stringResource(R.string.new_folder_label),
+                actionText = stringResource(R.string.create_new_folder),
+                unExpandedOnValidation = false
+            ) {
+                if (createNoteFolder(currentPath, it)) {
+                    showCreateNewFolder.value = false
+                }
+            }
+        }
     )
 }

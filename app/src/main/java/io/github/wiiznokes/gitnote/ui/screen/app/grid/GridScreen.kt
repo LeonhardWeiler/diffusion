@@ -15,12 +15,8 @@ import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
-import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalDrawerSheet
-import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableFloatState
@@ -50,8 +46,8 @@ import io.github.wiiznokes.gitnote.ui.component.CustomDropDown
 import io.github.wiiznokes.gitnote.ui.component.CustomDropDownModel
 import io.github.wiiznokes.gitnote.ui.model.EditType
 import io.github.wiiznokes.gitnote.ui.model.GridNote
-import io.github.wiiznokes.gitnote.ui.screen.app.DrawerScreen
 import io.github.wiiznokes.gitnote.ui.viewmodel.GridViewModel
+import io.github.wiiznokes.gitnote.utils.getParentPath
 
 
 private const val TAG = "GridScreen"
@@ -70,83 +66,70 @@ fun GridScreen(
 
     val vm: GridViewModel = viewModel()
 
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val selectedNotes by vm.selectedNotes.collectAsState()
+    val currentFolderPath by vm.currentNoteFolderRelativePath.collectAsState()
 
-    ModalNavigationDrawer(drawerState = drawerState, drawerContent = {
-        ModalDrawerSheet {
-            DrawerScreen(
-                drawerState = drawerState,
-                currentNoteFolderRelativePath = vm.currentNoteFolderRelativePath.collectAsState().value,
-                drawerFolders = vm.folders.collectAsState().value,
-                openFolder = vm::openFolder,
-                deleteFolder = vm::deleteFolder,
-                createNoteFolder = vm::createNoteFolder,
-            )
+    if (selectedNotes.isNotEmpty()) {
+        BackHandler {
+            vm.unselectAllNotes()
         }
-    }) {
+    } else if (currentFolderPath.isNotEmpty()) {
+        BackHandler {
+            vm.openFolder(getParentPath(currentFolderPath))
+        }
+    }
 
-        val selectedNotes by vm.selectedNotes.collectAsState()
+    val searchFocusRequester = remember { FocusRequester() }
 
-        if (selectedNotes.isNotEmpty()) {
-            BackHandler {
-                vm.unselectAllNotes()
+    val offset = remember { mutableFloatStateOf(0f) }
+
+    Scaffold(
+        contentWindowInsets = WindowInsets.safeContent,
+        containerColor = MaterialTheme.colorScheme.background,
+        floatingActionButton = {
+
+            if (selectedNotes.isEmpty()) {
+                FloatingActionButtons(
+                    vm = vm,
+                    offset = offset.floatValue,
+                    onEditClick = onEditClick,
+                )
             }
-        }
 
-        val searchFocusRequester = remember { FocusRequester() }
+        }) { padding ->
 
-        val offset = remember { mutableFloatStateOf(0f) }
-
-        Scaffold(
-            contentWindowInsets = WindowInsets.safeContent,
-            containerColor = MaterialTheme.colorScheme.background,
-            floatingActionButton = {
-
-                if (selectedNotes.isEmpty()) {
-                    FloatingActionButtons(
-                        vm = vm,
-                        offset = offset.floatValue,
-                        onEditClick = onEditClick,
-                    )
-                }
-
-            }) { padding ->
-
-            val nestedScrollConnection = rememberNestedScrollConnection(
-                offset = offset,
-            )
+        val nestedScrollConnection = rememberNestedScrollConnection(
+            offset = offset,
+        )
 
 
-            GridView(
-                vm = vm,
-                onEditClick = onEditClick,
-                selectedNotes = selectedNotes,
-                nestedScrollConnection = nestedScrollConnection,
-                padding = padding,
-            )
+        GridView(
+            vm = vm,
+            onEditClick = onEditClick,
+            selectedNotes = selectedNotes,
+            nestedScrollConnection = nestedScrollConnection,
+            padding = padding,
+        )
 
-            TopBar(
-                offset = offset.floatValue,
-                selectedNotesNumber = selectedNotes.size,
-                drawerState = drawerState,
-                onSettingsClick = onSettingsClick,
-                searchFocusRequester = searchFocusRequester,
-                padding = padding,
-                onReloadDatabase = {
-                    vm.reloadDatabase()
-                },
-                query = vm.query.collectAsState().value,
-                clearQuery = vm::clearQuery,
-                search = vm::search,
-                syncState = vm.syncState.collectAsState().value,
-                consumeOkSyncState = vm::consumeOkSyncState,
-                isReadOnlyModeActive = vm.prefs.isReadOnlyModeActive.getAsState().value,
-                updateSettings = vm::updateSettings,
-                unselectAllNotes = vm::unselectAllNotes,
-                deleteSelectedNotes = vm::deleteSelectedNotes,
-            )
-
-        }
+        TopBar(
+            offset = offset.floatValue,
+            selectedNotesNumber = selectedNotes.size,
+            onSettingsClick = onSettingsClick,
+            searchFocusRequester = searchFocusRequester,
+            padding = padding,
+            onReloadDatabase = {
+                vm.reloadDatabase()
+            },
+            query = vm.query.collectAsState().value,
+            clearQuery = vm::clearQuery,
+            search = vm::search,
+            syncState = vm.syncState.collectAsState().value,
+            consumeOkSyncState = vm::consumeOkSyncState,
+            isReadOnlyModeActive = vm.prefs.isReadOnlyModeActive.getAsState().value,
+            updateSettings = vm::updateSettings,
+            unselectAllNotes = vm::unselectAllNotes,
+            deleteSelectedNotes = vm::deleteSelectedNotes,
+        )
     }
 }
 
