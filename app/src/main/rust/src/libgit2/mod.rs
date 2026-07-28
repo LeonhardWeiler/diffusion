@@ -49,8 +49,70 @@ fn apply_ssh_workaround(clone: bool) {
     if let Err(e) = std::fs::create_dir_all(format!("{home}/.ssh")) {
         error!("{e}");
     }
-    if let Err(e) = std::fs::File::create(format!("{home}/.ssh/known_hosts")) {
+    if let Err(e) = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(format!("{home}/.ssh/known_hosts"))
+    {
         error!("{e}");
+    }
+}
+
+fn pinned_hosts_path() -> String {
+    format!("{}/.ssh/pinned_hosts", HOME_PATH.get().unwrap())
+}
+
+fn pinned_fingerprint(host: &str) -> Option<String> {
+    let content = fs::read_to_string(pinned_hosts_path()).ok()?;
+
+    content.lines().find_map(|line| {
+        let (pinned_host, fingerprint) = line.split_once(' ')?;
+        (pinned_host == host).then(|| fingerprint.to_string())
+    })
+}
+
+fn pin_fingerprint(host: &str, fingerprint: &str) -> std::io::Result<()> {
+    use std::io::Write;
+
+    let mut file = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(pinned_hosts_path())?;
+
+    writeln!(file, "{host} {fingerprint}")
+}
+
+/// SSH host keys are pinned on first use. The known_hosts file of libgit2 is
+/// never filled by the app, so its built in check would reject every host.
+/// TLS certificates are left to libgit2 and the system trust store.
+fn certificate_check(
+    cert: &git2::cert::Cert<'_>,
+    host: &str,
+) -> Result<CertificateCheckStatus, git2::Error> {
+    let Some(host_key) = cert.as_hostkey() else {
+        return Ok(CertificateCheckStatus::CertificatePassthrough);
+    };
+
+    let Some(hash) = host_key.hash_sha256() else {
+        return Err(git2::Error::from_str(
+            "the host did not present a sha256 host key fingerprint",
+        ));
+    };
+
+    let fingerprint: String = hash.iter().map(|byte| format!("{byte:02x}")).collect();
+
+    match pinned_fingerprint(host) {
+        Some(pinned) if pinned == fingerprint => Ok(CertificateCheckStatus::CertificateOk),
+        Some(_) => Err(git2::Error::from_str(&format!(
+            "the host key of {host} changed since the last connection"
+        ))),
+        None => {
+            info!("pinning host key of {host}");
+            if let Err(e) = pin_fingerprint(host, &fingerprint) {
+                error!("{e}");
+            }
+            Ok(CertificateCheckStatus::CertificateOk)
+        }
     }
 }
 
@@ -155,7 +217,7 @@ pub fn clone_repo(
     apply_ssh_workaround(true);
     let mut callbacks = RemoteCallbacks::new();
 
-    callbacks.certificate_check(|_cert, _| Ok(CertificateCheckStatus::CertificateOk));
+    callbacks.certificate_check(certificate_check);
 
     if let Some(cred) = cred {
         callbacks
@@ -269,7 +331,7 @@ pub fn push(cred: Option<Cred>) -> Result<(), Error> {
 
     let mut callbacks = RemoteCallbacks::new();
 
-    callbacks.certificate_check(|_cert, _| Ok(CertificateCheckStatus::CertificateOk));
+    callbacks.certificate_check(certificate_check);
 
     if let Some(cred) = cred {
         callbacks
@@ -298,7 +360,7 @@ pub fn pull(cred: Option<Cred>, author: &GitAuthor) -> Result<(), Error> {
 
     let mut callbacks = RemoteCallbacks::new();
 
-    callbacks.certificate_check(|_cert, _| Ok(CertificateCheckStatus::CertificateOk));
+    callbacks.certificate_check(certificate_check);
 
     if let Some(cred) = cred {
         callbacks
