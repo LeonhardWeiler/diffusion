@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -51,6 +52,13 @@ import java.text.DateFormat
 import java.util.Date
 
 private const val PARENT_FOLDER_KEY = ".."
+
+/**
+ * A note row is two lines high, a folder row only one. Without a common floor
+ * the list would look ragged wherever the two kinds of row meet, so every row
+ * reserves the height of the taller one.
+ */
+private val ListRowMinHeight = 56.dp
 
 @Composable
 internal fun NoteListView(
@@ -126,6 +134,7 @@ private fun ParentFolderRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .heightIn(min = ListRowMinHeight)
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -187,6 +196,7 @@ private fun FolderRow(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .heightIn(min = ListRowMinHeight)
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -283,6 +293,7 @@ private fun NoteListRow(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .heightIn(min = ListRowMinHeight)
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
