@@ -122,6 +122,7 @@ fun GridScreen(
             clearQuery = vm::clearQuery,
             search = vm::search,
             syncState = vm.syncState.collectAsState().value,
+            hasLocalChanges = vm.hasLocalChanges.collectAsState().value,
             onSyncClick = vm::syncWithRemote,
             isReadOnlyModeActive = vm.prefs.isReadOnlyModeActive.getAsState().value,
             updateSettings = vm::updateSettings,

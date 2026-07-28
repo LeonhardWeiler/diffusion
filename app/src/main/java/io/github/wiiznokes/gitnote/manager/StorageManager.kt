@@ -82,6 +82,24 @@ class StorageManager {
     private val _syncState: MutableStateFlow<SyncState> = MutableStateFlow(SyncState.Idle)
     val syncState: StateFlow<SyncState> = _syncState
 
+    private val _hasLocalChanges: MutableStateFlow<Boolean> = MutableStateFlow(false)
+
+    /**
+     * Whether there is anything the remote has not been told about. Writing a
+     * note does not commit it, so this is the only thing that says the notes on
+     * this device and the notes on the remote have drifted apart.
+     */
+    val hasLocalChanges: StateFlow<Boolean> = _hasLocalChanges
+
+    /**
+     * Asks git. Only worth it when something other than this app may have
+     * written to the repository — a write of our own is known to be a change
+     * without asking, and asking means walking the whole working tree.
+     */
+    private suspend fun refreshLocalChanges() {
+        _hasLocalChanges.value = gitManager.isChange().getOrDefault(false)
+    }
+
 
     /**
      * Commits everything that has been written since the last sync and exchanges
@@ -148,6 +166,11 @@ class StorageManager {
         force: Boolean = false,
         progressCb: ((Progress) -> Unit)? = null
     ): Result<Unit> = locker.withLock {
+        // The three places this is called from — start up, the reload and the
+        // end of a setup — are exactly the ones where the repository may have
+        // been written to by something that is not this app.
+        refreshLocalChanges()
+
         updateDatabaseWithoutLocker(force, progressCb)
     }
 
@@ -313,7 +336,12 @@ class StorageManager {
             return failure(err)
         }
 
-        return f().onFailure { err ->
+        return f().onSuccess {
+            // a note was written, renamed or deleted, and nothing commits by
+            // itself — so the repository is behind the working tree from here
+            // until the next sync
+            _hasLocalChanges.value = true
+        }.onFailure { err ->
             err.message?.let { Log.e(TAG, it) }
         }
     }
@@ -350,6 +378,10 @@ class StorageManager {
             if (!isError)
                 _syncState.emit(SyncState.Ok)
         }
+
+        // whatever the sync managed, the working tree is what it is: a commit
+        // that went through leaves nothing behind, one that did not leaves it
+        refreshLocalChanges()
 
         return success(Unit)
     }

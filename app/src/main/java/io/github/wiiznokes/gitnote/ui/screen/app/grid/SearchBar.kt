@@ -47,6 +47,7 @@ internal fun SearchBar(
     clearQuery: () -> Unit,
     search: (String) -> Unit,
     syncState: SyncState,
+    hasLocalChanges: Boolean,
     onSyncClick: () -> Unit,
     isReadOnlyModeActive: Boolean,
     updateSettings: (suspend AppPreferences.() -> Unit) -> Unit,
@@ -111,6 +112,7 @@ internal fun SearchBar(
                 if (isEmpty) {
                     SyncButton(
                         state = syncState,
+                        hasLocalChanges = hasLocalChanges,
                         onClick = onSyncClick,
                     )
                 }

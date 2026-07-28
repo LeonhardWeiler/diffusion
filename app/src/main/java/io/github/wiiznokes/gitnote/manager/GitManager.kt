@@ -196,6 +196,22 @@ class GitManager {
 
     }
 
+    /**
+     * Whether the working tree holds anything the repository has not been told
+     * about — a note written, renamed or deleted since the last sync.
+     */
+    suspend fun isChange(): Result<Boolean> = safelyAccessLibGit2 {
+        if (!isRepoInitialized) throw GitException(GitExceptionType.RepoNotInit)
+
+        val res = isChangeLib()
+        if (res < 0) {
+            throw GitException(
+                uiHelper.getString(R.string.error_commit_file_change, errorDetail(res))
+            )
+        }
+        res > 0
+    }
+
     suspend fun currentSignature(): GitAuthor? = safelyAccessLibGit2 {
         Log.d(TAG, "currentSignature")
         if (!isRepoInitialized) throw GitException(GitExceptionType.RepoNotInit)

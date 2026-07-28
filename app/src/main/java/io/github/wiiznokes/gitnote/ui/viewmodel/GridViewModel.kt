@@ -55,6 +55,9 @@ class GridViewModel : ViewModel() {
 
     val syncState = storageManager.syncState
 
+    /** Whether there is anything written here that the remote has not seen. */
+    val hasLocalChanges = storageManager.hasLocalChanges
+
     /** Commits what has been written since the last sync, then pulls and pushes. */
     fun syncWithRemote() {
         appScope.launch {
