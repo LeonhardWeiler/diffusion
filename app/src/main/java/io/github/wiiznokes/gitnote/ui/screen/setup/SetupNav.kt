@@ -48,7 +48,6 @@ fun SetupNav(
         when (setupDestination) {
 
             SetupDestination.Main -> NewRepoMethodScreen(
-                createLocalRepo = vm::createLocalRepo,
                 openRepo = vm::openRepo,
                 makeToast = vm.uiHelper::makeToast,
                 navigate = navController::navigate,

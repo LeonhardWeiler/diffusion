@@ -16,7 +16,6 @@ sealed interface SetupDestination : Parcelable {
 }
 
 enum class NewRepoMethod {
-    Create,
     Open,
     Clone,
 }

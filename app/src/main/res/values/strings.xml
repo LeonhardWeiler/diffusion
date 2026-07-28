@@ -59,14 +59,12 @@
     <string name="error_commit_file_change">can\'t know if there is files change: %1$s</string>
     <string name="error_clone_repo">can\'t clone repository: %1$s</string>
     <string name="error_open_repo">can\'t open repository: %1$s</string>
-    <string name="error_create_repo">Can\'t create repository: %1$s</string>
     <string name="error_write_file">Can\'t write file: %1$s</string>
     <string name="error_invalid_name">Name is invalid</string>
     <string name="error_invalid_extension">Extension is invalid</string>
     <string name="error_folder_already_exist">Folder already exist</string>
     <string name="about">About</string>
     <string name="app_page_choose_method">Choose method</string>
-    <string name="create_local_repo">Create local repository</string>
     <string name="open_repo">Open local repository</string>
     <string name="clone_remote_repo">Clone remote repository</string>
     <string name="use_app_storage">Use app storage</string>

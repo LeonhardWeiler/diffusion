@@ -29,10 +29,6 @@ const _INIT_LIB_METHOD: NativeMethod = native_method! {
     static extern fn init_lib(home_path: JString) -> jint,
 };
 
-const _CREATE_REPO_LIB_METHOD: NativeMethod = native_method! {
-    java_type = "io.github.wiiznokes.gitnote.manager.GitManagerKt",
-    static extern fn create_repo_lib(repo_path: JString) -> jint,
-};
 
 const _OPEN_REPO_LIB_METHOD: NativeMethod = native_method! {
     java_type = "io.github.wiiznokes.gitnote.manager.GitManagerKt",
@@ -146,17 +142,6 @@ fn init_lib<'local>(
     Ok(OK)
 }
 
-fn create_repo_lib<'local>(
-    env: &mut Env<'local>,
-    _class: JClass<'local>,
-    repo_path: JString<'local>,
-) -> Result<jint, jni::errors::Error> {
-    let repo_path = repo_path.try_to_string(env).unwrap();
-
-    unwrap_or_log!(libgit2::create_repo(&repo_path), "create_repo");
-
-    Ok(OK)
-}
 fn open_repo_lib<'local>(
     env: &mut Env<'local>,
     _class: JClass<'local>,

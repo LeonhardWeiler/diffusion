@@ -82,35 +82,6 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
         }
     }
 
-    fun createLocalRepo(storageConfig: StorageConfiguration, onSuccess: () -> Unit) {
-
-        appScope.launch {
-
-            storageConfig.prepareStorageRepoPath().onFailure {
-                uiHelper.makeToast(it.message)
-                return@launch
-            }
-
-            NodeFs.Folder.fromPath(storageConfig.repoPath()).isEmptyDirectory().onFailure {
-                uiHelper.makeToast(it.message)
-                return@launch
-            }
-
-
-            gitManager.createRepo(storageConfig.repoPath()).onFailure {
-                uiHelper.makeToast(it.message)
-                return@launch
-            }
-
-            prefs.applyGitAuthorDefaults(userInfo, gitManager.currentSignature())
-            prefs.initRepo(storageConfig)
-
-            storageManager.updateDatabase()
-
-            finishSetup(onSuccess)
-        }
-
-    }
 
     fun openRepo(storageConfig: StorageConfiguration, onSuccess: () -> Unit) {
 

@@ -70,13 +70,6 @@ pub fn init_lib(home_path: String) {
     };
 }
 
-pub fn create_repo(repo_path: &str) -> Result<(), Error> {
-    let repo = Repository::init(repo_path).map_err(|e| Error::git2(e, "Repository::init"))?;
-
-    REPO.lock().unwrap().replace(repo);
-
-    Ok(())
-}
 
 pub fn open_repo(repo_path: &str) -> Result<(), Error> {
     let repo = Repository::open(repo_path).map_err(|e| Error::git2(e, "Repository::open"))?;

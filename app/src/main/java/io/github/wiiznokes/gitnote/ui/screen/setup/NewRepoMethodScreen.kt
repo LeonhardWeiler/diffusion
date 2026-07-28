@@ -40,7 +40,6 @@ private const val TAG = "NewRepoMethodScreen"
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewRepoMethodScreen(
-    createLocalRepo: (StorageConfiguration, () -> Unit) -> Unit,
     openRepo: (StorageConfiguration, () -> Unit) -> Unit,
     makeToast: (String) -> Unit,
     navigate: (SetupDestination) -> Unit,
@@ -72,7 +71,6 @@ fun NewRepoMethodScreen(
 
             val storageConfig = StorageConfiguration.Device(path)
             when (newRepoMethod.value!!) {
-                NewRepoMethod.Create -> createLocalRepo(storageConfig, onSetupSuccess)
                 NewRepoMethod.Open -> openRepo(storageConfig, onSetupSuccess)
                 NewRepoMethod.Clone -> navigate(SetupDestination.Remote(storageConfig))
             }
@@ -99,18 +97,6 @@ fun NewRepoMethodScreen(
         verticalArrangement = Arrangement.spacedBy(80.dp, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-
-        Button(
-            onClick = {
-                storageChooserExpanded.value = true
-                newRepoMethod.value = NewRepoMethod.Create
-            }
-        ) {
-            Text(
-                text = stringResource(R.string.create_local_repo)
-            )
-        }
-
 
         Button(
             onClick = {
@@ -166,7 +152,6 @@ fun NewRepoMethodScreen(
 
                     val storageConfig = StorageConfiguration.App
                     when (newRepoMethod.value!!) {
-                        NewRepoMethod.Create -> createLocalRepo(storageConfig, onSetupSuccess)
                         NewRepoMethod.Open -> openRepo(storageConfig, onSetupSuccess)
                         NewRepoMethod.Clone -> navigate(SetupDestination.Remote(storageConfig))
                     }
@@ -213,7 +198,6 @@ fun NewRepoMethodScreen(
 private fun NewRepoMethodScreenPreview() {
 
     NewRepoMethodScreen(
-        createLocalRepo = { _, _ -> },
         openRepo = { _, _ -> },
         makeToast = {},
         navigate = {},

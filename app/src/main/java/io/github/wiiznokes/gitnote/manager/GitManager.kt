@@ -86,17 +86,6 @@ class GitManager {
     private fun errorDetail(res: Int): String = lastErrorMessageLib() ?: res.toString()
 
 
-    suspend fun createRepo(repoPath: String): Result<Unit> = safelyAccessLibGit2 {
-        Log.d(TAG, "create repo: $repoPath")
-
-        if (isRepoInitialized) throw GitException(GitExceptionType.RepoAlreadyInit)
-
-        val res = createRepoLib(repoPath)
-        if (res < 0) {
-            throw GitException(uiHelper.getString(R.string.error_create_repo, errorDetail(res)))
-        }
-        isRepoInitialized = true
-    }
 
 
     suspend fun openRepo(repoPath: String): Result<Unit> = safelyAccessLibGit2 {
@@ -246,7 +235,6 @@ private external fun initLib(
     homePath: String = MyApp.appModule.context.filesDir.toPath().toString()
 ): Int
 
-private external fun createRepoLib(repoPath: String): Int
 
 private external fun openRepoLib(repoPath: String): Int
 
