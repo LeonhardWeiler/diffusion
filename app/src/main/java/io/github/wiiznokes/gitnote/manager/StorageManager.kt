@@ -1,6 +1,7 @@
 package io.github.wiiznokes.gitnote.manager
 
 import android.util.Log
+import androidx.annotation.StringRes
 import androidx.room.withTransaction
 import io.github.wiiznokes.gitnote.MyApp
 import io.github.wiiznokes.gitnote.R
@@ -166,22 +167,13 @@ class StorageManager {
 
             if (renamed) {
                 val previousFile = previous.toFileFs(rootPath)
-                previousFile.delete().onFailure {
-                    val message =
-                        uiHelper.getString(R.string.error_delete_file, previousFile.path, it.message)
-                    Log.e(TAG, message)
-                    uiHelper.makeToast(message)
-                }
+                previousFile.delete().orComplain(R.string.error_delete_file, previousFile.path)
             }
 
             // write creates the file if it is not there and truncates it if it
             // is, so a shortened note does not keep its old tail
             val newFile = new.toFileFs(rootPath)
-            newFile.write(new.content).onFailure {
-                val message = uiHelper.getString(R.string.error_write_file, it.message)
-                Log.e(TAG, message)
-                uiHelper.makeToast(message)
-            }
+            newFile.write(new.content).orComplain(R.string.error_write_file)
 
             success(Unit)
         }
@@ -199,16 +191,8 @@ class StorageManager {
 
             val file = note.toFileFs(prefs.repoPath())
 
-            file.create().onFailure {
-                val message = uiHelper.getString(R.string.error_create_file, it.message)
-                Log.e(TAG, message)
-                uiHelper.makeToast(message)
-            }
-            file.write(note.content).onFailure {
-                val message = uiHelper.getString(R.string.error_write_file, it.message)
-                Log.e(TAG, message)
-                uiHelper.makeToast(message)
-            }
+            file.create().orComplain(R.string.error_create_file)
+            file.write(note.content).orComplain(R.string.error_write_file)
 
             success(Unit)
         }
@@ -226,11 +210,7 @@ class StorageManager {
             dao.removeNoteAt(relativePath)
 
             val file = NodeFs.File.fromPath(prefs.repoPath(), relativePath)
-            file.delete().onFailure {
-                val message = uiHelper.getString(R.string.error_delete_file, file.path, it.message)
-                Log.e(TAG, message)
-                uiHelper.makeToast(message)
-            }
+            file.delete().orComplain(R.string.error_delete_file, file.path)
             success(Unit)
         }
     }
@@ -251,12 +231,7 @@ class StorageManager {
                 Log.d(TAG, "deleting $relativePath")
                 val file = NodeFs.File.fromPath(repoPath, relativePath)
 
-                file.delete().onFailure {
-                    val message =
-                        uiHelper.getString(R.string.error_delete_file, file.path, it.message)
-                    Log.e(TAG, message)
-                    uiHelper.makeToast(message)
-                }
+                file.delete().orComplain(R.string.error_delete_file, file.path)
             }
             success(Unit)
         }
@@ -269,11 +244,7 @@ class StorageManager {
             dao.insertNoteFolder(noteFolder)
 
             val folder = noteFolder.toFolderFs(prefs.repoPath())
-            folder.create().onFailure {
-                val message = uiHelper.getString(R.string.error_create_folder, it.message)
-                Log.e(TAG, message)
-                uiHelper.makeToast(message)
-            }
+            folder.create().orComplain(R.string.error_create_folder)
 
             // Git has no concept of an empty directory, so without a file in it the
             // folder would produce no commit content and never reach another device.
@@ -292,11 +263,7 @@ class StorageManager {
             dao.deleteNoteFolder(noteFolder)
 
             val folder = noteFolder.toFolderFs(prefs.repoPath())
-            folder.delete().onFailure {
-                val msg = uiHelper.getString(R.string.error_delete_folder, it.message)
-                Log.e(TAG, msg)
-                uiHelper.makeToast(msg)
-            }
+            folder.delete().orComplain(R.string.error_delete_folder)
 
             success(Unit)
         }
@@ -308,6 +275,18 @@ class StorageManager {
         dao.clearDatabase()
     }
 
+
+    /**
+     * Says out loud that a step of a best effort change did not work. The reason
+     * is always the last thing the message mentions, so [args] carries whatever
+     * comes before it.
+     */
+    private fun Result<*>.orComplain(@StringRes text: Int, vararg args: Any?): Result<*> =
+        onFailure { cause ->
+            val message = uiHelper.getString(text, *args, cause.message)
+            Log.e(TAG, message)
+            uiHelper.makeToast(message)
+        }
 
     /**
      * Applies a change to the files and to the database. Nothing is committed
