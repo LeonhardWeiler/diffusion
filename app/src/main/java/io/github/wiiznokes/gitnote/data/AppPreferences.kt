@@ -3,6 +3,7 @@ package io.github.wiiznokes.gitnote.data
 import android.content.Context
 import io.github.wiiznokes.gitnote.MyApp
 import io.github.wiiznokes.gitnote.manager.PreferencesManager
+import io.github.wiiznokes.gitnote.manager.StringPreference
 import io.github.wiiznokes.gitnote.provider.ProviderType
 import io.github.wiiznokes.gitnote.provider.UserInfo
 import io.github.wiiznokes.gitnote.ui.model.Cred
@@ -56,17 +57,26 @@ class AppPreferences(
     }
 
     suspend fun applyGitAuthorDefaults(userInfo: UserInfo?, author: GitAuthor?) {
-        if (gitAuthorName.get().isEmpty()) {
-            (userInfo?.username ?: author?.name)?.let {
-                gitAuthorName.update(it)
-            }
-        }
-        if (gitAuthorEmail.get().isEmpty()) {
-            (userInfo?.email ?: author?.email)?.let {
-                gitAuthorEmail.update(it)
-            }
-        }
+        gitAuthorName.fillIn(userInfo?.username, author?.name)
+        gitAuthorEmail.fillIn(userInfo?.email, author?.email)
     }
+
+    /**
+     * Takes the first candidate that says something, unless the preference
+     * already does. What the user typed is never overwritten.
+     *
+     * "null" is not something: an account whose email is private used to arrive
+     * as those four letters and be written into commits as an address. Refusing
+     * them here is also the only way one that is already stored can be replaced
+     * by an address that works.
+     */
+    private suspend fun StringPreference.fillIn(vararg candidates: String?) {
+        if (get().isUsableAuthorField()) return
+
+        candidates.firstOrNull { it.isUsableAuthorField() }?.let { update(it) }
+    }
+
+    private fun String?.isUsableAuthorField() = !isNullOrBlank() && this != "null"
 
     val userPassUsername = stringPreference("userPassUsername", "")
     val userPassPassword = stringPreference("userPassPassword", "")

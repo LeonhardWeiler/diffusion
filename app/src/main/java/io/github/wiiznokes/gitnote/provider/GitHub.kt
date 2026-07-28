@@ -8,6 +8,16 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
 
+/**
+ * A field of an answer, or null when GitHub left it out or set it to JSON null.
+ *
+ * optString does not do this: it turns a JSON null into the four letters
+ * "null", which is a perfectly good String and was written into commits as the
+ * author's address.
+ */
+private fun JSONObject.stringOrNull(name: String): String? =
+    if (isNull(name)) null else optString(name).ifEmpty { null }
+
 
 class GithubProvider(
 
@@ -132,12 +142,21 @@ class GithubProvider(
 
         val response = connection.inputStream.bufferedReader().use { it.readText() }
         val json = JSONObject(response)
+
+        val login = json.getString("login")
+
         return UserInfo(
-            username = json.getString("login"),
-            name = json.optString("name", ""),
-            email = json.optString("email", ""),
+            username = login,
+            name = json.stringOrNull("name") ?: login,
+            // An account that keeps its address to itself answers with no email
+            // at all. GitHub hands every account a stand-in for exactly that
+            // case, and it is what makes a commit belong to the account.
+            email = json.stringOrNull("email") ?: noReplyEmail(json.getInt("id"), login),
         )
     }
+
+    private fun noReplyEmail(userId: Int, login: String) =
+        "$userId+$login@users.noreply.github.com"
 
     override fun addDeployKeyToRepo(
         token: String,
