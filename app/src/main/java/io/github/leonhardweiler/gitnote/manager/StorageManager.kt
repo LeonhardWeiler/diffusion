@@ -427,14 +427,20 @@ class StorageManager {
                 isError = true
                 failSync(err.message)
             }
-
-            if (!isError)
-                _syncState.emit(SyncState.Ok)
         }
 
-        // whatever the sync managed, the working tree is what it is: a commit
-        // that went through leaves nothing behind, one that did not leaves it
+        // Whatever the sync managed, the working tree is what it is: a commit
+        // that went through leaves nothing behind, one that did not leaves it.
+        //
+        // Before the sync is called done, not after: asking git means walking
+        // the whole working tree, and the dot is only hidden while the button
+        // is busy — so answering afterwards left the dot standing under a
+        // button that had already said the notes were sent.
         refreshLocalChanges()
+
+        if (hasRemote && !isError) {
+            _syncState.emit(SyncState.Ok)
+        }
 
         return success(Unit)
     }
