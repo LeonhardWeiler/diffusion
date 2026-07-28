@@ -17,8 +17,6 @@ import io.github.wiiznokes.gitnote.data.room.RepoDatabase
 import io.github.wiiznokes.gitnote.helper.NameValidation
 import io.github.wiiznokes.gitnote.manager.StorageManager
 import io.github.wiiznokes.gitnote.ui.model.FileExtension
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -37,6 +35,7 @@ class GridViewModel : ViewModel() {
 
 
     private val storageManager: StorageManager = MyApp.appModule.storageManager
+    private val appScope = MyApp.appModule.appScope
 
     val prefs: AppPreferences = MyApp.appModule.appPreferences
     private val db: RepoDatabase = MyApp.appModule.repoDatabase
@@ -88,7 +87,7 @@ class GridViewModel : ViewModel() {
     }
 
     fun refresh() {
-        CoroutineScope(Dispatchers.IO).launch {
+        appScope.launch {
             _isRefreshing.emit(true)
             storageManager.updateDatabaseAndRepo()
             refreshSelectedNotes()
@@ -136,7 +135,7 @@ class GridViewModel : ViewModel() {
             return false
         }
 
-        CoroutineScope(Dispatchers.IO).launch {
+        appScope.launch {
             storageManager.createNoteFolder(noteFolder)
         }
 
@@ -162,7 +161,7 @@ class GridViewModel : ViewModel() {
     }
 
     fun deleteSelectedNotes() {
-        CoroutineScope(Dispatchers.IO).launch {
+        appScope.launch {
             val currentSelectedNotes = selectedNotes.value
             unselectAllNotes()
             storageManager.deleteNotes(currentSelectedNotes)
@@ -170,13 +169,13 @@ class GridViewModel : ViewModel() {
     }
 
     fun deleteNote(note: Note) {
-        CoroutineScope(Dispatchers.IO).launch {
+        appScope.launch {
             storageManager.deleteNote(note)
         }
     }
 
     fun deleteFolder(noteFolder: NoteFolder) {
-        CoroutineScope(Dispatchers.IO).launch {
+        appScope.launch {
             storageManager.deleteNoteFolder(noteFolder)
         }
     }
@@ -232,7 +231,7 @@ class GridViewModel : ViewModel() {
             )
         }
     }.stateIn(
-        CoroutineScope(Dispatchers.IO), SharingStarted.WhileSubscribed(5000), PagingData.empty()
+        viewModelScope, SharingStarted.WhileSubscribed(5000), PagingData.empty()
     )
 
     // todo: use pager
@@ -246,11 +245,11 @@ class GridViewModel : ViewModel() {
         val (currentNoteFolderRelativePath, sortOrder) = pair
         dao.folders(currentNoteFolderRelativePath, sortOrder)
     }.stateIn(
-        CoroutineScope(Dispatchers.IO), SharingStarted.WhileSubscribed(5000), emptyList()
+        viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
     )
 
     fun reloadDatabase() {
-        CoroutineScope(Dispatchers.IO).launch {
+        appScope.launch {
             val res = storageManager.updateDatabase(force = true)
             res.onFailure {
                 uiHelper.makeToast("$it")

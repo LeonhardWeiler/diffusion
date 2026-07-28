@@ -1,6 +1,9 @@
 package io.github.wiiznokes.gitnote
 
 import android.content.Context
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import io.github.wiiznokes.gitnote.data.AppPreferences
 import io.github.wiiznokes.gitnote.data.room.RepoDatabase
 import io.github.wiiznokes.gitnote.helper.NoteSaver
@@ -10,6 +13,7 @@ import io.github.wiiznokes.gitnote.manager.StorageManager
 
 
 interface AppModule {
+    val appScope: CoroutineScope
     val repoDatabase: RepoDatabase
     val uiHelper: UiHelper
     val storageManager: StorageManager
@@ -40,6 +44,9 @@ class AppModuleImpl(
     override val appPreferences: AppPreferences by lazy {
         AppPreferences(context)
     }
+    /** Storage and git writes must not be cancelled when a screen goes away. */
+    override val appScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     override val noteSaver: NoteSaver by lazy {
         NoteSaver(context.filesDir)
     }

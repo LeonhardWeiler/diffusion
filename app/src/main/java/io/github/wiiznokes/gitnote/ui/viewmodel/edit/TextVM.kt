@@ -22,8 +22,6 @@ import io.github.wiiznokes.gitnote.ui.model.EditType
 import io.github.wiiznokes.gitnote.ui.model.FileExtension
 import io.github.wiiznokes.gitnote.ui.viewmodel.viewModelFactory
 import io.github.wiiznokes.gitnote.utils.endsWith
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -290,6 +288,7 @@ open class TextVM() : ViewModel() {
     private val storageManager: StorageManager = MyApp.appModule.storageManager
     private val uiHelper: UiHelper = MyApp.appModule.uiHelper
     private val noteSaver: NoteSaver = MyApp.appModule.noteSaver
+    private val appScope = MyApp.appModule.appScope
     val prefs = MyApp.appModule.appPreferences
 
     fun save(onSuccess: () -> Unit = {}) {
@@ -372,7 +371,7 @@ open class TextVM() : ViewModel() {
             }
         }
 
-        CoroutineScope(Dispatchers.IO).launch {
+        appScope.launch {
 
             storageManager.updateNote(
                 new = newNote,
@@ -422,7 +421,7 @@ open class TextVM() : ViewModel() {
             return failure(EditException(EditExceptionType.NoteAlreadyExist))
         }
 
-        CoroutineScope(Dispatchers.IO).launch {
+        appScope.launch {
             storageManager.createNote(note).onFailure {
                 uiHelper.makeToast(it.message)
                 return@launch
