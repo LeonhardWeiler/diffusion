@@ -37,7 +37,8 @@ the only thing that talks to the remote — there is no pull to refresh.
 
 Opening a repository that is already on the device picks up its remote and its
 author, so it is set up with what it already knows and only asks for the
-credentials it cannot read.
+credentials it cannot read. A repository without a remote is asked about rather
+than left as it is, so notes written into it can still be synced later.
 
 <p  style="text-align: center;">
   <img src="https://media.githubusercontent.com/media/wiiznokes/gitnote/master/assets/edit.png" width="32%"  alt="edit screen"/>
@@ -53,7 +54,7 @@ _Supported Architecture: `arm64-v8a`, `x86_64`_
 
 # Current limitation
 
-- A repository has to live on the shared internal storage. A memory card or a usb stick has no file path git can be pointed at.
+- A repository has to live on the shared internal storage. A memory card or a usb stick has no file path git can be pointed at, and the app's own private directory is not offered because nothing else could reach the repository there.
 - Android does not differentiate case for file name, so if you have a folder named `A` and another folder named `a`, `a` will not be displayed.
 - Conflicts cannot be resolved in the app. When the same note was changed here and on the remote, the sync stops and reports it; your local version is kept untouched, and you need a git client to resolve it.
 
