@@ -11,7 +11,10 @@ use git2::{
     Repository, Signature, StatusOptions, TreeWalkMode, TreeWalkResult,
 };
 
-use crate::{Cred, Error, GitAuthor, ProgressCB, mime_types::is_extension_supported};
+use crate::callback::ProgressCB;
+use crate::cred::{Cred, GitAuthor};
+use crate::error::Error;
+use crate::mime_types::is_extension_supported;
 
 mod merge;
 

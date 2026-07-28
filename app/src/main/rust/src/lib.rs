@@ -1,13 +1,10 @@
-use std::fmt::{Debug, Display};
-use std::sync::Mutex;
-
-use anyhow::anyhow;
-use git2::Signature;
 use jni::objects::{JClass, JObject, JString, JValue};
 use jni::sys::{jboolean, jint};
 use jni::{Env, NativeMethod, jni_sig, jni_str, native_method};
 
 use crate::callback::ProgressCB;
+use crate::cred::{Cred, GitAuthor};
+use crate::error::{LAST_ERROR, OK};
 use crate::key_gen::gen_keys;
 use crate::utils::install_panic_hook;
 
@@ -15,6 +12,10 @@ use crate::utils::install_panic_hook;
 extern crate log;
 #[macro_use]
 mod utils;
+
+mod callback;
+mod cred;
+mod error;
 mod key_gen;
 mod libgit2;
 mod mime_types;
@@ -22,82 +23,6 @@ mod url;
 
 #[cfg(test)]
 mod test;
-
-const OK: jint = 0;
-
-/// Returned when a pull cannot be merged automatically. Not a libgit2 error, so
-/// it needs a code of its own, far away from the raw codes libgit2 uses.
-/// Kotlin knows this value as GitManager.MERGE_CONFLICT.
-const MERGE_CONFLICT: jint = -1000;
-
-#[derive(Debug)]
-enum Error {
-    Git2 {
-        error: git2::Error,
-        msg: String,
-    },
-    /// The remote and the local side changed the same lines. The working tree
-    /// is left untouched, the caller has to resolve this outside of the app.
-    MergeConflict {
-        paths: Vec<String>,
-    },
-}
-
-impl From<git2::Error> for Error {
-    fn from(value: git2::Error) -> Self {
-        Self::git2(value, "")
-    }
-}
-
-impl Error {
-    fn git2(error: git2::Error, msg: &str) -> Self {
-        Self::Git2 {
-            error,
-            msg: msg.into(),
-        }
-    }
-
-    fn add_message(self, msg1: &str) -> Self {
-        match self {
-            Error::Git2 { error, msg } => Error::Git2 {
-                error,
-                msg: format!("{}: {}", msg1, msg),
-            },
-            Error::MergeConflict { paths } => Error::MergeConflict { paths },
-        }
-    }
-}
-
-/// The message of the last error that was turned into a return code. Kotlin only
-/// gets an integer back, so without this the text libgit2 produced would be
-/// dropped and the user would be shown a bare number.
-static LAST_ERROR: Mutex<Option<String>> = Mutex::new(None);
-
-impl From<Error> for jint {
-    fn from(value: Error) -> Self {
-        if let Ok(mut last_error) = LAST_ERROR.lock() {
-            *last_error = Some(value.to_string());
-        }
-
-        match value {
-            Error::Git2 { error, .. } => error.raw_code(),
-            Error::MergeConflict { .. } => MERGE_CONFLICT,
-        }
-    }
-}
-
-impl Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Error::Git2 { error, msg } => {
-                write!(f, "{msg}: {error}")
-            }
-            Error::MergeConflict { paths } => {
-                write!(f, "merge conflict in: {}", paths.join(", "))
-            }
-        }
-    }
-}
 
 const _INIT_LIB_METHOD: NativeMethod = native_method! {
     java_type = "io.github.wiiznokes.gitnote.manager.GitManagerKt",
@@ -244,161 +169,6 @@ fn open_repo_lib<'local>(
     Ok(OK)
 }
 
-pub enum Cred {
-    UserPassPlainText {
-        username: String,
-        password: String,
-    },
-    Ssh {
-        username: String,
-        public_key: String,
-        private_key: String,
-        passphrase: Option<String>,
-    },
-}
-
-pub struct GitAuthor {
-    pub name: String,
-    pub email: String,
-}
-
-impl<'a> From<Signature<'a>> for GitAuthor {
-    fn from(value: Signature<'a>) -> Self {
-        GitAuthor {
-            name: value.name().unwrap_or("").to_string(),
-            email: value.email().unwrap_or("").to_string(),
-        }
-    }
-}
-
-impl Debug for Cred {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::UserPassPlainText {
-                username,
-                password: _password,
-            } => f
-                .debug_struct("UserPassPlainText")
-                .field("username", username)
-                .finish(),
-            Self::Ssh {
-                username,
-                public_key,
-                private_key: _private_key,
-                passphrase: _passphrase,
-            } => f
-                .debug_struct("Ssh")
-                .field("username", username)
-                .field("public_key", public_key)
-                .finish(),
-        }
-    }
-}
-
-macro_rules! jstring_field {
-    ($env:expr, $obj:expr, $field:literal) => {{
-        let obj = $env
-            .get_field($obj, jni_str!($field), jni_sig!(JString))?
-            .l()?;
-
-        $env.as_cast::<JString>(&obj)?
-            .mutf8_chars($env)?
-            .to_string()
-    }};
-}
-
-macro_rules! jstring_field_nullable {
-    ($env:expr, $obj:expr, $field:literal) => {{
-        let obj = $env
-            .get_field($obj, jni_str!($field), jni_sig!(JString))?
-            .l()?;
-
-        if obj.is_null() {
-            None
-        } else {
-            Some(
-                $env.as_cast::<JString>(&obj)?
-                    .mutf8_chars($env)?
-                    .to_string(),
-            )
-        }
-    }};
-}
-
-impl Cred {
-    pub fn from_jni(env: &mut Env, cred_obj: &JObject) -> anyhow::Result<Option<Self>> {
-        if cred_obj.is_null() {
-            return Ok(None);
-        }
-
-        let class_name = {
-            let class = env.get_object_class(cred_obj)?;
-
-            let obj = env
-                .call_method(class, jni_str!("getName"), jni_sig!(() -> JString), &[])?
-                .l()?;
-
-            let jstring = env.as_cast::<JString>(&obj)?;
-
-            jstring.mutf8_chars(env)?.to_string()
-        };
-
-        match class_name.as_str() {
-            "io.github.wiiznokes.gitnote.ui.model.Cred$UserPassPlainText" => {
-                let username = jstring_field!(env, cred_obj, "username");
-                let password = jstring_field!(env, cred_obj, "username");
-
-                Ok(Some(Cred::UserPassPlainText { username, password }))
-            }
-            "io.github.wiiznokes.gitnote.ui.model.Cred$Ssh" => {
-                let username = jstring_field!(env, cred_obj, "username");
-                let public_key = jstring_field!(env, cred_obj, "publicKey");
-
-                let private_key = jstring_field!(env, cred_obj, "privateKey");
-                let passphrase = jstring_field_nullable!(env, cred_obj, "passphrase");
-
-                Ok(Some(Cred::Ssh {
-                    username,
-                    public_key,
-                    private_key,
-                    passphrase,
-                }))
-            }
-            other => Err(anyhow!("Unknown class name: {}", other)),
-        }
-    }
-}
-
-mod callback {
-    use jni::{Env, jni_sig, jni_str, objects::JObject};
-
-    pub struct ProgressCB<'ptr, 'local> {
-        env: &'ptr mut Env<'local>,
-        callback_class: JObject<'local>,
-    }
-
-    impl<'ptr, 'local> ProgressCB<'ptr, 'local> {
-        pub fn new(env: &'ptr mut Env<'local>, callback_class: JObject<'local>) -> Self {
-            Self {
-                env,
-                callback_class,
-            }
-        }
-        pub fn progress(&mut self, progress: i32) -> bool {
-            let res = self
-                .env
-                .call_method(
-                    &self.callback_class,
-                    jni_str!("progressCb"),
-                    jni_sig!((jint) -> jboolean),
-                    &[progress.into()],
-                )
-                .unwrap();
-
-            res.z().unwrap()
-        }
-    }
-}
 fn clone_repo_lib<'local>(
     env: &mut Env<'local>,
     _class: JClass<'local>,

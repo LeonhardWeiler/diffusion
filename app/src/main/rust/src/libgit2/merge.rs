@@ -1,6 +1,7 @@
 use git2::{Repository, Signature};
 
-use crate::{Error, GitAuthor};
+use crate::cred::GitAuthor;
+use crate::error::Error;
 
 fn fast_forward(
     repo: &Repository,
