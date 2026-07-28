@@ -30,15 +30,25 @@ class AppPreferences(
 
     private val repoPath = stringPreference("repoPath")
 
+    /**
+     * The path as it was last read. It changes when a repository is set up and
+     * at no other time, while the editor asks for it on every typing pause —
+     * from the main thread, where reading a preference means blocking on a
+     * coroutine, which is a stall the user feels as the editor being slow to
+     * open and slow to leave.
+     */
+    @Volatile
+    private var knownRepoPath: String? = null
+
     suspend fun repoPath(): String {
         if (!isInit.get()) {
             throw Exception("calling repoPath function with no repo initialized")
         }
 
-        return repoPath.get()
+        return knownRepoPath ?: repoPath.get().also { knownRepoPath = it }
     }
 
-    fun repoPathBlocking(): String = runBlocking { repoPath() }
+    fun repoPathBlocking(): String = knownRepoPath ?: runBlocking { repoPath() }
 
 
 
@@ -151,10 +161,12 @@ class AppPreferences(
         this.remoteUrl.update(remoteUrl)
 
         repoPath.update(storageConfig.path)
+        knownRepoPath = storageConfig.path
     }
 
     suspend fun closeRepo() {
         isInit.update(false)
+        knownRepoPath = null
     }
 
     val isReadOnlyModeActive = booleanPreference("isReadOnlyModeActive", false)

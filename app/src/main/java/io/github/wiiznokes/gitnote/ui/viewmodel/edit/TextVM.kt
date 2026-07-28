@@ -379,20 +379,33 @@ open class TextVM() : ViewModel() {
         // the draft is the net for what could not be written yet — an invalid
         // name, say. Once the note is on disk it would only restore itself.
         if (isPreviousNoteTheSame()) {
-            noteSaver.clear()
+            appScope.launch { noteSaver.clear() }
         } else {
             writeDraft()
         }
     }
 
+    /**
+     * Runs in the app's scope rather than this one: the last thing the editor
+     * does before it is cleared is write a draft, and a scope that dies with
+     * the editor would take that write with it.
+     */
     private fun writeDraft() {
-        noteSaver.save(
-            shouldSave = !isPreviousNoteTheSame(),
-            name = name.value.text,
-            content = content.value.text,
-            previousNote = previousNote,
-            editType = editType
-        )
+        val shouldSave = !isPreviousNoteTheSame()
+        val name = name.value.text
+        val content = content.value.text
+        val previousNote = previousNote
+        val editType = editType
+
+        appScope.launch {
+            noteSaver.save(
+                shouldSave = shouldSave,
+                name = name,
+                content = content,
+                previousNote = previousNote,
+                editType = editType
+            )
+        }
     }
 
     override fun onCleared() {

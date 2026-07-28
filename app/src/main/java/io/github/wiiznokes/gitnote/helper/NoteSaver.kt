@@ -3,6 +3,10 @@ package io.github.wiiznokes.gitnote.helper
 import android.util.Log
 import io.github.wiiznokes.gitnote.data.room.Note
 import io.github.wiiznokes.gitnote.ui.model.EditType
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
@@ -43,10 +47,17 @@ private data class StoredDraft(
 /**
  * The draft is written to a temporary file and renamed, so a draft on disk is
  * never partial, even if the process dies during a write.
+ *
+ * Writing and clearing are suspending and run on the io dispatcher: they happen
+ * on every typing pause and once more when the editor is left, and doing that
+ * on the main thread is a stall in the middle of typing. The lock keeps two
+ * writes from meeting over the one temporary file.
  */
 class NoteSaver(private val dir: File) {
 
-    fun save(
+    private val locker = Mutex()
+
+    suspend fun save(
         shouldSave: Boolean,
         name: String,
         content: String,
@@ -68,27 +79,33 @@ class NoteSaver(private val dir: File) {
             noteId = previousNote.id,
         )
 
-        try {
-            val tmp = file(DRAFT_TMP)
-            tmp.outputStream().use { out ->
-                ObjectOutputStream(out).use { it.writeObject(draft) }
+        onIo {
+            try {
+                val tmp = file(DRAFT_TMP)
+                tmp.outputStream().use { out ->
+                    ObjectOutputStream(out).use { it.writeObject(draft) }
+                }
+                if (!tmp.renameTo(file(DRAFT))) {
+                    tmp.delete()
+                    Log.e(TAG, "can't rename ${tmp.path}")
+                    return@onIo
+                }
+                Log.d(TAG, "draft saved")
+            } catch (e: Exception) {
+                Log.e(TAG, "can't save the draft", e)
             }
-            if (!tmp.renameTo(file(DRAFT))) {
-                tmp.delete()
-                Log.e(TAG, "can't rename ${tmp.path}")
-                return
-            }
-            Log.d(TAG, "draft saved")
-        } catch (e: Exception) {
-            Log.e(TAG, "can't save the draft", e)
         }
     }
 
-    fun clear() {
+    suspend fun clear() = onIo {
         file(DRAFT_TMP).delete()
         if (file(DRAFT).delete()) {
             Log.d(TAG, "draft cleared")
         }
+    }
+
+    private suspend fun <T> onIo(f: () -> T): T = locker.withLock {
+        withContext(Dispatchers.IO) { f() }
     }
 
     fun getSaveState(): SaveInfo? {

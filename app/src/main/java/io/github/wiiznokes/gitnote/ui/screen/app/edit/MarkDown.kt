@@ -77,7 +77,13 @@ fun MarkDownContent(
     // changes, and while it does the reader shows nothing at all. Coming back
     // to a note that was not edited therefore costs no parse at all, and typing
     // costs none until the reading mode is asked for again.
-    var readText by remember { mutableStateOf(textContent.text) }
+    //
+    // It starts empty when the note is opened to be written in, because then
+    // nobody has asked to read it: parsing the whole of a long note anyway is
+    // the wait between tapping a row and being able to type in it.
+    var readText by remember {
+        mutableStateOf(if (isReadOnlyModeActive) textContent.text else "")
+    }
 
     LaunchedEffect(isReadOnlyModeActive) {
         if (isReadOnlyModeActive) readText = textContent.text
