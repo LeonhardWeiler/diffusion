@@ -1,6 +1,5 @@
 package io.github.wiiznokes.gitnote
 
-import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -8,7 +7,6 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.olshevski.navigation.reimagined.AnimatedNavHost
 import dev.olshevski.navigation.reimagined.NavBackHandler
@@ -24,9 +22,6 @@ import io.github.wiiznokes.gitnote.ui.screen.setup.SetupNav
 import io.github.wiiznokes.gitnote.ui.theme.GitNoteTheme
 import io.github.wiiznokes.gitnote.ui.theme.Theme
 import io.github.wiiznokes.gitnote.ui.viewmodel.MainViewModel
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
@@ -36,8 +31,6 @@ class MainActivity : ComponentActivity() {
         private const val TAG = "MainActivity"
     }
 
-
-    val authFlow: MutableSharedFlow<String> = MutableSharedFlow(replay = 0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -74,7 +67,6 @@ class MainActivity : ComponentActivity() {
                         is Destination.Setup -> {
                             SetupNav(
                                 startDestination = destination.setupDestination,
-                                authFlow = authFlow,
                                 onSetupSuccess = {
                                     navController.popUpTo(
                                         inclusive = true
@@ -96,25 +88,6 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                 }
-            }
-        }
-    }
-
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        Log.d(TAG, "onNewIntent $intent")
-
-        val uri = intent.data ?: return
-        if (uri.scheme == "gitnote-identity" && uri.host == "register-callback") {
-            val code = uri.getQueryParameter("code")
-
-            if (code != null) {
-                Log.d(TAG, "received code from intent, sending it...")
-                lifecycleScope.launch {
-                    authFlow.emit(code)
-                }
-            } else {
-                Log.w(TAG, "code is null")
             }
         }
     }

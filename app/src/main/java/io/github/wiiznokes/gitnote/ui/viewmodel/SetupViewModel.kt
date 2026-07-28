@@ -1,9 +1,7 @@
 package io.github.wiiznokes.gitnote.ui.viewmodel
 
 
-import android.content.Intent
 import android.util.Log
-import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.wiiznokes.gitnote.MyApp
@@ -12,31 +10,21 @@ import io.github.wiiznokes.gitnote.data.AppPreferences
 import io.github.wiiznokes.gitnote.data.platform.NodeFs
 import io.github.wiiznokes.gitnote.helper.UiHelper
 import io.github.wiiznokes.gitnote.manager.Progress
-import io.github.wiiznokes.gitnote.manager.generateSshKeysLib
-import io.github.wiiznokes.gitnote.provider.GithubProvider
-import io.github.wiiznokes.gitnote.provider.Provider
-import io.github.wiiznokes.gitnote.provider.ProviderType
-import io.github.wiiznokes.gitnote.provider.RepoInfo
-import io.github.wiiznokes.gitnote.provider.UserInfo
 import io.github.wiiznokes.gitnote.ui.model.Cred
 import io.github.wiiznokes.gitnote.ui.model.StorageConfiguration
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.Result.Companion.failure
-import kotlin.Result.Companion.success
 
 private const val TAG = "SetupViewModel"
 
 /** What makes a folder a repository. */
 private const val GIT_DIR = ".git"
 
-class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewModelI {
+class SetupViewModel : ViewModel(), SetupViewModelI {
 
     val prefs: AppPreferences = MyApp.appModule.appPreferences
     private val gitManager = MyApp.appModule.gitManager
@@ -50,31 +38,12 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
     private val _initState: MutableStateFlow<InitState> = MutableStateFlow(InitState.Idle)
     val initState: StateFlow<InitState> = _initState.asStateFlow()
 
-    var provider: Provider? = null
-        private set
-
     /**
      * Set when a repository that was opened turns out to have a remote. The
      * credential screens are the same ones the clone uses, but there is nothing
      * left to clone — only the credentials for that remote are missing.
      */
     private var repoIsAlreadyOnDevice = false
-
-    var repos = listOf<RepoInfo>()
-        private set
-
-    var userInfo: UserInfo? = null
-        private set
-
-    init {
-
-        viewModelScope.launch {
-            authFlow.collect {
-                Log.d(TAG, "received $it")
-                onReceiveCode(it)
-            }
-        }
-    }
 
     private var shouldCancel = false
     fun cancelClone(): Boolean {
@@ -84,14 +53,6 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
         shouldCancel = true
         return true
     }
-
-    fun setStateToIdle() {
-        viewModelScope.launch {
-            delay(50)
-            _initState.emit(InitState.Idle)
-        }
-    }
-
 
     /**
      * @param onRemoteFound called with the url when the repository already has a
@@ -137,7 +98,7 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
             // asking for it again
             val remoteUrl = gitManager.remoteUrl().orEmpty()
 
-            prefs.applyGitAuthorDefaults(userInfo, gitManager.currentSignature())
+            prefs.applyGitAuthorDefaults(gitManager.currentSignature())
             prefs.initRepo(storageConfig, remoteUrl)
 
             // the repo has just been opened, so the database is built from
@@ -279,7 +240,7 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
 
         prefs.initRepo(storageConfig, remoteUrl)
         prefs.updateCred(cred)
-        prefs.applyGitAuthorDefaults(userInfo, gitManager.currentSignature())
+        prefs.applyGitAuthorDefaults(gitManager.currentSignature())
 
         storageManager.updateDatabase(
             progressCb = {
@@ -294,135 +255,5 @@ class SetupViewModel(val authFlow: SharedFlow<String>) : ViewModel(), SetupViewM
 
         finishSetup(onSuccess)
 
-    }
-
-
-    fun setProvider(provider: ProviderType?) {
-        this.provider = when (provider) {
-            ProviderType.GitHub -> GithubProvider()
-            null -> null
-        }
-    }
-
-    fun getLaunchOAuthScreenIntent(): Intent {
-        val authUrl = provider!!.getLaunchOAuthScreenUrl()
-        return Intent(Intent.ACTION_VIEW, authUrl.toUri())
-    }
-
-
-    /**
-     * The provider talks to the network with blocking calls, so none of them may
-     * run on the main thread: Android answers that with a
-     * NetworkOnMainThreadException whose message is null, which used to end up as
-     * an error nobody could see.
-     */
-    private suspend fun <T> onProvider(
-        what: String,
-        f: Provider.() -> T
-    ): Result<T> = withContext(Dispatchers.IO) {
-        try {
-            success(provider!!.f())
-        } catch (e: Exception) {
-            val message = e.message ?: e.toString()
-            Log.e(TAG, "$what: $message, $e")
-            _initState.emit(InitState.Error(message))
-            uiHelper.makeToast(message)
-            failure(e)
-        }
-    }
-
-    fun onReceiveCode(code: String) {
-
-        viewModelScope.launch {
-
-            _initState.emit(InitState.GettingAccessToken)
-            val token = onProvider("exchangeCodeForAccessToken") {
-                exchangeCodeForAccessToken(code)
-            }.getOrElse { return@launch }
-
-            prefs.appAuthToken.update(token)
-
-            fetchInfos(token = token)
-        }
-    }
-
-    fun fetchInfos(token: String) {
-        viewModelScope.launch {
-
-            _initState.emit(InitState.FetchingRepos)
-
-            repos = onProvider("fetchUserRepos") {
-                fetchUserRepos(token = token)
-            }.getOrElse { return@launch }
-
-            _initState.emit(InitState.GettingUserInfo)
-
-            userInfo = onProvider("getUserInfo") {
-                getUserInfo(token = token)
-            }.getOrElse { return@launch }
-
-            Log.d(TAG, "emit: Success")
-            _initState.emit(InitState.FetchingInfosSuccess)
-        }
-    }
-
-    override fun cloneRepoAutomatic(
-        repoName: String,
-        storageConfig: StorageConfiguration,
-        onSuccess: () -> Unit
-    ) {
-        runCloneJob {
-            cloneWithOwnDeployKey(repoName, storageConfig, onSuccess)
-        }
-    }
-
-    override fun createRepoAutomatic(
-        repoName: String,
-        storageConfig: StorageConfiguration,
-        onSuccess: () -> Unit
-    ) {
-        runCloneJob {
-            val token = prefs.appAuthToken.get()
-
-            _initState.emit(InitState.CreatingRemoteRepo)
-            onProvider("createNewRepo") {
-                createNewRepo(token = token, repoName = repoName)
-            }.getOrElse { return@runCloneJob }
-
-            cloneWithOwnDeployKey(repoName, storageConfig, onSuccess)
-        }
-    }
-
-    /**
-     * Gives the app a key of its own on the remote and clones over ssh with it,
-     * so that nothing the user has to type is kept on the device.
-     */
-    private suspend fun cloneWithOwnDeployKey(
-        repoName: String,
-        storageConfig: StorageConfiguration,
-        onSuccess: () -> Unit
-    ) {
-        val (publicKey, privateKey) = generateSshKeysLib()
-        val token = prefs.appAuthToken.get()
-
-        _initState.emit(InitState.AddingDeployKey)
-        onProvider("addDeployKeyToRepo") {
-            addDeployKeyToRepo(
-                token = token,
-                publicKey = publicKey,
-                fullRepoName = repoName
-            )
-        }.getOrElse { return }
-
-        cloneRepoInternal(
-            storageConfig = storageConfig,
-            remoteUrl = provider!!.sshCloneUrlFromRepoName(repoName),
-            cred = Cred.Ssh(
-                publicKey = publicKey,
-                privateKey = privateKey,
-                passphrase = null
-            ),
-            onSuccess = onSuccess
-        )
     }
 }

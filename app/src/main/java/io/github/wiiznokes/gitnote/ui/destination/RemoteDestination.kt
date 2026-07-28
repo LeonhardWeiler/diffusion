@@ -6,23 +6,8 @@ import kotlinx.parcelize.Parcelize
 sealed interface RemoteDestination : Parcelable {
 
     @Parcelize
-    data object SelectProvider : RemoteDestination
-
-
-    @Parcelize
-    data object SelectSetupAutomatically : RemoteDestination
-
-
-    @Parcelize
-    data object AuthorizeGitNote : RemoteDestination
-
-
-    @Parcelize
     data object EnterUrl : RemoteDestination
 
-
-    @Parcelize
-    data object PickRepo : RemoteDestination
 
     @Parcelize
     data class SelectGenerateNewSshKeys(

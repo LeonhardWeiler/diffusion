@@ -46,7 +46,7 @@ class MainViewModel : ViewModel() {
         gitManager.openRepo(storageConfig.repoPath()).onFailure {
             return false
         }
-        prefs.applyGitAuthorDefaults(null, gitManager.currentSignature())
+        prefs.applyGitAuthorDefaults(gitManager.currentSignature())
 
         // Opening the app is one of the two moments a sync does not have to be
         // asked for — what another device wrote is what one opens the app to

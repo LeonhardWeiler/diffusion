@@ -4,8 +4,6 @@ import android.content.Context
 import io.github.wiiznokes.gitnote.MyApp
 import io.github.wiiznokes.gitnote.manager.PreferencesManager
 import io.github.wiiznokes.gitnote.manager.StringPreference
-import io.github.wiiznokes.gitnote.provider.ProviderType
-import io.github.wiiznokes.gitnote.provider.UserInfo
 import io.github.wiiznokes.gitnote.ui.model.Cred
 import io.github.wiiznokes.gitnote.ui.model.CredType
 import io.github.wiiznokes.gitnote.ui.model.GitAuthor
@@ -66,9 +64,9 @@ class AppPreferences(
         )
     }
 
-    suspend fun applyGitAuthorDefaults(userInfo: UserInfo?, author: GitAuthor?) {
-        gitAuthorName.fillIn(userInfo?.username, author?.name)
-        gitAuthorEmail.fillIn(userInfo?.email, author?.email)
+    suspend fun applyGitAuthorDefaults(author: GitAuthor?) {
+        gitAuthorName.fillIn(author?.name)
+        gitAuthorEmail.fillIn(author?.email)
     }
 
     /**
@@ -95,8 +93,6 @@ class AppPreferences(
     val publicKey = stringPreference("publicKey", "")
     val privateKey = stringPreference("privateKey", "")
     val passphrase = stringPreference("passphrase", "")
-
-    val appAuthToken = stringPreference("appAuthToken", "")
 
     suspend fun cred(): Cred? {
         return when (credType.get()) {
@@ -136,8 +132,6 @@ class AppPreferences(
             null -> credType.update(CredType.None)
         }
     }
-
-    val provider = enumPreference("provider", ProviderType.GitHub)
 
     /**
      * Whether the app syncs by itself when it is opened and when it is left.

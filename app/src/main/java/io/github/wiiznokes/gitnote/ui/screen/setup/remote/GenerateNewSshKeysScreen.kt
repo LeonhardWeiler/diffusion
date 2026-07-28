@@ -19,13 +19,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import io.github.wiiznokes.gitnote.R
-import io.github.wiiznokes.gitnote.provider.GithubProvider
-import io.github.wiiznokes.gitnote.provider.Provider
 import io.github.wiiznokes.gitnote.ui.component.AppPage
 import io.github.wiiznokes.gitnote.helper.SshKeyValidation
 import io.github.wiiznokes.gitnote.ui.component.SetupButton
@@ -37,19 +34,12 @@ import io.github.wiiznokes.gitnote.ui.viewmodel.InitState
 import io.github.wiiznokes.gitnote.ui.viewmodel.SetupViewModelI
 import io.github.wiiznokes.gitnote.ui.viewmodel.SetupViewModelMock
 
-private const val TAG = "GenerateNewKeysWithProviderScreen"
-
-private fun extractUserRepo(url: String): String? {
-    val regex = Regex("""(?:git@|ssh://git@)[\w.-]+[:/](.+?)(?:\.git)?$""")
-    val match = regex.find(url)
-    return match?.groups?.get(1)?.value
-}
+private const val TAG = "GenerateNewSshKeysScreen"
 
 @Composable
 fun GenerateNewSshKeysScreen(
     onBackClick: () -> Unit,
     cloneState: InitState,
-    provider: Provider?,
     storageConfig: StorageConfiguration,
     url: String,
     vm: SetupViewModelI,
@@ -130,31 +120,9 @@ fun GenerateNewSshKeysScreen(
 
 
 
-            if (provider != null) {
-                SetupLine(
-                    text = "2. " + stringResource(R.string.paste_deploy_key)
-                ) {
-                    val uriHandler = LocalUriHandler.current
-
-                    SetupButton(
-                        text = stringResource(R.string.open_deploy_key_webpage),
-                        onClick = {
-                            val fullRepoName = extractUserRepo(url)
-                            if (fullRepoName == null) {
-                                Log.e(TAG, "can't parse full repo name: $url")
-                            } else {
-                                uriHandler.openUri(provider.deployKeyLink(fullRepoName))
-                            }
-                        },
-                        link = true
-                    )
-                }
-            } else {
-                SetupLine(
-                    text = "2. " + stringResource(R.string.paste_deploy_key_no_provider)
-                ) {
-
-                }
+            SetupLine(
+                text = "2. " + stringResource(R.string.paste_deploy_key_no_provider)
+            ) {
             }
 
 
@@ -193,7 +161,6 @@ private fun GenerateNewSshKeysScreenPreview() {
     GenerateNewSshKeysScreen(
         onBackClick = {},
         cloneState = InitState.Idle,
-        provider = GithubProvider(),
         storageConfig = StorageConfiguration("/storage/emulated/0/notes"),
         url = "url",
         vm = SetupViewModelMock(),

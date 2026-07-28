@@ -15,14 +15,9 @@ import dev.olshevski.navigation.reimagined.pop
 import dev.olshevski.navigation.reimagined.rememberNavController
 import io.github.wiiznokes.gitnote.manager.generateSshKeysLib
 import io.github.wiiznokes.gitnote.ui.destination.RemoteDestination
-import io.github.wiiznokes.gitnote.ui.destination.RemoteDestination.AuthorizeGitNote
 import io.github.wiiznokes.gitnote.ui.destination.RemoteDestination.EnterUrl
 import io.github.wiiznokes.gitnote.ui.destination.RemoteDestination.GenerateNewKeys
-import io.github.wiiznokes.gitnote.ui.destination.RemoteDestination.PickRepo
 import io.github.wiiznokes.gitnote.ui.destination.RemoteDestination.SelectGenerateNewSshKeys
-import io.github.wiiznokes.gitnote.ui.destination.RemoteDestination.SelectProvider
-import io.github.wiiznokes.gitnote.ui.destination.RemoteDestination.SelectSetupAutomatically
-import io.github.wiiznokes.gitnote.ui.destination.SettingsDestination
 import io.github.wiiznokes.gitnote.ui.model.StorageConfiguration
 import io.github.wiiznokes.gitnote.ui.screen.settings.LogsScreen
 import io.github.wiiznokes.gitnote.ui.utils.crossFade
@@ -45,7 +40,7 @@ fun RemoteScreen(
     // A repository that is already on the device brings its remote with it, so
     // the questions leading up to a url have nothing left to ask.
     val startDestination = when {
-        openedRemoteUrl == null -> SelectProvider
+        openedRemoteUrl == null -> EnterUrl
         isUrlSsh(openedRemoteUrl) -> SelectGenerateNewSshKeys(url = openedRemoteUrl)
         else -> RemoteDestination.Credentials(url = openedRemoteUrl)
     }
@@ -75,69 +70,12 @@ fun RemoteScreen(
     ) { remoteDestination ->
 
         when (remoteDestination) {
-            is SelectProvider -> SelectProviderScreen(
-                onBackClick = onBackClick,
-                setProvider = { vm.setProvider(it) },
-                onProviderSelected = {
-                    if (vm.provider != null) {
-                        navController.navigate(SelectSetupAutomatically)
-                    } else {
-                        navController.navigate(EnterUrl)
-                    }
+            is EnterUrl -> EnterUrlScreen(
+                onBackClick = { back() },
+                onUrl = { url ->
+                    if (isUrlSsh(url)) navController.navigate(SelectGenerateNewSshKeys(url = url))
+                    else navController.navigate(RemoteDestination.Credentials(url = url))
                 }
-            )
-
-            is SelectSetupAutomatically -> SelectSetupAutomaticallyScreen(
-                onBackClick = { navController.pop() },
-                onAutomatically = { navController.navigate(AuthorizeGitNote) },
-                onManually = { navController.navigate(EnterUrl) }
-            )
-
-            is AuthorizeGitNote -> AuthorizeGitNoteScreen(
-                onBackClick = { navController.pop() },
-                authState = initState,
-                onSuccess = {
-                    navController.navigate(PickRepo)
-                    vm.setStateToIdle()
-                },
-                getLaunchOAuthScreenIntent = { vm.getLaunchOAuthScreenIntent() },
-                vmHashCode = vm.hashCode(),
-                appAuthToken = vm.prefs.appAuthToken.getAsState().value,
-                fetchInfos = vm::fetchInfos
-            )
-
-            is EnterUrl -> {
-
-                if (vm.provider != null) {
-                    EnterUrlWithProviderScreen(
-                        onBackClick = { navController.pop() },
-                        provider = vm.provider!!,
-                        onUrl = { url ->
-                            if (isUrlSsh(url)) navController.navigate(SelectGenerateNewSshKeys(url = url))
-                            else navController.navigate(RemoteDestination.Credentials(url = url))
-                        }
-                    )
-                } else {
-                    EnterUrlScreen(
-                        onBackClick = { navController.pop() },
-                        onUrl = { url ->
-                            if (isUrlSsh(url)) navController.navigate(SelectGenerateNewSshKeys(url = url))
-                            else navController.navigate(RemoteDestination.Credentials(url = url))
-                        }
-                    )
-                }
-
-            }
-
-            is PickRepo -> PickRepoScreen(
-                onBackClick = { navController.pop() },
-                authStep2State = initState,
-                vm = vm,
-                userInfo = vm.userInfo!!,
-                repos = vm.repos,
-                storageConfig = storageConfig,
-                onSuccess = onInitSuccess,
-                onClone = { navController.navigate(RemoteDestination.Cloning) }
             )
 
             is SelectGenerateNewSshKeys -> SelectGenerateNewSshKeysScreen(
@@ -161,7 +99,6 @@ fun RemoteScreen(
             is GenerateNewKeys -> GenerateNewSshKeysScreen(
                 onBackClick = { navController.pop() },
                 cloneState = initState,
-                provider = vm.provider,
                 storageConfig = storageConfig,
                 url = remoteDestination.url,
                 vm = vm,
@@ -184,7 +121,6 @@ fun RemoteScreen(
                 onBackClick = { back() },
                 storageConfig = storageConfig,
                 url = remoteDestination.url,
-                provider = vm.provider,
                 vm = vm,
                 onSuccess = onInitSuccess,
                 onClone = { navController.navigate(RemoteDestination.Cloning) }

@@ -16,7 +16,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
@@ -26,8 +25,6 @@ import io.github.wiiznokes.gitnote.R
 import io.github.wiiznokes.gitnote.helper.NetworkPermissionHelper
 import kotlinx.coroutines.launch
 import io.github.wiiznokes.gitnote.manager.getUrlInfoLib
-import io.github.wiiznokes.gitnote.provider.GithubProvider
-import io.github.wiiznokes.gitnote.provider.Provider
 import io.github.wiiznokes.gitnote.ui.component.AppPage
 import io.github.wiiznokes.gitnote.ui.component.SetupButton
 import io.github.wiiznokes.gitnote.ui.component.SetupLine
@@ -40,54 +37,6 @@ fun isUrlSsh(url: String): Boolean {
 
 private fun isUrlCorrect(url: String): Boolean {
     return getUrlInfoLib(url) != null
-}
-
-@Composable
-fun EnterUrlWithProviderScreen(
-    onBackClick: () -> Unit,
-    provider: Provider,
-    onUrl: (String) -> Unit,
-) {
-
-    AppPage(
-        title = stringResource(R.string.clone_url),
-        verticalArrangement = Arrangement.Center,
-        onBackClick = onBackClick,
-    ) {
-
-        SetupPage {
-            SetupLine(
-                text = stringResource(R.string.url_explain_create_remote_repo)
-            ) {
-                val uriHandler = LocalUriHandler.current
-
-                SetupButton(
-                    text = "1. " + stringResource(R.string.open_link_create_repo),
-                    onClick = { uriHandler.openUri(provider.createRepoLink) },
-                    link = true
-                )
-            }
-
-            val url = rememberSaveable(stateSaver = TextFieldValue.Saver) {
-                mutableStateOf(TextFieldValue())
-            }
-
-            SetupLine(
-                text = "2. " + stringResource(R.string.url_explain_enter_url)
-            ) {
-                UrlTextField(url = url)
-            }
-
-            SetupButton(
-                text = stringResource(R.string.next),
-                onClick = {
-                    onUrl(url.value.text)
-                },
-                enabled = isUrlCorrect(url.value.text)
-            )
-        }
-
-    }
 }
 
 @Composable
@@ -171,16 +120,6 @@ private fun UrlTextField(url: MutableState<TextFieldValue>) {
     )
 }
 
-@Preview
-@Composable
-private fun EnterUrlWithProviderScreenPreview() {
-
-    EnterUrlWithProviderScreen(
-        onBackClick = {},
-        provider = GithubProvider(),
-        onUrl = {}
-    )
-}
 
 @Preview
 @Composable

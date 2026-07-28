@@ -21,8 +21,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import io.github.wiiznokes.gitnote.R
-import io.github.wiiznokes.gitnote.provider.GithubProvider
-import io.github.wiiznokes.gitnote.provider.Provider
 import io.github.wiiznokes.gitnote.ui.component.AppPage
 import io.github.wiiznokes.gitnote.ui.component.SetupButton
 import io.github.wiiznokes.gitnote.ui.component.SetupLine
@@ -38,7 +36,6 @@ fun CredentialsScreen(
     onBackClick: () -> Unit,
     vm: SetupViewModelI,
     storageConfig: StorageConfiguration,
-    provider: Provider?,
     url: String,
     onClone: () -> Unit,
     onSuccess: () -> Unit,
@@ -54,19 +51,12 @@ fun CredentialsScreen(
 
         SetupPage {
 
-            if (provider is GithubProvider) {
-
-                SetupLine(
-                    text = "Create a new access token to allow this app to access your repository. Be sure to grant the “Contents” permission with read and write access."
-                ) {
-                    val uriHandler = LocalUriHandler.current
-
-                    SetupButton(
-                        text = "1. " + "Create a token",
-                        onClick = { uriHandler.openUri("https://github.com/settings/personal-access-tokens/new") },
-                        link = true
-                    )
-                }
+            // Every provider wants a token rather than the account password
+            // by now, and each of them has its own page for making one — which
+            // is why there is no link here to any of them.
+            SetupLine(
+                text = stringResource(R.string.credentials_token_hint)
+            ) {
             }
 
             val username = rememberSaveable(stateSaver = TextFieldValue.Saver) {
@@ -170,7 +160,6 @@ private fun CredentialsScreenPreview() {
         onBackClick = {},
         storageConfig = StorageConfiguration("/storage/emulated/0/notes"),
         url = "url",
-        provider = GithubProvider(),
         vm = SetupViewModelMock(),
         onSuccess = {},
         onClone = {}

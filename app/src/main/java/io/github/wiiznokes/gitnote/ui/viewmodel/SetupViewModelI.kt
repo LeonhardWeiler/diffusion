@@ -20,19 +20,6 @@ interface SetupViewModelI {
     ) {
     }
 
-    fun createRepoAutomatic(
-        repoName: String,
-        storageConfig: StorageConfiguration,
-        onSuccess: () -> Unit
-    ) {
-    }
-
-    fun cloneRepoAutomatic(
-        repoName: String,
-        storageConfig: StorageConfiguration,
-        onSuccess: () -> Unit
-    ) {
-    }
 }
 
 class SetupViewModelMock : SetupViewModelI

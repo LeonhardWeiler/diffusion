@@ -16,8 +16,6 @@ import io.github.wiiznokes.gitnote.ui.screen.setup.remote.RemoteScreen
 import io.github.wiiznokes.gitnote.ui.utils.crossFade
 import io.github.wiiznokes.gitnote.ui.utils.slide
 import io.github.wiiznokes.gitnote.ui.viewmodel.SetupViewModel
-import io.github.wiiznokes.gitnote.ui.viewmodel.viewModelFactory
-import kotlinx.coroutines.flow.SharedFlow
 
 private const val TAG = "SetupNav"
 
@@ -25,16 +23,9 @@ private const val TAG = "SetupNav"
 fun SetupNav(
     startDestination: SetupDestination,
     onSetupSuccess: () -> Unit,
-    authFlow: SharedFlow<String>
 ) {
 
-    val vm: SetupViewModel = viewModel(
-        factory = viewModelFactory {
-            SetupViewModel(
-                authFlow = authFlow
-            )
-        },
-    )
+    val vm: SetupViewModel = viewModel()
 
     val navController =
         rememberNavController(startDestination = startDestination)
