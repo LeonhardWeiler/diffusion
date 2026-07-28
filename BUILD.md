@@ -1,5 +1,12 @@
 # Build
 
+### Cloning
+
+Some files in this repository are stored in [Git LFS](https://git-lfs.com): the
+images and the prebuilt openssl archives used by the Windows build. Install
+`git-lfs` before cloning, otherwise those files arrive as small text pointers
+instead of their content, and the build fails on them without saying why.
+
 ### Linux
 
 It simpler to build on Linux. You will need need to install
