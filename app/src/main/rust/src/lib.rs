@@ -24,9 +24,22 @@ mod test;
 
 const OK: jint = 0;
 
+/// Returned when a pull cannot be merged automatically. Not a libgit2 error, so
+/// it needs a code of its own, far away from the raw codes libgit2 uses.
+/// Kotlin knows this value as GitManager.MERGE_CONFLICT.
+const MERGE_CONFLICT: jint = -1000;
+
 #[derive(Debug)]
 enum Error {
-    Git2 { error: git2::Error, msg: String },
+    Git2 {
+        error: git2::Error,
+        msg: String,
+    },
+    /// The remote and the local side changed the same lines. The working tree
+    /// is left untouched, the caller has to resolve this outside of the app.
+    MergeConflict {
+        paths: Vec<String>,
+    },
 }
 
 impl From<git2::Error> for Error {
@@ -49,6 +62,7 @@ impl Error {
                 error,
                 msg: format!("{}: {}", msg1, msg),
             },
+            Error::MergeConflict { paths } => Error::MergeConflict { paths },
         }
     }
 }
@@ -57,6 +71,7 @@ impl From<Error> for jint {
     fn from(value: Error) -> Self {
         match value {
             Error::Git2 { error, .. } => error.raw_code(),
+            Error::MergeConflict { .. } => MERGE_CONFLICT,
         }
     }
 }
@@ -66,6 +81,9 @@ impl Display for Error {
         match self {
             Error::Git2 { error, msg } => {
                 write!(f, "{msg}: {error}")
+            }
+            Error::MergeConflict { paths } => {
+                write!(f, "merge conflict in: {}", paths.join(", "))
             }
         }
     }

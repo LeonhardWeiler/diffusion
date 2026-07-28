@@ -2,8 +2,8 @@ use git2::{Repository, Signature, build::CheckoutBuilder};
 use std::path::Path;
 use std::{fs, io};
 
-use crate::GitAuthor;
 use crate::libgit2::merge::do_merge;
+use crate::{Error, GitAuthor};
 
 fn clear_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
     for entry in fs::read_dir(path)? {
@@ -151,4 +151,44 @@ fn test_clean_merge_flow2() {
     assert_content(&repo, "file1.txt", "Contenu Initial");
     assert_content(&repo, "file2.txt", "Contenu Dev");
     assert_content(&repo, "file3.txt", "Contenu Master");
+}
+
+/// Both sides change the same file. The merge has to report the conflict and
+/// leave the working tree alone, instead of writing conflict markers into it.
+#[test]
+fn test_conflicting_merge_is_reported() {
+    let path = "repo_test/conflict_repo";
+    let _ = clear_dir(path);
+    let repo = Repository::init(path).unwrap();
+
+    add_file(&repo, "file1.txt", "shared line");
+    let oid1 = commit_current_state(&repo, "Initial commit on master");
+
+    let commit1 = repo.find_commit(oid1).unwrap();
+    repo.branch("dev", &commit1, false).unwrap();
+    switch_to_branch(&repo, "dev");
+
+    add_file(&repo, "file1.txt", "changed on dev");
+    commit_current_state(&repo, "Modif file1 on dev");
+
+    switch_to_branch(&repo, "master");
+    add_file(&repo, "file1.txt", "changed on master");
+    commit_current_state(&repo, "Modif file1 on master");
+
+    let annotated_dev = {
+        let dev_ref = repo.find_reference("refs/heads/dev").unwrap();
+        repo.reference_to_annotated_commit(&dev_ref).unwrap()
+    };
+
+    let author = GitAuthor::from(signature());
+    let err = do_merge(&repo, "dev", annotated_dev, &author)
+        .expect_err("a conflicting merge must not report success");
+
+    match err {
+        Error::MergeConflict { paths } => assert_eq!(paths, vec!["file1.txt".to_string()]),
+        other => panic!("expected a merge conflict, got {other:?}"),
+    }
+
+    // Untouched: no conflict markers, still what master had.
+    assert_content(&repo, "file1.txt", "changed on master");
 }

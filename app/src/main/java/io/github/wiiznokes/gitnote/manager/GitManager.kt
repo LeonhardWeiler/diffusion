@@ -42,6 +42,12 @@ class GitManager {
     companion object {
         private const val TAG = "GitManager"
 
+        /**
+         * Returned by the rust side when a pull cannot be merged automatically.
+         * Not a libgit2 code, see MERGE_CONFLICT in rust/src/lib.rs.
+         */
+        private const val MERGE_CONFLICT = -1000
+
         init {
             Log.d(TAG, "init")
             System.loadLibrary("git_wrapper")
@@ -193,6 +199,10 @@ class GitManager {
         if (!isRepoInitialized) throw GitException(GitExceptionType.RepoNotInit)
 
         val res = pullLib(cred, author.name, author.email)
+
+        if (res == MERGE_CONFLICT) {
+            throw GitException(uiHelper.getString(R.string.error_merge_conflict))
+        }
 
         if (res < 0) {
             throw Exception(uiHelper.getString(R.string.error_pull_repo, res.toString()))

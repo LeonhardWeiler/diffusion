@@ -24,12 +24,25 @@ fn fast_forward(
     Ok(())
 }
 
+/// The paths libgit2 could not merge on its own, for the log and the error.
+fn conflicting_paths(idx: &git2::Index) -> Vec<String> {
+    let Ok(conflicts) = idx.conflicts() else {
+        return Vec::new();
+    };
+
+    conflicts
+        .filter_map(|conflict| conflict.ok())
+        .filter_map(|conflict| conflict.our.or(conflict.their).or(conflict.ancestor))
+        .map(|entry| String::from_utf8_lossy(&entry.path).into_owned())
+        .collect()
+}
+
 fn normal_merge(
     repo: &Repository,
     local: &git2::AnnotatedCommit,
     remote: &git2::AnnotatedCommit,
     author: &GitAuthor,
-) -> Result<(), git2::Error> {
+) -> Result<(), Error> {
     let local_tree = repo.find_commit(local.id())?.tree()?;
     let remote_tree = repo.find_commit(remote.id())?.tree()?;
     let ancestor = repo
@@ -38,9 +51,12 @@ fn normal_merge(
     let mut idx = repo.merge_trees(&ancestor, &local_tree, &remote_tree, None)?;
 
     if idx.has_conflicts() {
-        error!("Merge conflicts detected...");
-        repo.checkout_index(Some(&mut idx), None)?;
-        return Ok(());
+        // The index only exists in memory at this point, so returning here
+        // leaves the working tree exactly as it was. Checking it out would
+        // write conflict markers into the notes instead.
+        let paths = conflicting_paths(&idx);
+        error!("merge conflict in: {}", paths.join(", "));
+        return Err(Error::MergeConflict { paths });
     }
     let result_tree = repo.find_tree(idx.write_tree_to(repo)?)?;
     // now create the merge commit
@@ -113,7 +129,7 @@ pub fn do_merge<'a>(
             .reference_to_annotated_commit(&repo.head()?)
             .map_err(|e| Error::git2(e, "reference_to_annotated_commit"))?;
         normal_merge(repo, &head_commit, &fetch_commit, author)
-            .map_err(|e| Error::git2(e, "normal_merge"))?;
+            .map_err(|e| e.add_message("normal_merge"))?;
     } else {
         // Nothing to do...
     }
