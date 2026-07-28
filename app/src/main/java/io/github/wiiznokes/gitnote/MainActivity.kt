@@ -119,6 +119,25 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * The other half of syncing when the app opens: what was written here goes
+     * out when it is left, so that a note does not sit on one device until
+     * somebody remembers the button.
+     *
+     * super first, so that the editor has been told to write what it holds
+     * before the sync goes looking for it. It runs in the app's scope, which
+     * outlives the activity — being stopped is what starts it, so a scope tied
+     * to the activity would end it at the same moment.
+     */
+    override fun onStop() {
+        super.onStop()
+        Log.d(TAG, "onStop")
+
+        MyApp.appModule.appScope.launch {
+            MyApp.appModule.storageManager.syncWithRemote(announceErrors = false)
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
 

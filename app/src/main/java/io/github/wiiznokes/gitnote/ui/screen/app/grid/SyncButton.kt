@@ -78,7 +78,10 @@ internal fun SyncButton(
 
     val tooltipState = rememberTooltipState(isPersistent = true)
 
-    if (state is SyncState.Error) {
+    // Only a sync the user is waiting on answers back on its own. The ones that
+    // run when the app opens and closes leave the icon to say it, so that being
+    // out of signal does not open a tooltip over the list every time.
+    if (state is SyncState.Error && state.announce) {
         LaunchedEffect(state) {
             tooltipState.show()
         }

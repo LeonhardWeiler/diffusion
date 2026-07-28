@@ -48,10 +48,12 @@ class MainViewModel : ViewModel() {
         }
         prefs.applyGitAuthorDefaults(null, gitManager.currentSignature())
 
-        // only the database is brought in line with the files here; talking to
-        // the remote waits for the user to ask for it
+        // Opening the app is one of the two moments a sync does not have to be
+        // asked for — what another device wrote is what one opens the app to
+        // read. It brings the database in line on the way through, and says
+        // nothing if the network is not there.
         appScope.launch {
-            storageManager.updateDatabase()
+            storageManager.syncWithRemote(announceErrors = false)
         }
 
         return true

@@ -40,7 +40,14 @@ sealed interface SyncState {
 
     data object Ok : SyncState
 
-    data class Error(val msg: String?) : SyncState
+    /**
+     * @param announce whether the reason should show itself without being asked
+     * for. A sync the user started is one they are waiting on, so its failure
+     * is an answer; the ones that run on their own when the app opens and
+     * closes are not, and a tooltip opening over the list is then just noise —
+     * the icon still says it went wrong.
+     */
+    data class Error(val msg: String?, val announce: Boolean = true) : SyncState
 
     data object Pull : SyncState
 
@@ -102,19 +109,33 @@ class StorageManager {
 
 
     /**
-     * Commits everything that has been written since the last sync and exchanges
-     * it with the remote. This is the only thing that reaches the network, and
-     * it only ever runs because the user asked for it.
+     * Whether a failure of the sync that is running should say so by itself.
+     * Read only under [locker], which is also the only thing that runs a sync.
      */
-    suspend fun syncWithRemote(): Result<Unit> = locker.withLock {
+    private var announceSyncErrors = true
+
+    private suspend fun failSync(message: String?) {
+        message?.let { Log.e(TAG, it) }
+        _syncState.emit(SyncState.Error(message, announce = announceSyncErrors))
+    }
+
+    /**
+     * Commits everything that has been written since the last sync and exchanges
+     * it with the remote. The only thing that reaches the network.
+     *
+     * @param announceErrors see [SyncState.Error]. False for the syncs that run
+     * on their own when the app is opened and closed.
+     */
+    suspend fun syncWithRemote(announceErrors: Boolean = true): Result<Unit> = locker.withLock {
         Log.d(TAG, "syncWithRemote")
+
+        announceSyncErrors = announceErrors
 
         gitManager.commitAll(
             prefs.gitAuthor(),
             "commit from gitnote"
         ).onFailure { err ->
-            err.message?.let { Log.e(TAG, it) }
-            _syncState.emit(SyncState.Error(err.message))
+            failSync(err.message)
             return@withLock failure(err)
         }
 
@@ -331,8 +352,7 @@ class StorageManager {
     ): Result<T> {
 
         updateDatabaseWithoutLocker().onFailure { err ->
-            err.message?.let { Log.e(TAG, it) }
-            _syncState.emit(SyncState.Error(err.message))
+            failSync(err.message)
             return failure(err)
         }
 
@@ -355,15 +375,13 @@ class StorageManager {
             _syncState.emit(SyncState.Pull)
             gitManager.pull(cred, prefs.gitAuthor()).onFailure { err ->
                 isError = true
-                err.message?.let { Log.e(TAG, it) }
-                _syncState.emit(SyncState.Error(err.message))
+                failSync(err.message)
             }
         }
 
         // Also runs without a remote: the local commits still have to reach the database.
         updateDatabaseWithoutLocker().onFailure { err ->
-            err.message?.let { Log.e(TAG, it) }
-            _syncState.emit(SyncState.Error(err.message))
+            failSync(err.message)
             return failure(err)
         }
 
@@ -371,8 +389,7 @@ class StorageManager {
             _syncState.emit(SyncState.Push)
             gitManager.push(cred).onFailure { err ->
                 isError = true
-                err.message?.let { Log.e(TAG, it) }
-                _syncState.emit(SyncState.Error(err.message))
+                failSync(err.message)
             }
 
             if (!isError)
