@@ -1,9 +1,11 @@
 use git2::{Repository, Signature, build::CheckoutBuilder};
 use std::path::Path;
+use std::time::{Duration, SystemTime};
 use std::{fs, io};
 
 use crate::cred::GitAuthor;
 use crate::error::Error;
+use crate::libgit2::date_pulled_notes;
 use crate::libgit2::merge::do_merge;
 
 fn clear_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
@@ -69,6 +71,22 @@ fn add_file(repo: &Repository, filename: &str, content: &str) {
     let mut index = repo.index().unwrap();
     index.add_path(Path::new(filename)).unwrap();
     index.write().unwrap();
+}
+
+fn set_modified(repo: &Repository, filename: &str, time: SystemTime) {
+    fs::File::options()
+        .write(true)
+        .open(repo.workdir().unwrap().join(filename))
+        .unwrap()
+        .set_modified(time)
+        .unwrap();
+}
+
+fn modified(repo: &Repository, filename: &str) -> SystemTime {
+    fs::metadata(repo.workdir().unwrap().join(filename))
+        .unwrap()
+        .modified()
+        .unwrap()
 }
 
 fn assert_content(repo: &Repository, path: &str, content: &str) {
@@ -203,4 +221,68 @@ fn test_conflicting_merge_is_reported() {
 
     // The merge is still open, so the commit that ends it can name both sides.
     assert_eq!(repo.state(), git2::RepositoryState::Merge);
+}
+
+/// A pull dates the notes it brought in, and only those.
+///
+/// The sync commits before it pulls, so the note written on this device agrees
+/// with HEAD by the time the merge is done — and dating it by its commit would
+/// move it to the minute the sync ran, which is how a month of notes ended up
+/// all written on the same evening.
+#[test]
+fn test_pull_dates_only_what_it_wrote() {
+    let path = "repo_test/dates_repo";
+    let _ = clear_dir(path);
+    let repo = Repository::init(path).unwrap();
+
+    add_file(&repo, "here.md", "written on this device");
+    let oid1 = commit_current_state(&repo, "Initial commit on master");
+
+    let commit1 = repo.find_commit(oid1).unwrap();
+    repo.branch("dev", &commit1, false).unwrap();
+    switch_to_branch(&repo, "dev");
+
+    add_file(&repo, "there.md", "written on the other device");
+    commit_current_state(&repo, "Add there.md on dev");
+
+    switch_to_branch(&repo, "master");
+
+    // the day the note here was actually written on
+    let written_here = SystemTime::UNIX_EPOCH + Duration::from_secs(1_000_000_000);
+    set_modified(&repo, "here.md", written_here);
+
+    let before = repo.head().unwrap().peel_to_commit().unwrap().id();
+
+    let annotated_dev = {
+        let dev_ref = repo.find_reference("refs/heads/dev").unwrap();
+        repo.reference_to_annotated_commit(&dev_ref).unwrap()
+    };
+
+    let author = GitAuthor::from(signature());
+    do_merge(&repo, "dev", annotated_dev, &author).expect("Merge failed");
+
+    // what the checkout wrote carries the moment it ran, which is what the
+    // dating is there to correct
+    set_modified(&repo, "there.md", SystemTime::UNIX_EPOCH);
+
+    date_pulled_notes(&repo, Some(before)).unwrap();
+
+    assert_eq!(
+        modified(&repo, "here.md"),
+        written_here,
+        "the pull re-dated a note it never wrote"
+    );
+
+    let commit_time = repo
+        .head()
+        .unwrap()
+        .peel_to_commit()
+        .unwrap()
+        .time()
+        .seconds();
+    assert_eq!(
+        modified(&repo, "there.md"),
+        SystemTime::UNIX_EPOCH + Duration::from_secs(commit_time as u64),
+        "the note that came in was not dated by the commit that wrote it"
+    );
 }

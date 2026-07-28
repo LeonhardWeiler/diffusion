@@ -7,7 +7,7 @@ fn timestamps_of(repo_path: &str) -> Vec<(String, i64)> {
     let repo = REPO.lock().expect("repo lock");
     let repo = repo.as_ref().expect("repo");
 
-    let mut timestamps = commit_timestamps(repo)
+    let mut timestamps = commit_timestamps(repo, None)
         .unwrap()
         .into_iter()
         .collect::<Vec<_>>();

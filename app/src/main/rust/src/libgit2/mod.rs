@@ -131,7 +131,7 @@ pub fn clone_repo(
 
     // Everything that just landed carries the time of the checkout. Left that
     // way, a repository of years of notes would read as written this minute.
-    if let Err(e) = apply_commit_timestamps_to(&repo) {
+    if let Err(e) = apply_commit_timestamps_to(&repo, None) {
         error!("apply_commit_timestamps: {e}");
     }
 
@@ -323,6 +323,14 @@ pub fn pull(cred: Option<Cred>, author: &GitAuthor) -> Result<(), Error> {
         .remote_callbacks(callbacks)
         .download_tags(git2::AutotagOption::None);
 
+    // What the working tree stood at before anything came in. The dating below
+    // is the only reason it is kept.
+    let before = repo
+        .head()
+        .and_then(|head| head.peel_to_commit())
+        .map(|commit| commit.id())
+        .ok();
+
     let branch = current_branch(repo)?;
     let refspec = format!("+refs/heads/{}:refs/remotes/origin/{}", branch, branch);
     remote
@@ -341,11 +349,45 @@ pub fn pull(cred: Option<Cred>, author: &GitAuthor) -> Result<(), Error> {
 
     // The merge checked out whatever came in, which dates those notes to now
     // rather than to when they were written on the other device.
-    if let Err(e) = apply_commit_timestamps_to(repo) {
+    if let Err(e) = date_pulled_notes(repo, before) {
         error!("apply_commit_timestamps: {e}");
     }
 
     Ok(())
+}
+
+/// Dates the notes a pull brought in, and only those.
+///
+/// The sync commits before it pulls, so by the time the merge is done the notes
+/// written on this device agree with HEAD as well — and dating those by their
+/// commit would move every one of them to the minute the sync ran. A note
+/// written on Monday and synced on Friday is from Monday. What the pull itself
+/// wrote is the exception: the checkout stamped it with the moment it ran, and
+/// nothing but the commit behind it can say when it was written.
+fn date_pulled_notes(repo: &Repository, before: Option<git2::Oid>) -> Result<(), Error> {
+    let Some(before) = before else {
+        // No commit before the pull means no working tree before it either, so
+        // everything standing in it now arrived with the pull.
+        return apply_commit_timestamps_to(repo, None);
+    };
+
+    let before = repo.find_commit(before)?;
+    let head = repo.head()?.peel_to_commit()?;
+
+    if head.id() == before.id() {
+        // the pull brought nothing, so it wrote nothing
+        return Ok(());
+    }
+
+    let diff = repo.diff_tree_to_tree(Some(&before.tree()?), Some(&head.tree()?), None)?;
+
+    let written: HashSet<String> = diff
+        .deltas()
+        .filter_map(|delta| delta.new_file().path().and_then(Path::to_str))
+        .map(str::to_string)
+        .collect();
+
+    apply_commit_timestamps_to(repo, Some(&written))
 }
 
 pub fn close() {
@@ -386,7 +428,13 @@ fn dirty_paths(repo: &Repository) -> Result<HashSet<String>, Error> {
 }
 
 /// When each note was last changed by a commit, in seconds since the epoch.
-fn commit_timestamps(repo: &Repository) -> Result<HashMap<String, i64>, Error> {
+///
+/// [only] narrows that to the paths named in it, which also ends the walk over
+/// the history as soon as those have been found.
+fn commit_timestamps(
+    repo: &Repository,
+    only: Option<&HashSet<String>>,
+) -> Result<HashMap<String, i64>, Error> {
     // A repository without commits has no HEAD to walk. It has no timestamps to
     // offer either, so the files keep the ones the filesystem gives them.
     let Ok(head) = repo.head().and_then(|head| head.peel_to_commit()) else {
@@ -402,7 +450,10 @@ fn commit_timestamps(repo: &Repository) -> Result<HashMap<String, i64>, Error> {
             && let Some(extension) = extension.to_str()
             && is_extension_supported(extension)
         {
-            pending.insert(format!("{root}{name}"));
+            let path = format!("{root}{name}");
+            if only.is_none_or(|only| only.contains(&path)) {
+                pending.insert(path);
+            }
         }
         TreeWalkResult::Ok
     })?;
@@ -456,19 +507,26 @@ pub fn apply_commit_timestamps() -> Result<(), Error> {
     let repo = REPO.lock().expect("repo lock");
     let repo = repo.as_ref().expect("repo");
 
-    apply_commit_timestamps_to(repo)
+    apply_commit_timestamps_to(repo, None)
 }
 
 /// The body of [apply_commit_timestamps], for the callers that already hold the
 /// repository — the lock is not reentrant, so taking it again would hang.
-fn apply_commit_timestamps_to(repo: &Repository) -> Result<(), Error> {
+///
+/// [only] names the notes to date, None every one of them. A pull passes the
+/// ones it wrote: the rest of the working tree it did not touch, and a date it
+/// did not touch is not one it may move.
+fn apply_commit_timestamps_to(
+    repo: &Repository,
+    only: Option<&HashSet<String>>,
+) -> Result<(), Error> {
     let Some(workdir) = repo.workdir().map(Path::to_path_buf) else {
         return Ok(());
     };
 
     let dirty = dirty_paths(repo)?;
 
-    for (path, seconds) in commit_timestamps(repo)? {
+    for (path, seconds) in commit_timestamps(repo, only)? {
         if dirty.contains(&path) {
             continue;
         }
