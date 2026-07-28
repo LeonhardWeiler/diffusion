@@ -273,7 +273,7 @@ private fun PickRepoScreenPreview() {
             RepoInfo(name = "repoName9", owner = "wiiz", url = "repoName1", 8),
             RepoInfo(name = "repoName10", owner = "wiiz", url = "repoName1", 9),
         ),
-        storageConfig = StorageConfiguration.App,
+        storageConfig = StorageConfiguration("/storage/emulated/0/notes"),
         onSuccess = {},
         onClone = {}
     )

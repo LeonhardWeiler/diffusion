@@ -168,7 +168,7 @@ fun CredentialsScreen(
 private fun CredentialsScreenPreview() {
     CredentialsScreen(
         onBackClick = {},
-        storageConfig = StorageConfiguration.App,
+        storageConfig = StorageConfiguration("/storage/emulated/0/notes"),
         url = "url",
         provider = GithubProvider(),
         vm = SetupViewModelMock(),

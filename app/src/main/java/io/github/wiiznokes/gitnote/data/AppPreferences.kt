@@ -18,8 +18,6 @@ class AppPreferences(
 ) : PreferencesManager(context, "settings") {
 
     companion object {
-        val appStorageRepoPath =
-            MyApp.appModule.context.filesDir.toPath().resolve("repo").pathString
         const val DEFAULT_USERNAME = "gitnote"
     }
 
@@ -36,10 +34,7 @@ class AppPreferences(
             throw Exception("calling repoPath function with no repo initialized")
         }
 
-        return when (storageConfig.get()) {
-            StorageConfig.App -> appStorageRepoPath
-            StorageConfig.Device -> repoPath.get()
-        }
+        return repoPath.get()
     }
 
     fun repoPathBlocking(): String = runBlocking { repoPath() }
@@ -127,7 +122,6 @@ class AppPreferences(
     val defaultExtension = stringPreference("defaultExtension", "md")
     val showLinesNumber = booleanPreference("showLinesNumber", false)
 
-    val storageConfig = enumPreference("storageConfig", StorageConfig.App)
 
     /**
      * @param remoteUrl what this repository pushes to, empty for one that has no
@@ -139,16 +133,7 @@ class AppPreferences(
         isInit.update(true)
         this.remoteUrl.update(remoteUrl)
 
-        when (storageConfig) {
-            StorageConfiguration.App -> {
-                this.storageConfig.update(StorageConfig.App)
-            }
-
-            is StorageConfiguration.Device -> {
-                this.storageConfig.update(StorageConfig.Device)
-                repoPath.update(storageConfig.path)
-            }
-        }
+        repoPath.update(storageConfig.path)
     }
 
     suspend fun closeRepo() {
@@ -160,7 +145,3 @@ class AppPreferences(
 }
 
 
-enum class StorageConfig {
-    App,
-    Device
-}

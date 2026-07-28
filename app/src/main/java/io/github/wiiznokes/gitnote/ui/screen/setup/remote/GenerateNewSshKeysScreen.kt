@@ -194,7 +194,7 @@ private fun GenerateNewSshKeysScreenPreview() {
         onBackClick = {},
         cloneState = InitState.Idle,
         provider = GithubProvider(),
-        storageConfig = StorageConfiguration.App,
+        storageConfig = StorageConfiguration("/storage/emulated/0/notes"),
         url = "url",
         vm = SetupViewModelMock(),
         generateSshKeys = { "aaaaaaaaaaaabbbbbbbbbbbbb" to "aaaaaaaaaaaabbbbbbbbbbbbb" },

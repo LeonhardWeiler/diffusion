@@ -48,8 +48,6 @@ fun NewRepoMethodScreen(
     onSetupSuccess: () -> Unit
 ) {
 
-    val storageChooserExpanded: MutableState<Boolean> =
-        remember { mutableStateOf(false) }
 
     val newRepoMethod: MutableState<NewRepoMethod?> =
         remember { mutableStateOf(null) }
@@ -76,7 +74,7 @@ fun NewRepoMethodScreen(
                 return@rememberLauncherForActivityResult
             }
 
-            val storageConfig = StorageConfiguration.Device(path)
+            val storageConfig = StorageConfiguration(path)
             when (newRepoMethod.value!!) {
                 NewRepoMethod.Open -> openRepo(
                     storageConfig,
@@ -132,8 +130,8 @@ fun NewRepoMethodScreen(
 
         Button(
             onClick = {
-                storageChooserExpanded.value = true
                 newRepoMethod.value = NewRepoMethod.Clone
+                pickFolder()
             }
         ) {
             Text(
@@ -152,85 +150,6 @@ fun NewRepoMethodScreen(
         onDecline = onSetupSuccess,
     )
 
-    val sheetState = rememberModalBottomSheetState()
-    val scope = rememberCoroutineScope()
-
-
-    if (storageChooserExpanded.value) {
-        ModalBottomSheet(
-            onDismissRequest = {
-                storageChooserExpanded.value = false
-            },
-            sheetState = sheetState
-        ) {
-
-            fun closeSheet() {
-                scope.launch { sheetState.hide() }.invokeOnCompletion {
-                    if (!sheetState.isVisible) {
-                        storageChooserExpanded.value = false
-                    }
-                }
-            }
-
-            Button(
-                modifier = Modifier
-                    .fillMaxWidth(0.9F)
-                    .align(Alignment.CenterHorizontally),
-                onClick = {
-                    closeSheet()
-
-                    val storageConfig = StorageConfiguration.App
-                    when (newRepoMethod.value!!) {
-                        NewRepoMethod.Open -> openRepo(
-                            storageConfig,
-                            onSetupSuccess,
-                            { remoteUrl ->
-                                navigate(SetupDestination.Remote(storageConfig, remoteUrl))
-                            },
-                            {
-                                repoWithoutRemote.value = storageConfig
-                                askAboutRemote.value = true
-                            },
-                        )
-
-                        NewRepoMethod.Clone -> navigate(SetupDestination.Remote(storageConfig))
-                    }
-                }
-            ) {
-                Text(text = stringResource(R.string.use_app_storage))
-            }
-
-
-            Spacer(modifier = Modifier.height(60.dp))
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth(0.9F)
-                    .align(Alignment.CenterHorizontally),
-            ) {
-                Button(
-                    modifier = Modifier
-                        .fillMaxWidth(),
-                    onClick = {
-                        closeSheet()
-                        pickFolder()
-                    }
-                ) {
-                    Text(text = stringResource(R.string.use_device_storage))
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = stringResource(R.string.use_device_storage_info),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-        }
-
-    }
 }
 
 @Preview

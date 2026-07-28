@@ -1,7 +1,6 @@
 package io.github.wiiznokes.gitnote.ui.model
 
 import android.os.Parcelable
-import io.github.wiiznokes.gitnote.data.AppPreferences
 import io.github.wiiznokes.gitnote.data.platform.NodeFs
 import kotlinx.parcelize.Parcelize
 
@@ -36,18 +35,15 @@ enum class CredType {
 }
 
 
+/**
+ * Where the repository lives. Always a folder on the device storage — the app's
+ * own private directory was an option once, but a repository nothing else can
+ * reach is not what this app is for.
+ */
 @Parcelize
-sealed class StorageConfiguration : Parcelable {
-    data object App : StorageConfiguration()
-    class Device(val path: String) : StorageConfiguration()
+data class StorageConfiguration(val path: String) : Parcelable {
 
-    fun repoPath(): String {
-        return when (this) {
-            App -> AppPreferences.appStorageRepoPath
-            is Device -> this.path
-        }
-    }
-
+    fun repoPath(): String = path
 
     /**
      * Creates the repo directory if it does not exist yet. Never deletes anything:

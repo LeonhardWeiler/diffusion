@@ -69,12 +69,9 @@
     <string name="app_page_choose_method">Choose method</string>
     <string name="open_repo">Open local repository</string>
     <string name="clone_remote_repo">Clone remote repository</string>
-    <string name="use_app_storage">Use app storage</string>
     <string name="error_folder_not_on_device">Choose a folder on the device storage. A memory card or a usb stick cannot be used.</string>
     <string name="error_need_storage_permission">The application needs this permission to access the storage</string>
     <string name="error_need_network_permission">The application needs this permission to access repositories on your local network</string>
-    <string name="use_device_storage">Use device storage</string>
-    <string name="use_device_storage_info">Requires permission to access the full device storage. You will be able to access the repository on your computer afterwards.</string>
     <string name="clone_step_url_label">url</string>
     <string name="error_not_a_repository">This folder is not a git repository. Choose a folder that contains a .git directory, or clone one instead.</string>
     <string name="error_path_not_directory">The path is not a directory</string>

@@ -186,7 +186,7 @@ private fun LoadKeysFromDeviceScreenPreview() {
         onBackClick = {},
         cloneState = InitState.Idle,
         vm = SetupViewModelMock(),
-        storageConfig = StorageConfiguration.App,
+        storageConfig = StorageConfiguration("/storage/emulated/0/notes"),
         onSuccess = {},
         onClone = {},
         url = "url",

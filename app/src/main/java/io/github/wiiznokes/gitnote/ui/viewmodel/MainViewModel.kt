@@ -3,7 +3,6 @@ package io.github.wiiznokes.gitnote.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import io.github.wiiznokes.gitnote.MyApp
 import io.github.wiiznokes.gitnote.data.AppPreferences
-import io.github.wiiznokes.gitnote.data.StorageConfig
 import io.github.wiiznokes.gitnote.data.platform.NodeFs
 import io.github.wiiznokes.gitnote.helper.StoragePermissionHelper
 import io.github.wiiznokes.gitnote.helper.UiHelper
@@ -28,23 +27,17 @@ class MainViewModel : ViewModel() {
             return false
         }
 
-        val storageConfig = when (prefs.storageConfig.get()) {
-            StorageConfig.App -> {
-                StorageConfiguration.App
-            }
-
-            StorageConfig.Device -> {
-                if (!StoragePermissionHelper.isPermissionGranted()) {
-                    return false
-                }
-                val repoPath = try {
-                    prefs.repoPath()
-                } catch (_: Exception) {
-                    return false
-                }
-                StorageConfiguration.Device(repoPath)
-            }
+        if (!StoragePermissionHelper.isPermissionGranted()) {
+            return false
         }
+
+        val repoPath = try {
+            prefs.repoPath()
+        } catch (_: Exception) {
+            return false
+        }
+
+        val storageConfig = StorageConfiguration(repoPath)
 
         if (!NodeFs.Folder.fromPath(storageConfig.repoPath()).exist()) {
             return false
