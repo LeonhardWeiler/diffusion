@@ -45,7 +45,7 @@ _Supported Architecture: `arm64-v8a`, `x86_64`_
 # Current limitation
 
 - Android does not differentiate case for file name, so if you have a folder named `A` and another folder named `a`, `a` will not be displayed.
-- Conflict will make the app crash
+- Conflicts cannot be resolved in the app. When the same note was changed here and on the remote, the sync stops and reports it; your local version is kept untouched, and you need a git client to resolve it.
 
 ## Contributing
 
