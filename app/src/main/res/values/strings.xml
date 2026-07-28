@@ -54,7 +54,7 @@
     <string name="error_delete_file">Can\'t delete file %1$s: %2$s</string>
     <string name="error_create_folder">Can\'t create folder: %1$s</string>
     <string name="error_pull_repo">Can\'t pull: %1$s</string>
-    <string name="error_merge_conflict">This note was changed here and somewhere else. Your version is kept and nothing was synced. Resolve the conflict with a git client.</string>
+    <string name="error_merge_conflict">Changed here and somewhere else. Both versions are now in the note, between &lt;&lt;&lt;&lt;&lt;&lt;&lt; and &gt;&gt;&gt;&gt;&gt;&gt;&gt; markers — edit it to keep what you want, then sync again. (%1$s)</string>
     <string name="error_push_repo">Can\'t push: %1$s</string>
     <string name="error_commit_repo">can\'t commit: %1$s</string>
     <string name="error_commit_file_change">can\'t know if there is files change: %1$s</string>

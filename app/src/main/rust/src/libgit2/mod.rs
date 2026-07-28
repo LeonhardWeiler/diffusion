@@ -204,12 +204,40 @@ pub fn signature() -> Option<(String, String)> {
     ))
 }
 
+/// What the next commit follows.
+///
+/// HEAD, which a repository without commits does not have. And, when a merge
+/// stopped on a conflict, whatever it was merging in: a commit that ends such a
+/// merge has to name both sides, or the merge is undone by the very commit that
+/// finishes it and the same conflict arrives again on the next pull.
+fn commit_parents(repo: &Repository) -> Result<Vec<git2::Commit<'_>>, Error> {
+    let mut parents = Vec::new();
+
+    if let Ok(head) = repo.head().and_then(|r| r.peel_to_commit()) {
+        parents.push(head);
+    }
+
+    // Read rather than walked with mergehead_foreach, which wants the
+    // repository mutably and there is only one side to a pull anyway.
+    if repo.state() == git2::RepositoryState::Merge
+        && let Ok(merge_head) = repo.revparse_single("MERGE_HEAD")
+        && let Ok(commit) = merge_head.peel_to_commit()
+    {
+        parents.push(commit);
+    }
+
+    Ok(parents)
+}
+
 pub fn commit_all(name: &str, email: &str, message: &str) -> Result<(), Error> {
     let repo = REPO.lock().expect("repo lock");
     let repo = repo.as_ref().expect("repo");
 
     let mut index = repo.index().map_err(|e| Error::git2(e, "index"))?;
 
+    // Takes the working tree as it stands, conflicted paths included: a note
+    // whose markers the user edited away is thereby resolved, which is what
+    // ends the merge.
     index
         .add_all(["*"].iter(), IndexAddOption::DEFAULT, None)
         .map_err(|e| Error::git2(e, "add_all"))?;
@@ -226,18 +254,17 @@ pub fn commit_all(name: &str, email: &str, message: &str) -> Result<(), Error> {
         .find_tree(tree_oid)
         .map_err(|e| Error::git2(e, "find_tree"))?;
 
-    // Get HEAD commit as parent, and Allow initial commit
-    let parent_commit = repo.head().and_then(|r| r.peel_to_commit()).ok();
+    let parents = commit_parents(repo)?;
+    let parents: Vec<&git2::Commit> = parents.iter().collect();
 
     let sig = Signature::now(name, email).map_err(|e| Error::git2(e, "Signature::now"))?;
 
-    // Create commit
-    match parent_commit {
-        Some(ref parent) => repo.commit(Some("HEAD"), &sig, &sig, message, &tree, &[parent]),
-        None => repo.commit(Some("HEAD"), &sig, &sig, message, &tree, &[]),
-    }
-    .map(|_| ())
-    .map_err(|e| Error::git2(e, "commit"))
+    repo.commit(Some("HEAD"), &sig, &sig, message, &tree, &parents)
+        .map_err(|e| Error::git2(e, "commit"))?;
+
+    // Nothing is in progress anymore, whether or not anything was.
+    repo.cleanup_state()
+        .map_err(|e| Error::git2(e, "cleanup_state"))
 }
 
 pub fn push(cred: Option<Cred>) -> Result<(), Error> {

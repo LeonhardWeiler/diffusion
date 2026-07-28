@@ -44,21 +44,29 @@ fn normal_merge(
     remote: &git2::AnnotatedCommit,
     author: &GitAuthor,
 ) -> Result<(), Error> {
-    let local_tree = repo.find_commit(local.id())?.tree()?;
-    let remote_tree = repo.find_commit(remote.id())?.tree()?;
-    let ancestor = repo
-        .find_commit(repo.merge_base(local.id(), remote.id())?)?
-        .tree()?;
-    let mut idx = repo.merge_trees(&ancestor, &local_tree, &remote_tree, None)?;
+    // Merges into the index and the working tree together, and leaves
+    // MERGE_HEAD behind. Both matter when it does not go through: the notes
+    // are where a conflict can be seen, and MERGE_HEAD is what makes the
+    // commit that ends the merge a merge.
+    let mut checkout = git2::build::CheckoutBuilder::new();
+    checkout.force().conflict_style_merge(true);
+
+    repo.merge(&[remote], None, Some(&mut checkout))
+        .map_err(|e| Error::git2(e, "merge"))?;
+
+    let mut idx = repo.index()?;
 
     if idx.has_conflicts() {
-        // The index only exists in memory at this point, so returning here
-        // leaves the working tree exactly as it was. Checking it out would
-        // write conflict markers into the notes instead.
+        // Each conflicted note now holds both versions between markers, which
+        // is something that can be read and fixed in the editor. The merge
+        // stays open until that is committed, so finishing it does not throw
+        // away where the other side came from and fetch the same conflict for
+        // ever after.
         let paths = conflicting_paths(&idx);
         error!("merge conflict in: {}", paths.join(", "));
         return Err(Error::MergeConflict { paths });
     }
+
     let result_tree = repo.find_tree(idx.write_tree_to(repo)?)?;
     // now create the merge commit
     let msg = format!("Merge: {} into {}", remote.id(), local.id());
@@ -75,10 +83,12 @@ fn normal_merge(
         &result_tree,
         &[&local_commit, &remote_commit],
     )?;
-    // Set working tree to match head.
+
+    // Set working tree to match head, and put the merge away: it is over.
     let mut checkout_opts = git2::build::CheckoutBuilder::new();
     checkout_opts.force();
     repo.checkout_head(Some(&mut checkout_opts))?;
+    repo.cleanup_state()?;
 
     Ok(())
 }

@@ -56,7 +56,7 @@ _Supported Architecture: `arm64-v8a`, `x86_64`_
 
 - A repository has to live on the shared internal storage. A memory card or a usb stick has no file path git can be pointed at, and the app's own private directory is not offered because nothing else could reach the repository there.
 - Android does not differentiate case for file name, so if you have a folder named `A` and another folder named `a`, `a` will not be displayed.
-- Conflicts cannot be resolved in the app. When the same note was changed here and on the remote, the sync stops and reports it; your local version is kept untouched, and you need a git client to resolve it.
+- Conflicts are resolved by hand, in the note. When the same note was changed here and on the remote, the sync stops and reports which notes it could not merge. Both versions are then in the note, between `<<<<<<<` and `>>>>>>>` markers: edit it down to what you want to keep and sync again, and that sync is what finishes the merge.
 
 ## Contributing
 

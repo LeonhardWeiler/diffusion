@@ -370,22 +370,30 @@ class StorageManager {
         val hasRemote = prefs.remoteUrl.get().isNotEmpty()
         val cred = prefs.cred()
         var isError = false
+        var conflicted = false
 
         if (hasRemote) {
             _syncState.emit(SyncState.Pull)
             gitManager.pull(cred, prefs.gitAuthor()).onFailure { err ->
                 isError = true
+                conflicted = err is GitException && err.type == GitExceptionType.MergeConflict
                 failSync(err.message)
             }
         }
 
-        // Also runs without a remote: the local commits still have to reach the database.
-        updateDatabaseWithoutLocker().onFailure { err ->
+        // Also runs without a remote: the local commits still have to reach the
+        // database. A conflict is written into the notes without HEAD moving,
+        // so it takes a rebuild that does not ask whether the commit changed —
+        // otherwise the conflict would be in the files and nowhere on screen.
+        updateDatabaseWithoutLocker(force = conflicted).onFailure { err ->
             failSync(err.message)
             return failure(err)
         }
 
-        if (hasRemote) {
+        // Not after a pull that did not go through: the push would be refused
+        // for being behind, and its failure would be the last thing said —
+        // replacing the one explanation that tells the user what to do.
+        if (hasRemote && !isError) {
             _syncState.emit(SyncState.Push)
             gitManager.push(cred).onFailure { err ->
                 isError = true

@@ -154,8 +154,9 @@ fn test_clean_merge_flow2() {
     assert_content(&repo, "file3.txt", "Contenu Master");
 }
 
-/// Both sides change the same file. The merge has to report the conflict and
-/// leave the working tree alone, instead of writing conflict markers into it.
+/// Both sides change the same file. The merge reports the conflict and writes
+/// it into the file, where it can be read and fixed, and leaves the merge open
+/// so that the commit which ends it keeps both sides.
 #[test]
 fn test_conflicting_merge_is_reported() {
     let path = "repo_test/conflict_repo";
@@ -190,6 +191,13 @@ fn test_conflicting_merge_is_reported() {
         other => panic!("expected a merge conflict, got {other:?}"),
     }
 
-    // Untouched: no conflict markers, still what master had.
-    assert_content(&repo, "file1.txt", "changed on master");
+    // Both versions are in the file, between markers, for someone to choose
+    // between in the editor.
+    let content = fs::read_to_string(repo.workdir().unwrap().join("file1.txt")).unwrap();
+    assert!(content.contains("<<<<<<<"), "no conflict markers in {content}");
+    assert!(content.contains("changed on master"), "ours missing");
+    assert!(content.contains("changed on dev"), "theirs missing");
+
+    // The merge is still open, so the commit that ends it can name both sides.
+    assert_eq!(repo.state(), git2::RepositoryState::Merge);
 }

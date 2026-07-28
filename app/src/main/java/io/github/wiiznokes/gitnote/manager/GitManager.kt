@@ -16,6 +16,13 @@ enum class GitExceptionType {
     InitLib,
     RepoAlreadyInit,
     RepoNotInit,
+
+    /**
+     * A pull that could not be merged. The notes it could not merge now hold
+     * both versions between markers, so the caller has to read the files again
+     * even though HEAD has not moved.
+     */
+    MergeConflict,
     Other
 }
 
@@ -237,7 +244,12 @@ class GitManager {
         val res = pullLib(cred, author.name, author.email)
 
         if (res == MERGE_CONFLICT) {
-            throw GitException(uiHelper.getString(R.string.error_merge_conflict))
+            // the detail names the notes it could not merge, which is the whole
+            // of what the user has to go and look at
+            throw GitException(
+                GitExceptionType.MergeConflict,
+                uiHelper.getString(R.string.error_merge_conflict, errorDetail(res))
+            )
         }
 
         if (res < 0) {
