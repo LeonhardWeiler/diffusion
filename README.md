@@ -30,6 +30,10 @@ Because all apps which integrate git on Android either separate the note title f
 - [x] remote sync
 - [x] time based sort
 
+Notes are written to the repository while you type, so there is no save button.
+Nothing is committed or sent anywhere until you tap the cloud button in the
+search bar: that commits what has changed, pulls and pushes in one step.
+
 <p  style="text-align: center;">
   <img src="https://media.githubusercontent.com/media/wiiznokes/gitnote/master/assets/edit.png" width="32%"  alt="edit screen"/>
 </p>
