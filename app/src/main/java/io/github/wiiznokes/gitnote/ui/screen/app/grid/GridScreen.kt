@@ -107,6 +107,7 @@ fun GridScreen(
             vm = vm,
             onEditClick = onEditClick,
             selectedNotes = selectedNotes,
+            currentFolderPath = currentFolderPath,
             nestedScrollConnection = nestedScrollConnection,
             padding = padding,
         )
@@ -145,6 +146,7 @@ private fun GridView(
     nestedScrollConnection: NestedScrollConnection,
     onEditClick: (Note, EditType) -> Unit,
     selectedNotes: List<Note>,
+    currentFolderPath: String,
     padding: PaddingValues,
 ) {
     val gridNotes = vm.gridNotes.collectAsLazyPagingItems()
@@ -172,13 +174,13 @@ private fun GridView(
         val listState = rememberLazyListState()
 
         LaunchedEffect(query.value) {
-            listState.animateScrollToItem(index = 0)
+            listState.scrollToItem(index = 0)
         }
 
         NoteListView(
             gridNotes = gridNotes,
             folders = vm.folders.collectAsState().value,
-            currentFolderPath = vm.currentNoteFolderRelativePath.collectAsState().value,
+            currentFolderPath = currentFolderPath,
             listState = listState,
             modifier = commonModifier,
             selectedNotes = selectedNotes,
