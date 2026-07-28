@@ -27,6 +27,41 @@ private const val TAG = "Dao"
 
 private const val LIMIT_FILE_SIZE_DB = 2 * 1024 * 1024
 
+/**
+ * What a row of the note list is made of: what it shows, plus whether its file
+ * name is enough to tell it apart from the others. The content is left out on
+ * purpose — see [io.github.wiiznokes.gitnote.ui.model.NoteHeader].
+ */
+private const val NOTE_HEADER_COLUMNS = """
+    relativePath, lastModifiedTimeMillis, id, fileName,
+    CASE WHEN COUNT(*) OVER (PARTITION BY fileName) = 1 THEN 1 ELSE 0 END AS isUnique
+"""
+
+/**
+ * How a sort order reads in SQL. Which columns carry the name and the date
+ * differs between notes and folders, so the caller names them.
+ */
+private fun SortOrder.orderBy(nameColumn: String, dateColumn: String): String = when (this) {
+    SortOrder.AZ -> "$nameColumn ASC"
+    SortOrder.ZA -> "$nameColumn DESC"
+    SortOrder.MostRecent -> "$dateColumn DESC"
+    SortOrder.Oldest -> "$dateColumn ASC"
+}
+
+/**
+ * Room only supports FTS4, whose MATCH syntax gives some characters a meaning
+ * the user did not type. Quote the whole query as soon as one turns up.
+ */
+private fun ftsEscape(query: String): String {
+    val specialChars =
+        listOf("\"", "*", "-", "(", ")", "<", ">", ":", "^", "~", "'", "AND", "OR", "NOT")
+
+    if (specialChars.none { query.contains(it) }) return "$query*"
+
+    return "\"${query.replace("\"", "\"\"")}\" * "
+}
+
+
 @Dao
 interface RepoDatabaseDao {
 
@@ -123,86 +158,43 @@ interface RepoDatabaseDao {
         sortOrder: SortOrder,
     ): PagingSource<Int, GridNote> {
 
-        val (sortColumn, order) = when (sortOrder) {
-            SortOrder.AZ -> "fileName" to "ASC"
-            SortOrder.ZA -> "fileName" to "DESC"
-            SortOrder.MostRecent -> "lastModifiedTimeMillis" to "DESC"
-            SortOrder.Oldest -> "lastModifiedTimeMillis" to "ASC"
-        }
-
-        // parentPath and fileName are stored columns with an index, so neither the
-        // filter nor the partition has to be computed for every row. content is
-        // named out of the projection on purpose — see NoteHeader.
+        // parentPath is a stored column with an index, so the filter does not
+        // have to be computed for every row
         val sql = """
-            SELECT relativePath, lastModifiedTimeMillis, id, fileName,
-                   CASE
-                       WHEN COUNT(*) OVER (PARTITION BY fileName) = 1 THEN 1
-                       ELSE 0
-                   END AS isUnique
+            SELECT $NOTE_HEADER_COLUMNS
             FROM Notes
-            WHERE parentPath = :currentNoteFolderRelativePath
-            ORDER BY $sortColumn $order
+            WHERE parentPath = ?
+            ORDER BY ${sortOrder.orderBy("fileName", "lastModifiedTimeMillis")}
         """.trimIndent()
 
-        val query = SimpleSQLiteQuery(sql, arrayOf(currentNoteFolderRelativePath))
-        return this.gridNotesRaw(query)
+        return gridNotesRaw(SimpleSQLiteQuery(sql, arrayOf(currentNoteFolderRelativePath)))
     }
 
+    /** The search, which unlike the list reaches into subfolders and the text. */
     fun gridNotesWithQuery(
         currentNoteFolderRelativePath: String,
         sortOrder: SortOrder,
         query: String,
     ): PagingSource<Int, GridNote> {
 
-        val (sortColumn, order) = when (sortOrder) {
-            SortOrder.AZ -> "fileName" to "ASC"
-            SortOrder.ZA -> "fileName" to "DESC"
-            SortOrder.MostRecent -> "lastModifiedTimeMillis" to "DESC"
-            SortOrder.Oldest -> "lastModifiedTimeMillis" to "ASC"
-        }
-
-        fun ftsEscape(query: String): String {
-
-            // Room only supports FTS4, whose MATCH syntax gives these characters
-            // a meaning the user did not type: quote the query when one shows up.
-            val specialChars: List<CharSequence> =
-                listOf("\"", "*", "-", "(", ")", "<", ">", ":", "^", "~", "'", "AND", "OR", "NOT")
-
-            if (specialChars.any { query.contains(it) }) {
-                val escapedQuery = query.replace("\"", "\"\"")
-                return "\"$escapedQuery\" * "
-            } else {
-                return "$query*"
-            }
-        }
-
         val sql = """
-            WITH notes_with_filename AS (
+            WITH matches AS (
                 SELECT Notes.relativePath, Notes.lastModifiedTimeMillis, Notes.id,
                        Notes.fileName,
                        rank(matchinfo(NotesFts, 'pcx')) AS score
                 FROM Notes
                 JOIN NotesFts ON NotesFts.rowid = Notes.rowid
-                WHERE
-                    Notes.relativePath LIKE :currentNoteFolderRelativePath || '%'
-                    AND
-                    NotesFts MATCH :query
+                WHERE Notes.relativePath LIKE ? || '%' AND NotesFts MATCH ?
             )
-            SELECT relativePath, lastModifiedTimeMillis, id, fileName,
-                   CASE 
-                       WHEN COUNT(*) OVER (PARTITION BY fileName) = 1 THEN 1
-                       ELSE 0
-                   END AS isUnique
-            FROM notes_with_filename
-            ORDER BY score DESC, $sortColumn $order
+            SELECT $NOTE_HEADER_COLUMNS
+            FROM matches
+            ORDER BY score DESC, ${sortOrder.orderBy("fileName", "lastModifiedTimeMillis")}
         """.trimIndent()
 
-        val query = SimpleSQLiteQuery(sql, arrayOf(currentNoteFolderRelativePath, ftsEscape(query)))
-
-
-        return this.gridNotesRaw(query)
+        return gridNotesRaw(
+            SimpleSQLiteQuery(sql, arrayOf(currentNoteFolderRelativePath, ftsEscape(query)))
+        )
     }
-
 
     @RawQuery(observedEntities = [Note::class, NoteFolder::class])
     fun foldersRaw(query: SupportSQLiteQuery): Flow<List<FolderModel>>
@@ -212,24 +204,17 @@ interface RepoDatabaseDao {
         sortOrder: SortOrder,
     ): Flow<List<FolderModel>> {
 
-        val (sortColumn, order) = when (sortOrder) {
-            SortOrder.AZ -> "folderName" to "ASC"
-            SortOrder.ZA -> "folderName" to "DESC"
-            SortOrder.MostRecent -> "MAX(n.lastModifiedTimeMillis)" to "DESC"
-            SortOrder.Oldest -> "MAX(n.lastModifiedTimeMillis)" to "ASC"
-        }
-
         val sql = """
-            SELECT f.relativePath, f.id, COUNT(n.relativePath) as noteCount, fullName(f.relativePath) as folderName
+            SELECT f.relativePath, f.id, COUNT(n.relativePath) as noteCount,
+                   fullName(f.relativePath) as folderName
             FROM NoteFolders AS f
             LEFT JOIN Notes AS n ON n.relativePath LIKE f.relativePath || '%'
             WHERE parentPath(f.relativePath) = ?
             GROUP BY f.relativePath, f.id, folderName
-            ORDER BY $sortColumn $order
+            ORDER BY ${sortOrder.orderBy("folderName", "MAX(n.lastModifiedTimeMillis)")}
         """.trimIndent()
 
-        val query = SimpleSQLiteQuery(sql, arrayOf(currentNoteFolderRelativePath))
-        return this.foldersRaw(query)
+        return foldersRaw(SimpleSQLiteQuery(sql, arrayOf(currentNoteFolderRelativePath)))
     }
 
     @Upsert
