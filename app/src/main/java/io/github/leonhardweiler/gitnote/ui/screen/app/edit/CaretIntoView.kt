@@ -60,6 +60,16 @@ internal class CaretScroller(private val scrollState: ScrollState) {
 
     /**
      * Moves the column so that [caret] can be seen, and no further than that.
+     *
+     * This is what carries the view along while somebody writes: every
+     * keystroke asks again, and typing onto a line that would be the first one
+     * off the bottom of the screen brings it up instead of leaving the writing
+     * to happen out of sight.
+     *
+     * A line of room is left on either side. A caret pressed against the very
+     * edge is one you cannot read the line under, and every further character
+     * would ask for the same scroll again — so it goes one line past what it
+     * strictly needs, and the next few keystrokes cost nothing.
      */
     suspend fun bringIntoView(caret: Rect) {
         this.caret = caret
@@ -69,10 +79,11 @@ internal class CaretScroller(private val scrollState: ScrollState) {
         val viewport = scrollState.viewportSize
         if (viewport <= 0) return
 
+        val margin = caret.height
         val top = scrollState.value
         val target = when {
-            caret.top < top -> caret.top
-            caret.bottom > top + viewport -> caret.bottom - viewport
+            caret.top - margin < top -> caret.top - margin
+            caret.bottom + margin > top + viewport -> caret.bottom + margin - viewport
             // already there, and moving anyway is the other way of being wrong
             else -> return
         }
