@@ -1,8 +1,6 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.io.BufferedReader
 import java.io.InputStreamReader
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 
 
 plugins {
@@ -40,12 +38,6 @@ android {
             val process = Runtime.getRuntime().exec(command)
             val reader = BufferedReader(InputStreamReader(process.inputStream))
             return reader.readLine()
-        }
-
-        fun getVersion(): String {
-            val currentDate = LocalDate.now()
-            val formatter = DateTimeFormatter.ofPattern("yy.MM")
-            return currentDate.format(formatter)
         }
 
         applicationId = "io.github.wiiznokes.gitnote"
