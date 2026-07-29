@@ -21,6 +21,28 @@ class MainViewModel : ViewModel() {
     private val appScope = MyApp.appModule.appScope
 
 
+    /**
+     * The repository this app is holding on to while it cannot reach it, or
+     * null when there is nothing to hold on to.
+     *
+     * Reading files needs the permission to read all files, and that permission
+     * can be gone while everything else — the path, the remote, the ssh key,
+     * every setting — is still stored. Sending the user through the setup for
+     * it meant picking the folder again to arrive at exactly what was already
+     * written down.
+     */
+    suspend fun repoAwaitingPermission(): String? {
+        if (!prefs.isInit.get()) return null
+        if (StoragePermissionHelper.isPermissionGranted()) return null
+
+        return runCatching { prefs.repoPath() }.getOrNull()?.ifEmpty { null }
+    }
+
+    /** Forgets the repository, for the case the permission is not what is wrong. */
+    suspend fun forgetRepo() {
+        storageManager.closeRepo()
+    }
+
     suspend fun tryInit(): Boolean {
 
         if (!prefs.isInit.get()) {

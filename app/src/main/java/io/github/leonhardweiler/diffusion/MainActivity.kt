@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.leonhardweiler.diffusion.ui.navigation.NavHost
@@ -15,6 +16,7 @@ import io.github.leonhardweiler.diffusion.ui.destination.Destination
 import io.github.leonhardweiler.diffusion.ui.destination.SetupDestination
 import io.github.leonhardweiler.diffusion.ui.screen.app.AppScreen
 import io.github.leonhardweiler.diffusion.ui.screen.setup.SetupNav
+import io.github.leonhardweiler.diffusion.ui.screen.setup.StoragePermissionScreen
 import io.github.leonhardweiler.diffusion.ui.theme.DiffusionTheme
 import io.github.leonhardweiler.diffusion.ui.utils.crossFade
 import io.github.leonhardweiler.diffusion.ui.theme.Theme
@@ -43,10 +45,20 @@ class MainActivity : ComponentActivity() {
                 darkTheme = (theme == Theme.SYSTEM && isSystemInDarkTheme()) || theme == Theme.DARK,
             ) {
 
+                // A repository that is set up but cannot be read is not one to
+                // set up again: everything about it is stored, and what is
+                // missing is the permission to read the files. Being sent back
+                // to "open or clone" for that meant picking the same folder
+                // again to arrive at what was already written down — which is
+                // what a new build installed over the old one used to cost.
                 val startDestination: Destination = rememberSaveable {
-                    if (runBlocking { vm.tryInit() }) {
-                        Destination.App(AppDestination.Grid)
-                    } else Destination.Setup(SetupDestination.Main)
+                    when {
+                        runBlocking { vm.tryInit() } -> Destination.App(AppDestination.Grid)
+
+                        else -> runBlocking { vm.repoAwaitingPermission() }
+                            ?.let { Destination.MissingPermission(it) }
+                            ?: Destination.Setup(SetupDestination.Main)
+                    }
                 }
 
                 val backstack = rememberBackstack(startDestination)
@@ -73,6 +85,41 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         )
+
+                        is Destination.MissingPermission -> {
+                            val scope = rememberCoroutineScope()
+
+                            StoragePermissionScreen(
+                                repoPath = destination.repoPath,
+                                onGranted = {
+                                    scope.launch {
+                                        // asked again with the permission in
+                                        // hand, which is what decides whether
+                                        // that was all that was missing
+                                        if (vm.tryInit()) {
+                                            backstack.replaceAll(
+                                                Destination.App(AppDestination.Grid)
+                                            )
+                                        } else {
+                                            vm.uiHelper.makeToast(
+                                                vm.uiHelper.getString(
+                                                    R.string.error_folder_not_found,
+                                                    destination.repoPath
+                                                )
+                                            )
+                                        }
+                                    }
+                                },
+                                onGiveUp = {
+                                    scope.launch {
+                                        vm.forgetRepo()
+                                        backstack.replaceAll(
+                                            Destination.Setup(SetupDestination.Main)
+                                        )
+                                    }
+                                },
+                            )
+                        }
                     }
                 }
             }

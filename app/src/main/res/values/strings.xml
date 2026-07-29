@@ -84,6 +84,10 @@
     <string name="open_repo">Open local repository</string>
     <string name="clone_remote_repo">Clone remote repository</string>
     <string name="error_folder_not_on_device">Choose a folder on the device storage. A memory card or a usb stick cannot be used.</string>
+    <string name="storage_permission_needed_title">Diffusion cannot reach your notes</string>
+    <string name="storage_permission_needed_text">The repository is still set up. Android is not letting the app read files, which is what an update or a fresh install takes away.</string>
+    <string name="grant_storage_permission">Allow access to all files</string>
+    <string name="choose_another_repo">Choose another folder</string>
     <string name="error_need_storage_permission">The application needs this permission to access the storage</string>
     <string name="error_need_network_permission">The application needs this permission to access repositories on your local network</string>
     <string name="clone_step_url_label">url</string>
