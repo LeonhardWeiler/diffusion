@@ -17,10 +17,14 @@ import androidx.compose.ui.window.Dialog
 import io.github.leonhardweiler.diffusion.ui.utils.conditional
 
 /**
- * Between what a dialog says and the buttons that answer it. Enough that the
- * answer is not tapped by the finger that opened the dialog.
+ * Between what a dialog says and the buttons that answer it.
+ *
+ * Enough that the answer is not tapped by the finger that opened the dialog,
+ * and no more than that: at eighty the two halves of one dialog read as two
+ * things that happened to be on the same card, and the card grew to hold a gap
+ * with nothing in it.
  */
-val DialogSeparation = 80.dp
+val DialogSeparation = 32.dp
 
 @Composable
 fun BaseDialog(
