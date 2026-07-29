@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import io.github.leonhardweiler.diffusion.R
 import io.github.leonhardweiler.diffusion.ui.component.CustomDropDown
 import io.github.leonhardweiler.diffusion.ui.component.CustomDropDownModel
+import io.github.leonhardweiler.diffusion.ui.component.RequestConfirmationDialog
 import io.github.leonhardweiler.diffusion.ui.component.SimpleIcon
 
 @Composable
@@ -39,6 +40,23 @@ internal fun SelectableTopBar(
     selectAll: () -> Unit,
     deleteSelection: () -> Unit,
 ) {
+    val deleteExpanded = remember { mutableStateOf(false) }
+
+    // A selection can hold folders, and a folder takes everything under it —
+    // so this is the delete that costs the most and says the least about what
+    // it is about to take.
+    if (deleteExpanded.value) {
+        RequestConfirmationDialog(
+            expanded = deleteExpanded,
+            text = pluralStringResource(
+                R.plurals.confirm_delete_selection,
+                selectionSize,
+                selectionSize
+            ),
+            onConfirmation = deleteSelection,
+        )
+    }
+
     Row(
         modifier = Modifier
             .background(MaterialTheme.colorScheme.surfaceColorAtElevation(10.dp))
@@ -112,7 +130,7 @@ internal fun SelectableTopBar(
                                     R.plurals.delete_selected_notes,
                                     selectionSize
                                 ),
-                                onClick = { deleteSelection() }
+                                onClick = { deleteExpanded.value = true }
                             )
                         )
                     )

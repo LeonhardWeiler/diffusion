@@ -49,7 +49,7 @@
     <string name="delete_this_folder">Delete this folder</string>
     <string name="parent_folder">Parent folder</string>
     <string name="theme">Theme</string>
-    <string name="delete_this_note">Delete this note</string>
+    <string name="delete_this_file">Delete this file</string>
     <string name="select_multiple_notes">Select multiple</string>
     <string name="select_all">Select all</string>
     <string name="error_invalid_link">Invalid link, can\'t open it</string>
@@ -95,6 +95,14 @@
     <string name="error_path_not_directory">The path is not a directory</string>
     <string name="error_path_not_empty">The folder is not empty</string>
     <string name="error_delete_folder">Can\'t delete folder: %1$s</string>
+
+    <string name="confirm_delete_note">Delete %1$s?</string>
+    <string name="confirm_delete_folder">Delete %1$s and everything in it?</string>
+
+    <plurals name="confirm_delete_selection">
+        <item quantity="one">Delete the selected row?</item>
+        <item quantity="other">Delete the %1$d selected rows, and everything in the folders among them?</item>
+    </plurals>
 
     <plurals name="delete_selected_notes">
         <item quantity="one">Delete the selected row</item>

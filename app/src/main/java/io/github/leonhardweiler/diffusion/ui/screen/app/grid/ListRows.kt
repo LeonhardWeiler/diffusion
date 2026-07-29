@@ -36,6 +36,7 @@ import io.github.leonhardweiler.diffusion.data.room.Note
 import io.github.leonhardweiler.diffusion.helper.openFileWithAnotherApp
 import io.github.leonhardweiler.diffusion.ui.component.CustomDropDown
 import io.github.leonhardweiler.diffusion.ui.component.GetStringDialog
+import io.github.leonhardweiler.diffusion.ui.component.RequestConfirmationDialog
 import io.github.leonhardweiler.diffusion.ui.component.CustomDropDownModel
 import io.github.leonhardweiler.diffusion.ui.model.EditType
 import io.github.leonhardweiler.diffusion.ui.model.FolderModel
@@ -98,7 +99,21 @@ internal fun FolderRow(
 ) {
     val dropDownExpanded = remember { mutableStateOf(false) }
     val renameExpanded = remember { mutableStateOf(false) }
+    val deleteExpanded = remember { mutableStateOf(false) }
     val clickPosition = remember { mutableStateOf(Offset.Zero) }
+
+    // Deleting a folder is recursive on disk as well as in the database, so
+    // what a mistap costs here is everything under it.
+    if (deleteExpanded.value) {
+        RequestConfirmationDialog(
+            expanded = deleteExpanded,
+            text = stringResource(
+                R.string.confirm_delete_folder,
+                folder.noteFolder.fullName()
+            ),
+            onConfirmation = onDelete,
+        )
+    }
 
     if (renameExpanded.value) {
         GetStringDialog(
@@ -143,7 +158,7 @@ internal fun FolderRow(
                         ),
                         CustomDropDownModel(
                             text = stringResource(R.string.delete_this_folder),
-                            onClick = onDelete
+                            onClick = { deleteExpanded.value = true }
                         ),
                         if (!isSelecting) CustomDropDownModel(
                             text = stringResource(R.string.select_multiple_notes),
@@ -200,8 +215,18 @@ internal fun NoteListRow(
     dateFormat: DateFormat,
 ) {
     val dropDownExpanded = remember { mutableStateOf(false) }
+    val deleteExpanded = remember { mutableStateOf(false) }
     val clickPosition = remember { mutableStateOf(Offset.Zero) }
     val context = LocalContext.current
+
+    // Deleting a note takes the file with it, and the only way back is git.
+    if (deleteExpanded.value) {
+        RequestConfirmationDialog(
+            expanded = deleteExpanded,
+            text = stringResource(R.string.confirm_delete_note, gridNote.note.fileName),
+            onConfirmation = { vm.deleteNote(gridNote.note) },
+        )
+    }
 
     // Asked of the selection here rather than folded into the row by the view
     // model: a PagingData may be collected once, and combining the selection
@@ -256,6 +281,7 @@ internal fun NoteListRow(
                 gridNote = gridNote,
                 isSelecting = isSelecting,
                 dropDownExpanded = dropDownExpanded,
+                onDeleteRequest = { deleteExpanded.value = true },
                 clickPosition = clickPosition
             )
 

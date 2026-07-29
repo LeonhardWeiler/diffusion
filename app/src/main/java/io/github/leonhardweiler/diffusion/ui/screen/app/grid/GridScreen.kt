@@ -200,6 +200,8 @@ internal fun NoteActionsDropdown(
     gridNote: GridNote,
     isSelecting: Boolean,
     dropDownExpanded: MutableState<Boolean>,
+    /** Asks, rather than deletes: the dialog belongs to the row, which outlives this menu. */
+    onDeleteRequest: () -> Unit,
     clickPosition: MutableState<Offset>,
 ) {
 
@@ -216,8 +218,8 @@ internal fun NoteActionsDropdown(
             shape = MaterialTheme.shapes.medium,
             options = listOf(
                 CustomDropDownModel(
-                    text = stringResource(R.string.delete_this_note),
-                    onClick = { vm.deleteNote(gridNote.note) }),
+                    text = stringResource(R.string.delete_this_file),
+                    onClick = onDeleteRequest),
                 // On every row, not only on the ones this app cannot read: a
                 // note above the size limit is opened here by nobody, and a
                 // markdown file is something a user may well want to hand to
