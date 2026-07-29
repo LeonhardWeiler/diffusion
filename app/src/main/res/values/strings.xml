@@ -129,8 +129,12 @@
     <string name="paste_deploy_key_no_provider">Add the public key to the git provider</string>
     <string name="open_git_repository">Open the repository</string>
     <string name="try_cloning">Try Cloning…</string>
+    <!-- the same step for a repository that is already on the device: there is
+         nothing to download, so the sync is what tries the key -->
+    <string name="try_syncing">Try Syncing…</string>
+    <string name="sync_repo">Sync with the remote</string>
     <string name="clone_repo">Clone Repository</string>
-    <string name="copy_key_first">Until the copied key is a deploy key of the repository, the clone has nothing to authenticate with.</string>
+    <string name="copy_key_first">Until the copied key is a deploy key of the repository, there is nothing to authenticate with.</string>
     <string name="key_copied">Key copied</string>
     <string name="clone_failed">The clone did not go through</string>
     <string name="clone_failed_auth_hint">The remote refused these credentials. For a key generated here that almost always means it is not a deploy key of the repository yet — add it there with write access, then try again.</string>

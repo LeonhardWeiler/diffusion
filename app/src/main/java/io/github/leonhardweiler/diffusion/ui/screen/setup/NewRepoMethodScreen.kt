@@ -75,7 +75,15 @@ fun NewRepoMethodScreen(
                 NewRepoMethod.Open -> openRepo(
                     storageConfig,
                     onSetupSuccess,
-                    { remoteUrl -> navigate(SetupDestination.Remote(storageConfig, remoteUrl)) },
+                    { remoteUrl ->
+                        navigate(
+                            SetupDestination.Remote(
+                                storageConfig,
+                                remoteUrl,
+                                alreadyOnDevice = true
+                            )
+                        )
+                    },
                     {
                         repoWithoutRemote.value = storageConfig
                         askAboutRemote.value = true
@@ -160,7 +168,9 @@ fun NewRepoMethodScreen(
         expanded = askAboutRemote,
         text = stringResource(R.string.set_up_remote_question),
         onConfirmation = {
-            repoWithoutRemote.value?.let { navigate(SetupDestination.Remote(it)) }
+            repoWithoutRemote.value?.let {
+                navigate(SetupDestination.Remote(it, alreadyOnDevice = true))
+            }
         },
         onDecline = onSetupSuccess,
     )

@@ -41,6 +41,7 @@ fun SetupNav(
                 vm = vm,
                 storageConfig = setupDestination.storageConfig,
                 openedRemoteUrl = setupDestination.openedRemoteUrl,
+                alreadyOnDevice = setupDestination.alreadyOnDevice,
                 onInitSuccess = onSetupSuccess,
                 onBackClick = { backstack.pop() }
             )

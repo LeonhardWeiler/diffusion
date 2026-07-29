@@ -20,6 +20,14 @@ sealed class InitState {
 
     data class GeneratingDatabase(val path: String) : InitState()
 
+    /**
+     * A repository that was already on the device, being synced with its remote
+     * for the first time. There is nothing to clone then — what is being found
+     * out is whether the key that was just set up is one the remote accepts, and
+     * accepts for writing.
+     */
+    data object SyncingRepo : InitState()
+
 
     fun message(): String {
         return when (this) {
@@ -27,6 +35,7 @@ sealed class InitState {
             is Error -> if (message != null) "Error: $message" else "Error"
             is GeneratingDatabase -> "Generating database, path: $path"
             OpeningRepo -> "Opening the repository…"
+            SyncingRepo -> "Syncing with the remote…"
             Idle -> ""
         }
     }

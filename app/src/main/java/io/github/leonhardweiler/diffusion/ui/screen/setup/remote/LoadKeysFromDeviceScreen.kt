@@ -32,6 +32,8 @@ import io.github.leonhardweiler.diffusion.ui.viewmodel.InitState
 fun LoadKeysFromDeviceScreen(
     onBackClick: () -> Unit,
     cloneState: InitState,
+    /** See the same parameter on [GenerateNewSshKeysScreen]. */
+    alreadyOnDevice: Boolean,
     /** Starts the clone with these credentials and goes to the clone screen. */
     cloneWith: (Cred) -> Unit,
 ) {
@@ -117,10 +119,14 @@ fun LoadKeysFromDeviceScreen(
             }
 
             SetupLine(
-                text = stringResource(R.string.try_cloning)
+                text = stringResource(
+                    if (alreadyOnDevice) R.string.try_syncing else R.string.try_cloning
+                )
             ) {
                 SetupButton(
-                    text = stringResource(R.string.clone_repo),
+                    text = stringResource(
+                        if (alreadyOnDevice) R.string.sync_repo else R.string.clone_repo
+                    ),
                     enabled = SshKeyValidation.isKeyPair(publicKey.value.text, privateKey.value.text),
                     onClick = {
                         cloneWith(
@@ -172,6 +178,7 @@ private fun LoadKeysFromDeviceScreenPreview() {
     LoadKeysFromDeviceScreen(
         onBackClick = {},
         cloneState = InitState.Idle,
+        alreadyOnDevice = false,
         cloneWith = {},
     )
 }

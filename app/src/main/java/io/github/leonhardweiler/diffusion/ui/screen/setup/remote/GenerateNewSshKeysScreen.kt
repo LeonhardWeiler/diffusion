@@ -55,6 +55,12 @@ fun GenerateNewSshKeysScreen(
     cloneState: InitState,
     /** The clone url this setup is about, so that its page can be offered. */
     remoteUrl: String,
+    /**
+     * Whether the repository is already on the device. Then there is nothing to
+     * download and the last step is a sync — which is also what finds out
+     * whether the remote takes this key, and takes it for writing.
+     */
+    alreadyOnDevice: Boolean,
     generateSshKeys: () -> Pair<String, String>,
     /** Starts the clone with these credentials and goes to the clone screen. */
     cloneWith: (Cred) -> Unit,
@@ -210,7 +216,9 @@ fun GenerateNewSshKeysScreen(
 
 
             SetupLine(
-                text = "3. " + stringResource(R.string.try_cloning)
+                text = "3. " + stringResource(
+                    if (alreadyOnDevice) R.string.try_syncing else R.string.try_cloning
+                )
             ) {
 
                 // Always here, whether the key has been copied or not: copying
@@ -226,7 +234,9 @@ fun GenerateNewSshKeysScreen(
                 )
 
                 SetupButton(
-                    text = stringResource(R.string.clone_repo),
+                    text = stringResource(
+                        if (alreadyOnDevice) R.string.sync_repo else R.string.clone_repo
+                    ),
                     // the keys are generated off the composition, so for a moment
                     // there is nothing here to authenticate with — and until the
                     // key has been copied it is nowhere the remote could know it
@@ -254,6 +264,7 @@ private fun GenerateNewSshKeysScreenPreview() {
         onBackClick = {},
         cloneState = InitState.Idle,
         remoteUrl = "git@github.com:LeonhardWeiler/diffusion.git",
+        alreadyOnDevice = false,
         generateSshKeys = { "aaaaaaaaaaaabbbbbbbbbbbbb" to "aaaaaaaaaaaabbbbbbbbbbbbb" },
         cloneWith = {},
     )

@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.Result.Companion.failure
 
 private const val TAG = "SetupViewModel"
 
@@ -77,6 +78,15 @@ class SetupViewModel : ViewModel() {
     @Volatile
     private var shouldCancel = false
     fun cancelClone(): Boolean {
+        // Nothing is being downloaded for a repository that was already here,
+        // so there is nothing to cancel and nothing to throw away — but the way
+        // back to the key screen has to work all the same, and after a sync the
+        // remote refused it is the only thing left to do.
+        if (repoIsAlreadyOnDevice) {
+            _initState.value = InitState.Idle
+            return true
+        }
+
         if (gitManager.isRepoInitialized) {
             return false
         }
@@ -295,6 +305,18 @@ class SetupViewModel : ViewModel() {
                 _initState.emit(InitState.Error(it.message))
                 return
             }
+
+            // There is nothing to clone, so nothing has tried the key yet — and
+            // a setup that ends here would be finished without ever having
+            // reached the remote, leaving the first real sync to say that the
+            // deploy key was never added. So the sync happens now: it is the
+            // same commit, pull and push the button does, which is what makes
+            // it an answer about writing as well as about reading. Only when
+            // the remote takes all three does the setup go through.
+            syncOnce(cred).onFailure {
+                _initState.emit(InitState.Error(it.message))
+                return
+            }
         }
 
         prefs.initRepo(storageConfig, remoteUrl)
@@ -308,6 +330,31 @@ class SetupViewModel : ViewModel() {
 
         finishSetup(onSuccess)
 
+    }
+
+    /**
+     * Commit, pull, push — once, for a repository that was already here.
+     *
+     * Not [io.github.leonhardweiler.diffusion.manager.StorageManager.syncWithRemote]:
+     * that one answers on the cloud button of a screen this setup has not
+     * reached yet, and its failures are reported there. Here the failure is the
+     * answer, and it belongs on the screen the key was set up on.
+     *
+     * The commit comes first for the same reason it does in a sync — a working
+     * tree with changes in it cannot be merged into — and the push is what says
+     * whether the key may write, which a read-only deploy key is refused for.
+     */
+    private suspend fun syncOnce(cred: Cred?): Result<Unit> {
+        _initState.emit(InitState.SyncingRepo)
+
+        gitManager.commitAll(
+            prefs.gitAuthor(),
+            fallbackMessage = "Sync from Diffusion"
+        ).onFailure { return failure(it) }
+
+        gitManager.pull(cred, prefs.gitAuthor()).onFailure { return failure(it) }
+
+        return gitManager.push(cred)
     }
 
     /**

@@ -28,6 +28,8 @@ fun RemoteScreen(
     onInitSuccess: () -> Unit,
     onBackClick: () -> Unit,
     openedRemoteUrl: String? = null,
+    /** Whether the files are already here, so the last step syncs rather than clones. */
+    alreadyOnDevice: Boolean = false,
 ) {
 
     // A repository that is already on the device brings its remote with it, so
@@ -108,6 +110,7 @@ fun RemoteScreen(
                 onBackClick = { backstack.pop() },
                 cloneState = initState,
                 remoteUrl = remoteDestination.url,
+                alreadyOnDevice = alreadyOnDevice,
                 generateSshKeys = ::generateSshKeysLib,
                 cloneWith = { cred -> clone(remoteDestination.url, cred) },
                 storedKey = storedSshKey.takeIf { remoteDestination.useStored },
@@ -116,6 +119,7 @@ fun RemoteScreen(
             is RemoteDestination.LoadKeysFromDevice -> LoadKeysFromDeviceScreen(
                 onBackClick = { backstack.pop() },
                 cloneState = initState,
+                alreadyOnDevice = alreadyOnDevice,
                 cloneWith = { cred -> clone(remoteDestination.url, cred) },
             )
 
