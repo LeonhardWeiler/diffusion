@@ -3,6 +3,7 @@ package io.github.leonhardweiler.diffusion.data.index
 import android.os.SystemClock
 import android.util.Log
 import io.github.leonhardweiler.diffusion.data.platform.NodeFs
+import io.github.leonhardweiler.diffusion.helper.movedUnder
 import io.github.leonhardweiler.diffusion.manager.Progress
 import io.github.leonhardweiler.diffusion.manager.isExtensionSupported
 import io.github.leonhardweiler.diffusion.ui.model.FolderModel
@@ -218,7 +219,7 @@ class NoteIndex {
     fun moveFolder(noteFolder: NoteFolder, newRelativePath: String) = update { state ->
         val oldPath = noteFolder.relativePath
 
-        fun moved(path: String) = newRelativePath + path.substring(oldPath.length)
+        fun moved(path: String) = movedUnder(path, oldPath, newRelativePath)
 
         val notes = state.notes.mapKeys { (path, _) ->
             if (path.isUnder(oldPath)) moved(path) else path
