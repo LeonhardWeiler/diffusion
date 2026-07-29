@@ -14,6 +14,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -22,12 +23,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import io.github.leonhardweiler.diffusion.R
 import io.github.leonhardweiler.diffusion.ui.component.AppPage
 import io.github.leonhardweiler.diffusion.helper.SshKeyValidation
+import io.github.leonhardweiler.diffusion.helper.openUrlInBrowser
+import io.github.leonhardweiler.diffusion.helper.repoWebUrl
 import io.github.leonhardweiler.diffusion.ui.component.SetupButton
 import io.github.leonhardweiler.diffusion.ui.component.SetupLine
 import io.github.leonhardweiler.diffusion.ui.component.SetupPage
@@ -41,6 +45,8 @@ private const val TAG = "GenerateNewSshKeysScreen"
 fun GenerateNewSshKeysScreen(
     onBackClick: () -> Unit,
     cloneState: InitState,
+    /** The clone url this setup is about, so that its page can be offered. */
+    remoteUrl: String,
     generateSshKeys: () -> Pair<String, String>,
     /** Starts the clone with these credentials and goes to the clone screen. */
     cloneWith: (Cred) -> Unit,
@@ -155,6 +161,20 @@ fun GenerateNewSshKeysScreen(
             SetupLine(
                 text = "2. " + stringResource(R.string.paste_deploy_key_no_provider)
             ) {
+                // The key belongs in the settings of one particular repository,
+                // and its address is the one thing this setup already knows.
+                // Nothing is shown for an address with no page behind it.
+                val webUrl = remember(remoteUrl) { repoWebUrl(remoteUrl) }
+
+                if (webUrl != null) {
+                    val context = LocalContext.current
+
+                    SetupButton(
+                        text = stringResource(R.string.open_git_repository),
+                        link = true,
+                        onClick = { openUrlInBrowser(context, webUrl) }
+                    )
+                }
             }
 
 
@@ -204,6 +224,7 @@ private fun GenerateNewSshKeysScreenPreview() {
     GenerateNewSshKeysScreen(
         onBackClick = {},
         cloneState = InitState.Idle,
+        remoteUrl = "git@github.com:LeonhardWeiler/diffusion.git",
         generateSshKeys = { "aaaaaaaaaaaabbbbbbbbbbbbb" to "aaaaaaaaaaaabbbbbbbbbbbbb" },
         cloneWith = {},
     )

@@ -60,6 +60,7 @@
     <string name="open_with_another_app_action">Open with another app</string>
     <string name="error_note_too_large">%1$s is too large to open here. Use another app for it.</string>
     <string name="error_no_app_for_file">No app on this device can open %1$s</string>
+    <string name="error_no_app_for_link">No app on this device can open a link</string>
     <string name="error_open_externally">Can\'t hand %1$s to another app</string>
     <string name="error_delete_file">Can\'t delete file %1$s: %2$s</string>
     <string name="error_create_folder">Can\'t create folder: %1$s</string>
@@ -121,6 +122,7 @@
     <string name="copy_key">Copy Key</string>
     <string name="regenerate_key">Regenerate Key</string>
     <string name="paste_deploy_key_no_provider">Add the public key to the git provider</string>
+    <string name="open_git_repository">Open the repository</string>
     <string name="try_cloning">Try Cloning…</string>
     <string name="clone_repo">Clone Repository</string>
     <string name="copy_key_first">Copy the key first. Until it is a deploy key of the repository, the clone has nothing to authenticate with.</string>

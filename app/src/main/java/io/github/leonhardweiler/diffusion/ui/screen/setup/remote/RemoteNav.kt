@@ -107,6 +107,7 @@ fun RemoteScreen(
             is GenerateNewKeys -> GenerateNewSshKeysScreen(
                 onBackClick = { backstack.pop() },
                 cloneState = initState,
+                remoteUrl = remoteDestination.url,
                 generateSshKeys = ::generateSshKeysLib,
                 cloneWith = { cred -> clone(remoteDestination.url, cred) },
                 storedKey = storedSshKey.takeIf { remoteDestination.useStored },

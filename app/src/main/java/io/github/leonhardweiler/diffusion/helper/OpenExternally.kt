@@ -6,6 +6,7 @@ import android.content.Intent
 import android.util.Log
 import android.webkit.MimeTypeMap
 import androidx.core.content.FileProvider
+import androidx.core.net.toUri
 import io.github.leonhardweiler.diffusion.MyApp
 import io.github.leonhardweiler.diffusion.R
 import java.io.File
@@ -53,6 +54,25 @@ fun openFileWithAnotherApp(context: Context, path: String) {
         Log.e(TAG, "nothing can open $path", e)
         MyApp.appModule.uiHelper.makeToast(
             MyApp.appModule.uiHelper.getString(R.string.error_no_app_for_file, file.name)
+        )
+    }
+}
+
+/**
+ * Opens a web address in whatever the device browses with.
+ *
+ * No chooser: a link is a thing the user has already picked a browser for, and
+ * the setup step this sits in is one tap in the middle of something else.
+ */
+fun openUrlInBrowser(context: Context, url: String) {
+    val intent = Intent(Intent.ACTION_VIEW, url.toUri())
+
+    try {
+        context.startActivity(intent)
+    } catch (e: ActivityNotFoundException) {
+        Log.e(TAG, "nothing can open $url", e)
+        MyApp.appModule.uiHelper.makeToast(
+            MyApp.appModule.uiHelper.getString(R.string.error_no_app_for_link)
         )
     }
 }
