@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.add
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
@@ -31,6 +32,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.leonhardweiler.diffusion.R
 import io.github.leonhardweiler.diffusion.ui.utils.conditional
+
+/**
+ * What makes the bar above the note list taller than a material one: the air
+ * over its search field, which is a text field and not a bar.
+ *
+ * Every other page carries the same amount under its bar, inside the bar's own
+ * background. The settings slide in from the side beside the note list, and a
+ * page whose first row stood fifteen dp higher than the list's read as the whole
+ * layout lifting on the way in.
+ */
+val ExtraBarHeight = 15.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -81,6 +93,10 @@ fun AppPage(
             } else {
                 TopAppBar(
                     actions = actions,
+                    // as tall as the bar above the note list, so that going
+                    // there and back moves nothing up or down
+                    windowInsets = TopAppBarDefaults.windowInsets
+                        .add(WindowInsets(bottom = ExtraBarHeight)),
                     title = {
                         Text(
                             text = title,
