@@ -132,6 +132,70 @@ android {
 
 }
 
+/**
+ * The largest a `libgit_wrapper.so` that is about to be released may be.
+ *
+ * A release build of the rust side is about 7 MB per architecture, a debug one
+ * about 68 — it carries the debug info of libgit2, openssl and libssh2. The two
+ * are the same file in the same place (`jniLibs` is gitignored and filled by
+ * `make build_install`), so a release apk built after a debug `make` took the
+ * debug library with it and said nothing about it. Ten times the download, and
+ * nothing to see in the build log.
+ *
+ * Anywhere between the two does as a line, so this is far enough above the one
+ * and below the other that a release growing does not start failing builds.
+ */
+val maxReleasedJniLibBytes = 20L * 1024 * 1024
+
+val checkJniLibsAreRelease = tasks.register("checkJniLibsAreRelease") {
+    group = "verification"
+    description = "Fails when the bundled libgit_wrapper.so is a debug build."
+
+    val jniLibs = fileTree(layout.projectDirectory.dir("src/main/jniLibs")) {
+        include("**/*.so")
+    }
+    inputs.files(jniLibs).withPropertyName("jniLibs")
+
+    doLast {
+        val libraries = jniLibs.files.sortedBy { it.path }
+
+        if (libraries.isEmpty()) {
+            throw GradleException(
+                "No native library in app/src/main/jniLibs — run `make build_install " +
+                        "DEBUG=0` in app/src/main/rust first."
+            )
+        }
+
+        val tooLarge = libraries.filter { it.length() > maxReleasedJniLibBytes }
+        if (tooLarge.isEmpty()) return@doLast
+
+        throw GradleException(
+            tooLarge.joinToString(
+                prefix = "These native libraries look like debug builds:\n",
+                separator = "\n",
+                postfix = "\nRun `make build_install DEBUG=0` in app/src/main/rust.",
+            ) { "  ${it.name} in ${it.parentFile.name} is ${it.length() / 1024 / 1024} MB" }
+        )
+    }
+}
+
+androidComponents {
+    onVariants { variant ->
+        // debug is the one build that is meant to carry a debug library
+        if (variant.buildType == "debug") return@onVariants
+
+        val capitalized = variant.name.replaceFirstChar { it.uppercase() }
+
+        // Packaging rather than assembling: the bundle is packaged too, and
+        // both of them are where the library would go out.
+        tasks.matching {
+            it.name == "package$capitalized" || it.name == "package${capitalized}Bundle"
+        }.configureEach {
+            dependsOn(checkJniLibsAreRelease)
+        }
+    }
+}
+
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
 }
