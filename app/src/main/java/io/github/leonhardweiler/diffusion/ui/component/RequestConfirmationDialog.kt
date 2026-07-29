@@ -41,10 +41,10 @@ fun RequestConfirmationDialog(
         onDismiss = onDecline
     ) {
 
-        Card(
-            modifier = Modifier
-                .padding(20.dp)
-        ) {
+        // No padding of its own: the dialog already frames it, and what the card
+        // added on the outside came on top of DialogSeparation — the warning
+        // stood half a finger away from the buttons that answer it.
+        Card {
             Text(
                 modifier = Modifier
                     .padding(20.dp),

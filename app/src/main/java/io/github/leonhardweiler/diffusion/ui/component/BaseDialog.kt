@@ -22,9 +22,10 @@ import io.github.leonhardweiler.diffusion.ui.utils.conditional
  * Enough that the answer is not tapped by the finger that opened the dialog,
  * and no more than that: at eighty the two halves of one dialog read as two
  * things that happened to be on the same card, and the card grew to hold a gap
- * with nothing in it.
+ * with nothing in it. At thirty-two the field and the button under it still read
+ * as two rows rather than one thing to fill in and press.
  */
-val DialogSeparation = 32.dp
+val DialogSeparation = 16.dp
 
 @Composable
 fun BaseDialog(
