@@ -116,7 +116,18 @@ fun GridScreen(
         )
 
         TopBar(
-            modifier = Modifier.onSizeChanged { topBarSize = it },
+            modifier = Modifier.onSizeChanged { size ->
+                // The list begins below the bar, and the two bars are not the
+                // same height to the pixel — the search bar is a text field
+                // with its own padding, the selection bar a fixed row. Letting
+                // the spacer follow whichever is showing meant the whole list
+                // slid up a little the moment a row was selected, and back down
+                // when the selection was cleared.
+                //
+                // So the offset is the search bar's, which is the one the list
+                // is under for all but a moment.
+                if (selectionSize == 0) topBarSize = size
+            },
             selectionSize = selectionSize,
             onSettingsClick = onSettingsClick,
             searchFocusRequester = searchFocusRequester,
