@@ -128,7 +128,11 @@
     fortgeschrieben</strong>: die Rust-Schicht um libgit2 ist weg und die Git-Arbeit
     macht JGit — SIZE-1 ist damit erledigt und gestrichen, und die beiden Fragen, die
     an der zweiten Toolchain hingen, sind beantwortet („Alles in Kotlin …“ umgesetzt,
-    „gitoxide statt libgit2?“ hinfällig)
+    „gitoxide statt libgit2?“ hinfällig) · <strong>nach der achten Liste
+    nachgezogen</strong>: sie war ganz Bedienung — Sortierung nach Änderungszeit, eine
+    Notiz wird angelegt statt geöffnet, keine Standard-Endung, Lesen oder Schreiben pro
+    Notiz — und hat keinen offenen Befund berührt; was daran auf ein Gerät gehört, steht
+    unten in dieser Liste, und PERF-3 ist um die endungslosen Dateien gewachsen
   </p>
 </header>
 
@@ -303,6 +307,10 @@
   befragte, geht die Suche jetzt über die Kandidaten unter dem geöffneten Ordner und liest
   deren Dateien — Name zuerst, Inhalt nur, wenn der Name nicht passt und die Endung bekannt und
   die Datei unter 2 MB ist.</p>
+  <p>Seit der siebten Aufgabenliste gilt „keine Endung“ als Text, damit eine Notiz namens
+  <code>shopping</code> sich öffnen lässt. Das vergrößert die Menge der gelesenen Dateien um
+  genau die endungslosen — in einem Notiz-Repository eine Handvoll, in einem Quellcode-Repository
+  mehr. Am Befund ändert es nichts, an seiner Größe ein wenig.</p>
   <p>Zwei Dinge halten das im Rahmen, und beide sind Absicht: die Anfrage läuft auf
   <code>Dispatchers.IO</code> in einem <code>mapLatest</code>, der beim nächsten Tastendruck
   abgebrochen wird, und sie prüft in der Schleife auf Abbruch. Bei 500 Notizen zu je 4 kB sind
@@ -522,8 +530,9 @@ hinausgehen.</p>
 
 <h2 id="geraet">Was auf ein Gerät gehört</h2>
 
-<p>Diese Runde hat mehr Sichtbares angefasst als jede vorige. Nichts davon ist gelaufen. In der
-Reihenfolge, in der es schiefgehen kann:</p>
+<p>Die beiden letzten Runden haben mehr Sichtbares angefasst als jede vorige — die achte
+Aufgabenliste bestand aus nichts anderem. Nichts davon ist gelaufen. In der Reihenfolge, in der
+es schiefgehen kann:</p>
 
 <ol>
   <li><strong>Die Navigation, überall.</strong> Vor, zurück, Konfigurationswechsel, Prozesstod
@@ -536,12 +545,24 @@ Reihenfolge, in der es schiefgehen kann:</p>
   <li><strong>Der Editor.</strong> Die Regression aus dieser Liste war eine Kombination aus
   Halten, Tastatur und gemerktem Cursor — in eine weit gescrollte Notiz tippen, mehrfach, mit
   offener und mit geschlossener Tastatur.</li>
-  <li><strong>Umbenennen und Verschieben.</strong> <code>../x.md</code> zweimal
-  hintereinander in derselben Notiz ist der Fall, der schiefgehen würde, wenn das Feld nach dem
-  Verschieben nicht zurückgeschrieben wird.</li>
-  <li><strong>Der Entwurf ohne gültigen Namen.</strong> Namen ungültig machen, Text tippen, App
-  abwürgen, wieder öffnen — der Text muss da sein. Das ist der Ersatz für den
-  <code>NoteSaver</code>.</li>
+  <li><strong>Eine Notiz anlegen.</strong> Der <code>+</code>-Knopf fragt nach dem Namen und
+  öffnet nichts: die Datei muss danach in der Liste stehen (oben, weil sie die jüngste ist), und
+  ein Antippen muss sie leer öffnen. Dazu die drei Absagen — leerer Name, vorhandene Datei,
+  <code>ordner/x.md</code> mit einem Ordner, den es nicht gibt — und ein Name ohne Punkt, der als
+  Textnotiz aufgehen muss statt in der Android-Auswahl.</li>
+  <li><strong>Umbenennen und Verschieben</strong>, jetzt nur noch aus der Zeile heraus:
+  <code>../x.md</code> und <code>archive/x.md</code>. Das Feld über der offenen Notiz gibt es
+  nicht mehr, und mit ihm nicht den Entwurf ohne gültigen Namen — was hier zu sehen ist, ist,
+  dass eine Notiz beim Verlassen des Editors trotzdem geschrieben ist.</li>
+  <li><strong>Lesen oder Schreiben, pro Notiz.</strong> Notiz A auf Lesen stellen, Notiz B öffnen
+  — B muss zum Schreiben aufgehen —, App neu starten, A muss wieder gelesen werden. Und: A
+  umbenennen, dann öffnet sie zum Schreiben, das ist Absicht.</li>
+  <li><strong>Die Reihenfolge der Liste.</strong> Eine Notiz tief in einem Ordner ändern und
+  nachsehen, ob der Ordner nach oben wandert; nach einem Klon muss die Liste nach den Zeiten der
+  Commits stehen und nicht nach der Minute des Klons.</li>
+  <li><strong>Der Übergang in die Einstellungen.</strong> Aus der Liste hinein und zurück, mit
+  offener und mit geschlossener Tastatur — es darf nichts nach oben rutschen. Das ist der Punkt,
+  den diese Runde geraten und nicht gemessen hat.</li>
   <li><strong>Der ganze Weg durch die Einrichtung</strong>, jetzt ohne Titelleiste und mit dem
   dritten Schlüsselknopf.</li>
   <li><strong>Ein Merge-Konflikt von Anfang bis Ende.</strong> Der Ablauf selbst läuft seit der
