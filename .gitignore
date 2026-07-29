@@ -48,5 +48,3 @@ jniLibs/
 CLAUDE.local.md
 .claude/
 .claude*/
-AGENT/
-AGENT/*

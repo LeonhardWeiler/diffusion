@@ -1,0 +1,707 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diffusion — Projekt-Gesundheitsbericht</title>
+<style>
+  :root {
+    --bg: #fbfbfa; --fg: #1c1c1a; --muted: #6a6a63; --line: #e2e1dc;
+    --card: #ffffff; --code-bg: #f3f2ee; --accent: #2f5d8a;
+    --crit: #a3252b; --high: #b4590f; --med: #86710d; --low: #4a7a4e; --info: #4a6d8c;
+    --crit-bg: #fdeced; --high-bg: #fdf1e6; --med-bg: #fbf6e2; --low-bg: #eef6ee; --info-bg: #ecf2f7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16171a; --fg: #e6e6e3; --muted: #9a9a94; --line: #2c2e33;
+      --card: #1c1e22; --code-bg: #23252a; --accent: #86b3dd;
+      --crit: #f2929a; --high: #eeb37a; --med: #ddca7e; --low: #9ccfa0; --info: #9dc0dc;
+      --crit-bg: #2c1a1d; --high-bg: #2c2119; --med-bg: #2a2619; --low-bg: #1b271d; --info-bg: #1a2229;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #16171a; --fg: #e6e6e3; --muted: #9a9a94; --line: #2c2e33;
+    --card: #1c1e22; --code-bg: #23252a; --accent: #86b3dd;
+    --crit: #f2929a; --high: #eeb37a; --med: #ddca7e; --low: #9ccfa0; --info: #9dc0dc;
+    --crit-bg: #2c1a1d; --high-bg: #2c2119; --med-bg: #2a2619; --low-bg: #1b271d; --info-bg: #1a2229;
+  }
+  :root[data-theme="light"] {
+    --bg: #fbfbfa; --fg: #1c1c1a; --muted: #6a6a63; --line: #e2e1dc;
+    --card: #ffffff; --code-bg: #f3f2ee; --accent: #2f5d8a;
+    --crit: #a3252b; --high: #b4590f; --med: #86710d; --low: #4a7a4e; --info: #4a6d8c;
+    --crit-bg: #fdeced; --high-bg: #fdf1e6; --med-bg: #fbf6e2; --low-bg: #eef6ee; --info-bg: #ecf2f7;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+  .wrap { max-width: 62rem; margin: 0 auto; padding: 2.5rem 1.25rem 6rem; }
+  header { border-bottom: 1px solid var(--line); padding-bottom: 1.5rem; margin-bottom: 1.5rem; }
+  h1 { font-size: 1.9rem; line-height: 1.2; margin: 0 0 .5rem; letter-spacing: -.02em; }
+  h2 {
+    font-size: 1.3rem; margin: 3rem 0 1rem; padding-top: 1.5rem;
+    border-top: 1px solid var(--line); letter-spacing: -.01em;
+  }
+  h3 { font-size: 1.02rem; margin: 0 0 .5rem; }
+  p, li { margin: .6rem 0; }
+  .meta { color: var(--muted); font-size: .88rem; }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: .86em; background: var(--code-bg); padding: .1em .35em; border-radius: 3px;
+    overflow-wrap: break-word;
+  }
+  pre {
+    background: var(--code-bg); padding: .85rem 1rem; border-radius: 6px;
+    overflow-x: auto; font-size: .82rem; line-height: 1.5; border: 1px solid var(--line);
+  }
+  pre code { background: none; padding: 0; }
+  .counters { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1.25rem 0; }
+  .counter {
+    border: 1px solid var(--line); border-radius: 6px; padding: .5rem .8rem;
+    background: var(--card); min-width: 5.5rem;
+  }
+  .counter .n { font-size: 1.5rem; font-weight: 700; line-height: 1; display: block; }
+  .counter .l { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .counter.crit .n { color: var(--crit); } .counter.high .n { color: var(--high); }
+  .counter.med .n { color: var(--med); }  .counter.low .n { color: var(--low); }
+  .counter.info .n { color: var(--info); }
+  .tablewrap { overflow-x: auto; margin: 1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; min-width: 30rem; }
+  th, td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-weight: 600; color: var(--muted); font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; }
+  .tag {
+    display: inline-block; font-size: .7rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .05em; padding: .13rem .45rem; border-radius: 3px; white-space: nowrap;
+  }
+  .t-crit { color: var(--crit); background: var(--crit-bg); }
+  .t-high { color: var(--high); background: var(--high-bg); }
+  .t-med  { color: var(--med);  background: var(--med-bg); }
+  .t-low  { color: var(--low);  background: var(--low-bg); }
+  .t-info { color: var(--info); background: var(--info-bg); }
+  .finding {
+    background: var(--card); border: 1px solid var(--line); border-left: 3px solid var(--muted);
+    border-radius: 6px; padding: 1rem 1.15rem; margin: 1.1rem 0;
+  }
+  .finding.crit { border-left-color: var(--crit); }
+  .finding.high { border-left-color: var(--high); }
+  .finding.med  { border-left-color: var(--med); }
+  .finding.low  { border-left-color: var(--low); }
+  .finding.info { border-left-color: var(--info); }
+  .fhead { display: flex; gap: .6rem; align-items: baseline; flex-wrap: wrap; margin-bottom: .4rem; }
+  .fid { font-family: ui-monospace, monospace; font-size: .78rem; color: var(--muted); }
+  .where { font-family: ui-monospace, monospace; font-size: .8rem; color: var(--muted); margin: .3rem 0; }
+  .rec { margin-top: .6rem; }
+  .rec strong { font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  ul, ol { padding-left: 1.3rem; }
+  a { color: var(--accent); }
+  .toc { font-size: .92rem; columns: 2; column-gap: 2rem; }
+  .toc ul { list-style: none; padding-left: 0; margin: 0; }
+  .toc li { margin: .2rem 0; break-inside: avoid; }
+  .toc a { text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  .note {
+    background: var(--info-bg); border: 1px solid var(--line); border-radius: 6px;
+    padding: .9rem 1.1rem; margin: 1.2rem 0; font-size: .93rem;
+  }
+  .legend { font-size: .85rem; color: var(--muted); }
+  .legend span { margin-right: .8rem; }
+  @media (max-width: 34rem) { .toc { columns: 1; } h1 { font-size: 1.5rem; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>  <h1>Diffusion — Projekt-Gesundheitsbericht</h1>
+  <p class="meta">
+    Stand <strong>29.07.2026</strong> · Branch <code>master</code> ·
+    fortgeschrieben nach der Abarbeitung der vierten Aufgabenliste — der Runde, in der
+    das Projekt seinen Namen bekommen hat, HTTPS weggefallen ist und die Liste
+    aufgehört hat, eine gefilterte Sicht auf das Repository zu sein · zwei Befunde in
+    der fünften Liste angefasst: der Bau ist gegen eine Debug-<code>.so</code>
+    abgesichert (SIZE-1) und <code>:app:generateBaselineProfile</code> läuft wieder
+    (PERF-1) · <strong>nach der sechsten Liste fortgeschrieben</strong>: die
+    SQL-Datenbank ist weg — die größte Vereinfachung, die dieser Bericht kannte, ist
+    umgesetzt (SIZE-1, TEST-1, „Die SQL-Datenbank ganz weglassen?“), und zwei neue
+    Befunde stehen darunter (PERF-3, BUILD-2)
+  </p>
+</header>
+
+<div class="counters">
+  <div class="counter crit"><span class="n">0</span><span class="l">kritisch</span></div>
+  <div class="counter high"><span class="n">0</span><span class="l">hoch</span></div>
+  <div class="counter med"><span class="n">1</span><span class="l">mittel</span></div>
+  <div class="counter low"><span class="n">5</span><span class="l">niedrig</span></div>
+  <div class="counter info"><span class="n">0</span><span class="l">Info</span></div>
+</div>
+
+<div class="note">
+  <strong>Gates.</strong> <code>./gradlew assembleDebug lintDebug testDebugUnitTest</code> ist grün:
+  <strong>99 Unit-Tests</strong> in 13 Klassen und <strong>keine einzige Lint-Meldung</strong>
+  mehr — vorher zehn Warnungen, und Lint konnte den Bau ohnehin nicht anhalten. Beides hat
+  sich geändert: <code>abortOnError = true</code>. <code>assembleNightly</code> baut durch
+  und ergibt <strong>17,3 MB</strong> (vorher 22,0, davor 24,0) — die 4,7 MB sind Room,
+  <code>paging</code> und vor allem <code>libsqlite3x.so</code>, das mit requery weggefallen
+  ist. Instrumented Tests gibt es <strong>keine mehr</strong>: der einzige prüfte den
+  Room-DAO, und dessen Gegenstand ist gelöscht. Auf Rust-Seite: <code>cargo test</code>
+  11 bestanden, 4 als „local repo“ übersprungen; <code>cargo clippy --all-targets</code>
+  warnungsfrei; <code>cargo fmt --all --check</code> sauber; <code>make build_install
+  DEBUG=0</code> für beide Android-Ziele durch.
+  <br><br>
+  <strong>Grenzen dieses Berichts.</strong> Wie beim letzten Mal: es stand für die Erhebung
+  kein Gerät und kein Emulator zur Verfügung. Die App wurde nicht gestartet, nicht profiliert,
+  die Instrumented Tests liefen nicht. <em>Nachtrag:</em> beim Abarbeiten der fünften Liste
+  war ein Gerät angeschlossen, und <code>:app:generateBaselineProfile</code> lief dort für
+  beide Varianten durch — was es aufgezeichnet hat, taugt allerdings nichts, siehe PERF-1. Wo unten Zahlen stehen,
+  sind sie gemessen (APK-Größen, Bibliotheksgrößen, Testzahlen, Lint); wo es um Bedienung
+  geht, ist es im Code nachvollzogen und nicht angesehen. Diese Runde hat mehr an der
+  Oberfläche geändert als die vorige — die Einrichtung, die Liste, der Editor, die Navigation
+  — und entsprechend mehr steht aus, das man sehen muss.
+</div>
+
+<h2 id="toc">Inhalt</h2>
+<div class="toc">
+  <ul>
+    <li><a href="#perf-2">PERF-2 · Eine sehr lange Notiz im Compose-Textfeld</a> <span class="tag t-med">mittel</span></li>
+    <li><a href="#size-1">SIZE-1 · Die Hälfte des APK liegt auf jedem Gerät ungenutzt</a> <span class="tag t-low">niedrig</span></li>
+    <li><a href="#test-1">TEST-1 · Der Schreibpfad bleibt ungetestet</a> <span class="tag t-low">niedrig</span></li>
+    <li><a href="#perf-1">PERF-1 · Baseline-Profil noch nicht aufgezeichnet</a> <span class="tag t-low">niedrig</span></li>
+    <li><a href="#perf-3">PERF-3 · Die Suche liest bei jeder Anfrage jede Datei</a> <span class="tag t-low">niedrig</span></li>
+    <li><a href="#build-2">BUILD-2 · Das aufgezeichnete Profil ist von git ausgeschlossen</a> <span class="tag t-low">niedrig</span></li>
+    <li><a href="#fragen">Vier Fragen, beantwortet</a></li>
+    <li><a href="#kotlin">&nbsp;&nbsp;· Alles in Kotlin statt zur Hälfte in Rust?</a></li>
+    <li><a href="#ohne-db">&nbsp;&nbsp;· Die SQL-Datenbank ganz weglassen? — umgesetzt</a></li>
+    <li><a href="#e2e">&nbsp;&nbsp;· Ende-zu-Ende-Verschlüsselung?</a></li>
+    <li><a href="#gitoxide">&nbsp;&nbsp;· gitoxide statt libgit2?</a></li>
+    <li><a href="#runde">Was diese Runde geändert hat</a></li>
+    <li><a href="#geraet">Was auf ein Gerät gehört</a></li>
+    <li><a href="#reihenfolge">Was als Nächstes anliegt</a></li>
+    <li><a href="#stark">Was bereits trägt</a></li>
+    <li><a href="#entschieden">Bewusst so entschieden</a></li>
+  </ul>
+</div>
+
+<h2 id="offen">Offene Befunde</h2>
+
+<div class="finding med" id="perf-2">
+  <div class="fhead"><span class="fid">PERF-2</span><h3>Eine sehr lange Notiz im Compose-Textfeld</h3><span class="tag t-med">mittel</span></div>
+  <div class="where">ui/screen/app/edit/EditScreen.kt (<code>GenericTextField</code>) · ui/viewmodel/edit/TextVM.kt</div>
+  <p><strong>Ausdrücklich zurückgestellt</strong> — der einzige Befund der letzten Runde, zu
+  dem die Entscheidung „ignore“ lautete. Er steht hier, damit er nicht wieder auftaucht, als
+  wäre er neu.</p>
+  <p>Zwei der drei Ursachen sind seit der letzten Runde weg: der Undo-Verlauf hat ein Budget
+  in Zeichen, und die Speicherpause wächst mit der Notiz. Die dritte liegt nicht in diesem
+  Code — <strong>ein <code>TextField</code> misst und setzt bei jedem Tastendruck den
+  gesamten Text neu</strong>, und Compose kennt für ein einzelnes Textfeld keine
+  Zeilenvirtualisierung.</p>
+  <p>Eine Obergrenze schneidet die Spitze ab, nicht das Problem: eine Datei über
+  <code>LIMIT_FILE_SIZE</code> (2 MB) wird gelistet, aber nicht im Editor geöffnet — sie hätte
+  leer ausgesehen, und der erste Speichervorgang hätte die Datei dieser Ansicht angeglichen.</p>
+  <p><strong>Halb umgesetzt seit der sechsten Liste.</strong> Das Feld <em>ist</em> jetzt ein
+  <code>BasicTextField</code> — allerdings aus einem anderen Grund: das Material-Feld gibt sein
+  <code>TextLayoutResult</code> nicht heraus, und ohne das ist der Cursor nur zu erraten (siehe
+  die Cursor-Aufgabe dieser Runde). Damit entfällt die <code>DecorationBox</code> je
+  Neuzusammensetzung; was bleibt, ist der teure Teil, nämlich <code>TextFieldValue</code>: jeder
+  Tastendruck reicht den ganzen Text durch das View-Model.</p>
+  <div class="rec"><strong>Empfehlung</strong>
+  <p>Der verbleibende Schritt ist <code>TextFieldState</code> statt <code>TextFieldValue</code>,
+  Aufwand L, und <code>MarkdownEditingTest</code> hängt daran. Nichts davon eilt.</p></div>
+</div>
+
+<div class="finding low" id="size-1">
+  <div class="fhead"><span class="fid">SIZE-1</span><h3>Die Hälfte des APK liegt auf jedem Gerät ungenutzt</h3><span class="tag t-low">niedrig</span></div>
+  <div class="where">app/build.gradle.kts · app/src/main/jniLibs · app/src/main/rust/Cargo.toml</div>
+  <p>Nachgemessen nach dem Wegfall der Datenbank: <code>assembleNightly</code> mit
+  <code>DEBUG=0</code> ergibt jetzt <strong>17,3 MB</strong> — 22,0 vorher, 24,0 davor. Die
+  4,7 MB dieser Runde sind fast vollständig <code>libsqlite3x.so</code>: requery wurde nur
+  gebraucht, um SQLite drei eigene Funktionen beizubringen, und ohne SQL gibt es die nicht mehr.
+  Die 2,0 MB der Runde davor kamen daher, dass libgit2 ohne das <code>https</code>-Feature
+  gebaut wird, seit die App nur noch SSH spricht.</p>
+
+  <div class="tablewrap"><table>
+    <tr><th>Bestandteil</th><th>Größe</th><th>Anteil</th></tr>
+    <tr><td><code>lib/x86_64/libgit_wrapper.so</code></td><td>7,84 MB</td><td>43 %</td></tr>
+    <tr><td><code>lib/arm64-v8a/libgit_wrapper.so</code></td><td>7,05 MB</td><td>39 %</td></tr>
+    <tr><td><code>classes.dex</code> + <code>classes2.dex</code> (nach R8)</td><td>2,94 MB</td><td>16 %</td></tr>
+    <tr><td>Ressourcen, Manifest, META-INF, alles übrige</td><td>0,4 MB</td><td>2 %</td></tr>
+  </table></div>
+  <p class="meta">Einträge unkomprimiert (18,2 MB zusammen), das Archiv selbst misst 17,3 MB.
+  <code>libsqlite3x.so</code> steht nicht mehr in der Tabelle, weil es nicht mehr im Paket ist.</p>
+
+  <p>Was noch in <code>libgit_wrapper.so</code> steckt: <code>libcrypto.a</code> 13,9 MB,
+  <code>libgit2.a</code> 3,6 MB, <code>libssh2.a</code> 0,56 MB — <code>libssl.a</code> wird
+  weiterhin gebaut, aber nicht mehr gelinkt. <strong>OpenSSL ganz loszuwerden geht nicht:</strong>
+  libssh2 benutzt libcrypto für seine Chiffren, und libcrypto ist der große Teil. Das ist die
+  vollständige Antwort auf „dann kann man doch auch openssl entfernen“ — die Hälfte, mehr nicht.</p>
+
+  <div class="rec"><strong>Empfehlung</strong>
+  <p>Unverändert, nach Ertrag:</p>
+  <ol>
+    <li><strong>Nach ABI aufteilen — rund 8,9 MB, also 40 %.</strong> Jedes APK trägt beide
+    Architekturen, ein Telefon benutzt eine. Mit <code>splits { abi { … } }</code> bleibt ein
+    arm64-APK von rund <strong>13 MB</strong>. Aufwand: S.</li>
+    <li><strong><code>com.github.requery:sqlite-android</code> ablösen — 1,84 MB je ABI.</strong>
+    Siehe die Frage weiter unten, ob die Datenbank überhaupt bleiben soll: dann fällt das
+    von selbst mit weg.</li>
+  </ol>
+  <p><strong>Erledigt:</strong> die dritte Empfehlung — der Bau ist abgesichert.
+  <code>checkJniLibsAreRelease</code> läuft vor jedem Packen außer <code>debug</code> und
+  hält den Bau über 20 MB je <code>.so</code> an; eine Debug-Bibliothek (68 MB statt 7)
+  kommt nicht mehr stillschweigend in ein Release.</p>
+  </div>
+</div>
+
+<div class="finding low" id="test-1">
+  <div class="fhead"><span class="fid">TEST-1</span><h3>Der Schreibpfad bleibt ungetestet</h3><span class="tag t-low">niedrig</span></div>
+  <div class="where">app/src/test (99 Tests, 13 Klassen) · manager/StorageManager.kt · manager/GitManager.kt</div>
+  <p>Von 57 über 88 auf 99. Neu ist <code>NoteIndexTest</code> (8 Fälle) — das, was vorher SQL
+  beantwortet hat und was jetzt Funktionen über einen <code>IndexState</code> sind: welche
+  Notizen zu einem Ordner gehören und in welcher Reihenfolge, was ein Ordner-Verschieben mit
+  den Pfaden darunter macht, was ein Löschen mitnimmt, und dass ein <code>workshop</code> nicht
+  in <code>work</code> liegt. <code>RepoPathTest</code> ist auf 13 gewachsen, weil ein
+  abgelehnter Pfad jetzt sagt, <em>was</em> an ihm falsch ist. Weggefallen sind
+  <code>FtsEscapeTest</code> (3) und <code>SshFingerprintTest</code> (4) mit dem Code, den sie
+  geprüft haben, und <code>SchemaTest</code> heißt <code>ModelTest</code>.</p>
+  <p>Das Muster dahinter ist das, was der Bericht letztes Mal empfohlen hat: die
+  <em>Entscheidung</em> aus der Klasse herausziehen, die den Zustand hält. <code>CaretScroller</code>
+  arbeitet auf einem <code>ScrollState</code>, dessen Viewport nur das Layout setzen kann —
+  also sind die beiden Fragen, die er beantwortet, jetzt eigene Funktionen und der Test
+  braucht keinen Bildschirm.</p>
+  <p>Ungetestet bleibt der <code>StorageManager</code> und mit ihm der Sync-Pfad. Der Grund ist
+  unverändert <code>MyApp.appModule</code>: die Klasse holt sich ihre Abhängigkeiten aus einem
+  globalen Service-Locator, also ist sie ohne laufende Anwendung nicht zu bauen. Ebenfalls
+  ungetestet ist <code>ui/navigation/NavHost.kt</code> — dessen heikler Teil, wann ein
+  <code>ViewModelStore</code> geleert wird, ist ohne Compose-Test nicht zu prüfen.</p>
+  <p><strong>Neu ohne jede Prüfung ist der Durchlauf selbst:</strong>
+  <code>NoteIndex.rebuild</code> liest das Repository und ist damit die Stelle, an der jeder
+  Start hängt — geprüft sind nur die Filter <em>über</em> dem Ergebnis. Er braucht ein
+  Dateisystem, also einen Instrumented Test, und Instrumented Tests gibt es seit dem Wegfall
+  des Room-DAO-Tests keine mehr. <code>NodeFs</code> arbeitet auf <code>java.nio</code> und
+  liefe auch auf der JVM, ein Test mit <code>@TempDir</code> wäre also möglich.</p>
+  <div class="rec"><strong>Empfehlung</strong>
+  <p><code>StorageManager</code> seine Abhängigkeiten übergeben statt sie sich holen zu lassen.
+  Das ist kein DI-Framework, das sind sechs Konstruktorparameter — und danach ist der
+  Sync-Pfad mit einem Fake-<code>GitManager</code> prüfbar, einschließlich der Reihenfolge
+  „Dateien vor Zeilen“ und des einen Wiederholungsversuchs bei fehlendem Netz. Aufwand: M.</p>
+  <p>Für <code>NavHost</code>: <code>androidx.compose.ui:ui-test-junit4</code> als
+  <code>testImplementation</code> mit Robolectric wäre der Weg, ein Ziel vom Backstack zu
+  nehmen und nachzusehen, dass sein ViewModel danach geleert ist. Eine Abhängigkeit mehr für
+  eine Datei — vertretbar in beide Richtungen. Aufwand: M.</p></div>
+</div>
+
+<div class="finding low" id="perf-1">
+  <div class="fhead"><span class="fid">PERF-1</span><h3>Das Baseline-Profil ist vorbereitet, aber nicht aufgezeichnet</h3><span class="tag t-low">niedrig</span></div>
+  <div class="where">baselineprofile/ · <code>:app:generateBaselineProfile</code></div>
+  <p>Compose-Code läuft im Release bis zum JIT interpretiert; spürbar ist das beim ersten
+  Scrollen der Liste und beim ersten Öffnen des Editors. Das Modul steht: ein
+  <code>com.android.test</code>-Projekt, dessen einziger Test „starten, Liste scrollen, Notiz
+  öffnen, zurück“ geht, und <code>:app</code> zieht das Ergebnis ein.</p>
+  <p><strong>Der Bau läuft inzwischen durch</strong> — er tat es vorher nicht, und zwar aus
+  drei Gründen, die alle behoben sind: das <code>:baselineprofile</code>-Modul kannte den
+  Build-Typ <code>nightly</code> nicht, weshalb die Abhängigkeit gar nicht erst auflösbar war;
+  der Generator hatte die Anwendungs-ID im Quelltext stehen statt sie vom Plugin zu erfragen,
+  weshalb die Aufzeichnung mit „App nicht installiert“ endete; und die Aufzeichnungsvarianten
+  erbten die Release-Signierung, deren Schlüssel nicht im Repository liegt — sie werden jetzt
+  mit dem Nightly-Schlüssel signiert, denn veröffentlicht wird keine von ihnen.</p>
+  <p><strong>Was offen bleibt, ist die Aufzeichnung selbst.</strong> Ein Durchlauf auf einem
+  angeschlossenen Gerät hat ein Profil erzeugt, das nur <code>SetupNav</code> und
+  <code>NewRepoMethodScreen</code> enthält und weder Liste noch Editor: auf dem Gerät war die
+  Aufzeichnungsvariante nicht eingerichtet, und der Durchlauf endete im Einrichtungsbildschirm.
+  Ein solches Profil ist schlechter als keines und wurde verworfen.</p>
+  <div class="rec"><strong>Was dafür zu tun ist</strong>
+  <ol>
+    <li>Ein Gerät oder einen Emulator anschließen (<code>adb devices</code> muss es zeigen),
+    Android 11 oder neuer.</li>
+    <li><strong>Die Aufzeichnungsvariante dort einmal einrichten.</strong> Sie wird als
+    eigene Anwendung installiert (<code>…diffusion</code> bzw.
+    <code>…diffusion.nightly</code>), also reicht die eingerichtete Debug-App nicht: in genau
+    dieser Installation ein Repository öffnen oder klonen, sodass Notizen in der Liste stehen.</li>
+    <li><code>./gradlew :app:generateBaselineProfile</code> — oder
+    <code>:app:generateNightlyBaselineProfile</code> für eine Variante allein.</li>
+    <li>Nachsehen, dass die erzeugte Datei die Liste und den Editor enthält
+    (<code>grep GridScreen</code>), und erst dann
+    <code>app/src/&lt;variante&gt;/generated/baselineProfiles/</code> einchecken. Sie gehört
+    ins Repository, nicht in <code>.gitignore</code>.</li>
+  </ol>
+  <p>Das Plugin hängt weiterhin auf <code>1.5.0-alpha07</code>, weil das letzte stabile AGP 9
+  ablehnt („Module :app is not a supported android module“). Sobald ein stabiles das kann,
+  zurückwechseln.</p></div>
+</div>
+
+<div class="finding low" id="perf-3">
+  <div class="fhead"><span class="fid">PERF-3</span><h3>Die Suche liest bei jeder Anfrage jede Datei</h3><span class="tag t-low">niedrig</span></div>
+  <div class="where">data/index/NoteIndex.kt (<code>search</code>) · ui/viewmodel/GridViewModel.kt (<code>gridItems</code>)</div>
+  <p>Der Preis dafür, dass kein Text mehr im Speicher liegt. Wo vorher FTS4 einen Index
+  befragte, geht die Suche jetzt über die Kandidaten unter dem geöffneten Ordner und liest
+  deren Dateien — Name zuerst, Inhalt nur, wenn der Name nicht passt und die Endung bekannt und
+  die Datei unter 2 MB ist.</p>
+  <p>Zwei Dinge halten das im Rahmen, und beide sind Absicht: die Anfrage läuft auf
+  <code>Dispatchers.IO</code> in einem <code>mapLatest</code>, der beim nächsten Tastendruck
+  abgebrochen wird, und sie prüft in der Schleife auf Abbruch. Bei 500 Notizen zu je 4 kB sind
+  das im schlechtesten Fall 2 MB aus dem Page Cache pro <em>abgeschlossener</em> Anfrage.</p>
+  <p>Gemessen ist das nicht — es stand kein Gerät zur Verfügung, und der Fall, auf den es
+  ankommt, ist ein großes Repository auf einem langsamen Speicher.</p>
+  <div class="rec"><strong>Empfehlung</strong>
+  <p>Erst messen, dann etwas tun. Wenn es weh tut, ist der kleinste Schritt eine Entprellung von
+  etwa 200 ms vor der Suche (Aufwand S); der nächste ist, gelesene Inhalte mit ihrer
+  <code>mtime</code> zu behalten, solange sie gilt — das ist wieder ein Cache, aber einer, der
+  sich selbst prüfen kann, weil die Datei danebenliegt (Aufwand M).</p></div>
+</div>
+
+<div class="finding low" id="build-2">
+  <div class="fhead"><span class="fid">BUILD-2</span><h3>Das aufgezeichnete Profil ist von git ausgeschlossen</h3><span class="tag t-low">niedrig</span></div>
+  <div class="where">.gitignore · app/src/&lt;variante&gt;/generated/baselineProfiles/</div>
+  <p>Ein Baseline-Profil wirkt nur, wenn es im Paket liegt, das gebaut wird. Aufgezeichnet wird
+  es nach <code>app/src/&lt;variante&gt;/generated/baselineProfiles/</code>, und genau dieser
+  Pfad steht seit der fünften Liste in <code>.gitignore</code> — ein Profil, das auf dem Rechner
+  entsteht, auf dem die Aufzeichnung lief, und in keinem Bau, der aus dem Repository kommt.</p>
+  <p>Die Regel selbst ist diese Runde enger gefasst worden: sie lautete <code>app/src/</code>
+  und schloss damit den gesamten Quelltext ein, sodass jede <em>neue</em> Datei stillschweigend
+  fehlte. Sie nennt jetzt nur noch die generierten Profile — was den Befund nicht auflöst,
+  sondern auf seinen Kern bringt.</p>
+  <div class="rec"><strong>Empfehlung</strong>
+  <p>Entscheiden, welches der beiden es sein soll: entweder das Profil gehört ins Repository
+  (dann die Zeile streichen und die aufgezeichneten Dateien einchecken — sie sind Text und
+  ändern sich nur, wenn neu aufgezeichnet wird), oder es wird bewusst nicht ausgeliefert (dann
+  gehört das in PERF-1 als Antwort und nicht als offener Punkt). Aufwand: S.</p></div>
+</div>
+
+<h2 id="fragen">Vier Fragen, beantwortet</h2>
+
+<p>Vier Entscheidungen, die in der Aufgabenliste als Fragen standen. Keine davon ist umgesetzt
+worden — sie sind hier beantwortet, damit die Antwort beim nächsten Mal nicht wieder erarbeitet
+werden muss. Wo unten geschätzt wird, steht das dabei.</p>
+
+<h3 id="kotlin" style="margin-top:1.5rem">Alles in Kotlin statt zur Hälfte in Rust?</h3>
+
+<p><strong>Machbar, und es würde den Bau erheblich vereinfachen. Trotzdem: nein.</strong></p>
+
+<p>Was die Rust-Schicht tut, ist nicht viel Code — rund 1500 Zeilen — aber es ist alles, was
+die App zu einer Git-App macht: klonen mit Fortschritt, fetch und merge samt Schreiben der
+Konfliktmarker in die Notizen, den Index nach Konflikten befragen, ein Commit mit zwei Eltern,
+<code>is_change</code> über das Arbeitsverzeichnis, das Datieren nach einem Checkout, das
+Bilden der Commit-Nachricht aus dem Index, Ed25519-Schlüssel erzeugen, TOFU auf Hostkeys.</p>
+
+<p>In reinem Kotlin/Java gäbe es dafür genau einen Kandidaten: <strong>JGit</strong>. Andere
+Android-Git-Clients benutzen ihn, er läuft dort also. Was das brächte:</p>
+
+<ul>
+  <li><strong>Eine Toolchain statt zwei.</strong> Kein NDK, kein cargo, keine gepinnte
+  Rust-Version, kein vendored OpenSSL, kein <code>make build_install</code> vor jedem Bau,
+  keine <code>.so</code> in Git LFS, kein zweiter CI-Job, und die halbe <code>BUILD.md</code>
+  — die Windows-Anleitung mit den vorgebauten OpenSSL-Zips — fällt ersatzlos weg. Das ist der
+  größte Einzelgewinn und er ist real.</li>
+  <li><strong>Ein deutlich kleineres APK.</strong> Geschätzt: 14,9 MB nativer Code fallen weg,
+  JGit plus eine SSH-Anbindung kämen nach R8 grob bei 2–4 MB Dex heraus. Nicht gemessen, aber
+  die Größenordnung ist eindeutig.</li>
+  <li><strong>Die JNI-Grenze verschwindet</strong> — mit ihr die Regel, dass ein umbenanntes
+  Kotlin-File die Bindung erst zur Laufzeit bricht.</li>
+</ul>
+
+<p>Was es kostet, und warum die Antwort trotzdem nein ist:</p>
+
+<ul>
+  <li><strong>Es tauscht die Referenzimplementierung gegen eine Nachbildung.</strong> libgit2 ist
+  das, worauf die Desktop-Clients aufsetzen; JGit ist eine eigenständige zweite Implementierung
+  mit eigenen Eigenheiten. Für eine App, deren einziger Zweck ist, dass ein Repository
+  hinterher noch dasselbe Repository ist, ist das kein neutraler Tausch.</li>
+  <li><strong>Der Merge-Pfad ist der teuerste Teil.</strong> Genau er ist über zwei Runden
+  hinweg gebaut und mit Rust-Tests belegt worden — Konflikt in die Datei schreiben,
+  <code>MERGE_HEAD</code> lesen, mit zwei Eltern committen, Marker vor dem Commit erkennen.
+  Das wäre alles neu zu schreiben und neu zu belegen.</li>
+  <li><strong>Der Gewinn wird einmal beim Bauen eingelöst, der Preis täglich.</strong> Die
+  zweite Toolchain nervt den Entwickler; eine andere Git-Implementierung liegt unter den
+  Notizen.</li>
+</ul>
+
+<p class="meta">Wieder aufzugreifen, wenn die NDK-Kette wirklich zur Last wird — etwa wenn ein
+NDK-Wechsel den Bau bricht oder die CI daran hängenbleibt. Dann ist der Tausch die Mühe wert.
+Vorher nicht.</p>
+
+<h3 id="ohne-db" style="margin-top:1.5rem">Die SQL-Datenbank ganz weglassen? — umgesetzt</h3>
+
+<p><strong>Erledigt in der sechsten Liste.</strong> Die Frage lautete „ja, und zwar bald“, und
+die Bedingung war eine Messung: wie lange der Start-Durchlauf auf einem echten Repository auf
+einem echten Telefon dauert, weil er ohne Cache verpflichtend wird. Die Messung ist gelaufen und
+war unauffällig, also ist der Umbau gemacht.</p>
+
+<p>Was weggefallen ist, ist die Liste, die hier stand: Room, KSP, <code>app/schemas/</code>, die
+drei registrierten SQL-Funktionen, <code>com.github.requery:sqlite-android</code>,
+<code>paging</code>, <code>databaseCommit</code>, <code>knownFsCommit</code>, die
+destruktive Migration, <code>clearAndInit</code> — und der Begriff „abgeleiteter Cache“ mitsamt
+allem, was ihn ehrlich halten musste. Das APK ist dabei um 4,7 MB kleiner geworden (SIZE-1).</p>
+
+<p>Geblieben ist <code>NoteIndex</code>: eine Karte des Repositories im Arbeitsspeicher — Pfad,
+Name, Datum, Id je Datei — bei jedem Start gelesen. <strong>Ohne Inhalte</strong>, anders als
+hier vorgeschlagen: der Editor liest die Datei, die er öffnet, und die Suche liest die Dateien,
+in die sie schaut. Das ist der Punkt, an dem die alte Überlegung geändert wurde, und er hat
+einen eigenen Befund bekommen (PERF-3). Die Relevanzsortierung ist nicht nachgebaut, sondern
+aufgegeben worden: sortiert wird alphabetisch, und das ist die Reihenfolge, die man vorhersagen
+kann.</p>
+
+<p>Zwei Fehlerklassen sind damit weg statt behoben. Zeilen und Dateien können nicht mehr
+auseinanderlaufen als bis zum nächsten Start, und das <code>PagingData</code>, das nur einmal
+gelesen werden darf, ist keine Falle mehr für den zweiten Leser — es war der Absturz beim
+zweiten Antippen einer Mehrfachauswahl.</p>
+
+<h3 id="e2e" style="margin-top:1.5rem">Ende-zu-Ende-Verschlüsselung?</h3>
+
+<p><strong>Nein — und die Begründung in der Aufgabenliste („I prefer to diff“) ist genau die
+richtige.</strong></p>
+
+<p>Verschlüsselte Notizen hieße: der Inhalt wird vor dem Commit chiffriert, sodass der Remote
+nur Geheimtext sieht. Was dabei aufhört zu funktionieren, ist alles, wofür ein Git-Repository
+aus Klartextdateien überhaupt gewählt wurde:</p>
+
+<ul>
+  <li><strong>Der Diff.</strong> Ein Commit über Geheimtext sagt, dass sich etwas geändert hat,
+  und sonst nichts. Die Commit-Nachricht, die diese App aus dem Index baut — <code>[fresh.md]
+  added, [kept.md] changed</code> — sagt dann bestenfalls noch die Dateinamen, und auch die nur,
+  wenn man die Namen unverschlüsselt lässt.</li>
+  <li><strong>Der Merge.</strong> Zwei geänderte Geheimtexte sind nicht zusammenführbar, und ein
+  Konflikt darin ist von Hand nicht auflösbar. Die ganze Maschinerie, die diese App über zwei
+  Runden für Konflikte gebaut hat — beide Fassungen in die Notiz, Marker, Commit mit zwei Eltern
+  — würde ersatzlos unbrauchbar.</li>
+  <li><strong>Das Versprechen des README.</strong> „Notes are plain files in a real Git
+  repository. You can use this app with other desktop editors.“ Das wäre nicht mehr wahr.</li>
+</ul>
+
+<p>Was das eigentliche Bedürfnis dahinter — der Anbieter soll die Notizen nicht lesen können —
+stattdessen beantwortet:</p>
+<ul>
+  <li><strong>Ein privater oder selbst gehosteter Remote.</strong> Das kann die App heute schon,
+  und seit dieser Runde ausschließlich über SSH: ein privates Repository plus ein Deploy Key,
+  oder ein Git-Server im eigenen Netz — für den es sogar schon die Berechtigungsbehandlung
+  gibt.</li>
+  <li><strong>Die Geräteverschlüsselung</strong>, die auf jedem aktuellen Android ohnehin
+  läuft.</li>
+</ul>
+
+<p>Wenn an dieser Ecke etwas verbessert werden soll, dann eine kleinere und realere Lücke:
+<strong>die Zugangsdaten liegen unverschlüsselt im DataStore.</strong> Vom Gerät kommen sie nicht
+herunter — <code>backup_rules.xml</code> und <code>data_extraction_rules.xml</code> nehmen den
+Store aus —, aber auf einem gerooteten Gerät sind sie lesbar. Der private SSH-Schlüssel gehört
+in den Android Keystore. Aufwand: M, und der Nutzen ist konkret.</p>
+
+<h3 id="gitoxide" style="margin-top:1.5rem">gitoxide statt libgit2?</h3>
+
+<p><strong>Heute nein, und aus dem Grund, den die Aufgabenliste nennt — aber nicht ganz: der
+Nutzen wäre größer als „Rust um des Rust willen“.</strong></p>
+
+<p>Was es brächte, ist nämlich messbar und es ist genau das, was oben unter SIZE-1 als nicht
+lösbar steht: <code>gix</code> ist reines Rust und kann TLS über <code>rustls</code> und SSH über
+eine Rust-Implementierung sprechen. Damit fiele <strong>OpenSSL vollständig weg</strong> —
+libcrypto allein sind 13,9 MB Archiv, und es ist der größte einzelne Posten im Bau. Mit ihm
+verschwände auch das Windows-Problem, dem <code>BUILD.md</code> einen halben Abschnitt und das
+Repository zwei vorgebaute Zip-Archive widmet, sowie ein guter Teil der Bauzeit.</p>
+
+<p>Warum es trotzdem nicht geht: die Bedürfnisse dieser App liegen genau auf der schwächsten
+Stelle von gitoxide.</p>
+
+<ul>
+  <li><strong>Merge.</strong> Diese App braucht kein „fetch and fast-forward“, sondern einen
+  echten Drei-Wege-Merge, der die Konfliktmarker in das Arbeitsverzeichnis schreibt, einen Index
+  hinterlässt, den man nach konfliktbehafteten Pfaden fragen kann, und ein
+  <code>MERGE_HEAD</code>. Das ist der am spätesten gereifte Teil von gix.</li>
+  <li><strong>Die API bewegt sich noch.</strong> Ein Wechsel würde nicht einmal stattfinden,
+  sondern über Jahre mitgezogen werden müssen.</li>
+  <li><strong>libgit2 tut hier heute alles, was gebraucht wird, und es ist belegt</strong> — elf
+  Rust-Tests, die den Merge samt Konfliktfall, das Datieren nach einem Pull und die
+  Commit-Nachricht abdecken.</li>
+</ul>
+
+<p class="meta">Also: die Einschätzung „bringt nichts, ist nur Rust um des Rust willen“ trifft die
+Sache heute im Ergebnis, aber nicht in der Begründung. Es brächte 14 MB weniger Bau und eine
+einfachere Windows-Anleitung — es kostet nur den einen Teil, den die App am meisten braucht.
+Wieder aufzugreifen, wenn gix' Merge-Unterstützung vollständig ist.</p>
+
+<h2 id="runde">Was diese Runde geändert hat</h2>
+
+<p>Einundzwanzig Aufgaben, in Kürze — und was davon Auswirkungen hat, die über die Aufgabe
+hinausgehen.</p>
+
+<div class="tablewrap"><table>
+  <tr><th>Was</th><th>Was daran mehr ist als die Aufgabe</th></tr>
+  <tr>
+    <td>Der Name, bis in die Paket-ID</td>
+    <td><code>io.github.leonhardweiler.diffusion</code> ist für Android eine andere App: die
+    installierte bleibt mit ihren Daten daneben stehen. Die GitHub-Adressen in den
+    Einstellungen und im README zeigen jetzt auf <code>LeonhardWeiler/diffusion</code> —
+    <strong>das Repository muss dorthin umbenannt werden</strong>, sonst laufen sie ins
+    Leere.</td>
+  </tr>
+  <tr>
+    <td>Jede Datei ist eine Zeile</td>
+    <td>Die Liste ist das Repository und nicht mehr eine gefilterte Sicht darauf. Was die App
+    nicht lesen kann, geht an den Android-Chooser. Zwei Folgen: versteckte Dateien werden
+    übersprungen (sonst stünde in jedem leeren Ordner ein <code>.gitkeep</code>), und eine
+    Datei über 2 MB wird gelistet, aber nicht geöffnet — sie hätte leer ausgesehen.</td>
+  </tr>
+  <tr>
+    <td>Umbenennen ist Verschieben</td>
+    <td>Das Namensfeld über einer Notiz ist ein Pfad, für Notizen und für Ordner. Der
+    Zielordner muss existieren, so wie <code>mv</code> es will. Beim Ordner werden die Zeilen
+    umgeschrieben statt neu aufgebaut — sonst würde ein Umbenennen das ganze Repository
+    lesen.</td>
+  </tr>
+  <tr>
+    <td>Nur noch SSH</td>
+    <td>Zwei Präferenzen, ein Bildschirm, ein Credential-Typ und eine JNI-Struktur weniger, und
+    1 MB je Architektur. Nebenbei gefunden: der Klartext-Credential las das Benutzernamensfeld
+    zweimal, verschickte also den Benutzernamen als Passwort.</td>
+  </tr>
+  <tr>
+    <td>Der DNS-Fehler beim automatischen Sync</td>
+    <td>Die Ursache war, dass „das System sagt, es gibt ein Netz“ und „dieser Prozess kann
+    auflösen“ nicht dasselbe sind. libgit2 sagt das nur in der Fehlerklasse, die nie über die
+    JNI-Grenze kam. Jetzt hat sie einen eigenen Code, ein Pull wird einmal wiederholt, und was
+    danach noch scheitert und niemand angefordert hat, sagt gar nichts.</td>
+  </tr>
+  <tr>
+    <td>Die Navigation gehört jetzt diesem Repository</td>
+    <td>160 Zeilen statt einer Bibliothek. Der nicht offensichtliche Teil war nicht der
+    Backstack, sondern dass jeder Bildschirm einen eigenen <code>ViewModelStore</code> braucht —
+    sonst bekäme die zweite geöffnete Notiz das ViewModel der ersten. Siehe TEST-1: das ist
+    jetzt Code, den dieses Projekt pflegt.</td>
+  </tr>
+</table></div>
+
+<h2 id="geraet">Was auf ein Gerät gehört</h2>
+
+<p>Diese Runde hat mehr Sichtbares angefasst als jede vorige. Nichts davon ist gelaufen. In der
+Reihenfolge, in der es schiefgehen kann:</p>
+
+<ol>
+  <li><strong>Die Navigation, überall.</strong> Vor, zurück, Konfigurationswechsel, Prozesstod
+  und wieder herein. Insbesondere: Notiz A öffnen, zurück, Notiz B öffnen — B muss B zeigen und
+  nicht A. Und: aus der Liste in die Einstellungen und zurück, die Liste muss stehen, wo sie
+  stand.</li>
+  <li><strong>Die Zurück-Taste an den Rändern.</strong> Auf dem ersten Bildschirm muss sie die
+  App schließen; während eines laufenden Klons darf sie nichts tun; in der Liste räumt sie erst
+  die Auswahl ab, dann den Ordner.</li>
+  <li><strong>Der Editor.</strong> Die Regression aus dieser Liste war eine Kombination aus
+  Halten, Tastatur und gemerktem Cursor — in eine weit gescrollte Notiz tippen, mehrfach, mit
+  offener und mit geschlossener Tastatur.</li>
+  <li><strong>Umbenennen und Verschieben.</strong> <code>../x.md</code> zweimal
+  hintereinander in derselben Notiz ist der Fall, der schiefgehen würde, wenn das Feld nach dem
+  Verschieben nicht zurückgeschrieben wird.</li>
+  <li><strong>Der Entwurf ohne gültigen Namen.</strong> Namen ungültig machen, Text tippen, App
+  abwürgen, wieder öffnen — der Text muss da sein. Das ist der Ersatz für den
+  <code>NoteSaver</code>.</li>
+  <li><strong>Der ganze Weg durch die Einrichtung</strong>, jetzt ohne Titelleiste und mit dem
+  dritten Schlüsselknopf.</li>
+  <li><strong>Ein Merge-Konflikt von Anfang bis Ende</strong>, weiterhin nur durch Rust-Tests
+  belegt.</li>
+</ol>
+
+<h2 id="reihenfolge">Was als Nächstes anliegt</h2>
+
+<ol>
+  <li><strong>Auf einem Gerät nachsehen</strong> — die Liste darüber.</li>
+  <li><strong>PERF-1</strong>, sobald dieses Gerät da ist; die Schritte stehen oben.</li>
+  <li><strong>Den Start und die Suche auf einem Gerät nachmessen</strong> — die Datenbank ist
+    weg, also zahlt jeder Start den Durchlauf und jede Anfrage die Dateien (PERF-3). Beides ist
+    im Log ablesbar: <code>adb logcat -s NoteIndex</code>.</li>
+  <li><strong>SIZE-1, Punkt 1</strong> — nach ABI aufteilen halbiert das APK fast; es sind
+    jetzt 17,3 MB, und 14,9 davon sind zwei Kopien derselben Bibliothek für zwei
+    Architekturen.</li>
+  <li><strong>BUILD-2 entscheiden</strong> — ein Profil, das im Repository fehlt, wirkt in
+    keinem Bau, der daraus entsteht.</li>
+  <li><strong>Den <code>StorageManager</code> entkoppeln</strong>, damit der Sync-Pfad prüfbar
+    wird (TEST-1).</li>
+  <li><strong>Der private Schlüssel in den Android Keystore</strong> — siehe die Antwort zur
+    Verschlüsselung.</li>
+  <li><strong>„Nur im WLAN“.</strong> Der automatische Sync lässt sich abschalten, aber nicht auf
+    das WLAN beschränken. <code>NetworkMonitor</code> kennt die Fähigkeiten des Netzes bereits.</li>
+</ol>
+<p class="meta">Aufwand: S ≈ unter einer Stunde, M ≈ ein halber Tag, L ≈ mehrere Tage.</p>
+
+<h2 id="stark">Was bereits trägt</h2>
+<ul>
+  <li><strong>Lint kann den Bau anhalten, und hat nichts zu sagen.</strong> Von zehn Warnungen
+    auf null, und <code>abortOnError</code> ist an. Sechs der zehn standen in einer Datei, die
+    niemand aufrief.</li>
+  <li><strong>Die Liste ist das Repository.</strong> Jede Datei bekommt eine Zeile; was diese App
+    nicht lesen kann, wird an die App gereicht, die es kann.</li>
+  <li><strong>Umbenennen und Verschieben sind ein Handgriff</strong> — für Notizen wie für
+    Ordner, mit derselben Pfadarithmetik, die neun Tests festhalten.</li>
+  <li><strong>Löschen fragt.</strong> Alle drei Wege dahin, und der teuerste — eine Auswahl mit
+    Ordnern darin — sagt am deutlichsten, was er mitnimmt.</li>
+  <li><strong>Der Schlüssel, der schon da ist, wird angeboten.</strong> Mit seinem Fingerabdruck
+    darunter, sodass jedes Neueinrichten nicht mehr einen weiteren Deploy Key kostet.</li>
+  <li><strong>Der automatische Sync ist still.</strong> Kein Alarm-Wölkchen und kein Stacktrace
+    für ein Netz, das eine Sekunde lang nicht da war — und ein Wiederholungsversuch, der die
+    meisten dieser Fälle in einen erfolgten Sync verwandelt.</li>
+  <li><strong>Ein Commit sagt, worum es geht</strong>, gebildet aus dem Index, der gerade
+    gestaget wurde.</li>
+  <li><strong>Das Datum einer Notiz stimmt</strong> — aus der Datei gelesen, und was die Datei
+    allein nicht wissen kann, sagt git genau einmal je Checkout. Seit dieser Runde für jede
+    Datei, nicht nur für die lesbaren.</li>
+  <li><strong>Ein Konflikt kann nicht unbemerkt in die Historie.</strong></li>
+  <li><strong>Ein einziger Schreibpfad</strong>, und seit dieser Runde in der Reihenfolge, die
+    im Zweifel die Dateien recht behalten lässt.</li>
+  <li><strong>Die Datenhaltung ist konsistent gedacht</strong> — Dateien sind die Wahrheit, Room
+    ist ein ableitbarer Cache. Was diese Runde daran geheilt hat: ein geschlossenes Repository
+    lässt seinen Commit nicht mehr für das nächste stehen.</li>
+  <li><strong>Die JNI-Grenze ist schmal und explizit</strong>, und um einen Fehlercode ärmer
+    geworden, den Kotlin selbst beantworten kann.</li>
+  <li><strong>Reproduzierbare Toolchain.</strong> Rust- und NDK-Version liegen in Dateien, die CI
+    und <code>flake.nix</code> gemeinsam lesen.</li>
+  <li><strong>Der Unterbau ist kein Ballast</strong> — siehe die Antwort zu Kotlin oben, in der
+    das zum ersten Mal durchgerechnet ist statt behauptet.</li>
+</ul>
+
+<h2 id="entschieden">Bewusst so entschieden</h2>
+<ul>
+  <li><strong>Ein Icon für alle Varianten.</strong> debug und nightly trugen eigene Zeichnungen
+    in derselben Farbe wie release, unterschieden also nichts; was sie unterscheidet, ist das
+    Label.</li>
+  <li><strong>Die Einrichtung hat keine Leiste über sich.</strong> Ihre Bildschirme sagen im
+    ersten Satz der Seite, was sie sind; eine Überschrift darüber, die dasselbe in zwei Worten
+    wiederholt, ist Chrom. Einstellungen und Logs behalten ihre — das sind Orte, zu denen man
+    geht, keine Schritte, durch die man geführt wird.</li>
+  <li><strong>Ein Name ohne Punkt behält die Endung.</strong> Wer im Editor „notes“ tippt,
+    bekommt weiterhin <code>notes.md</code>; nur wer eine Endung schreibt, ändert den Typ.</li>
+  <li><strong>Der Zielordner eines Verschiebens muss existieren.</strong> Wie bei <code>mv</code>.
+    Ein Tippfehler im Pfad legt sonst still einen Ordner an, und die Notiz liegt, wo niemand sie
+    wollte.</li>
+  <li><strong>Klassen-Ssh-Fehler bleiben laut.</strong> Beim Stillstellen der Netzfehler wurden
+    die SSH-Zeitüberschreitungen ausgenommen: sie teilen ihre Klasse mit
+    „authentication failed“, und einen Schlüssel, der nicht mehr gilt, stillzustellen wäre
+    schlimmer als der Lärm.</li>
+  <li><strong>Die Navigation ist selbst geschrieben.</strong> Mit dem Preis, dass Scoping von
+    ViewModels und das Aufräumen nach der Animation jetzt Code dieses Projekts sind. Der
+    Versionskatalog hatte es seit langem als todo stehen.</li>
+  <li><strong>@Parcelize bleibt.</strong> Der Bericht hatte erwartet, dass es mit der
+    Navigationsbibliothek wegfällt — es ist genau das Gegenteil: es ist, was den Backstack einen
+    Prozesstod überleben lässt.</li>
+  <li><strong>Antippen bewegt die Notiz nicht.</strong> Bewegt wird nur, was die Tastatur
+    zugedeckt hat, und dann in die Mitte.</li>
+  <li><strong>Eine lange Notiz wird weniger weit zurückgenommen.</strong></li>
+  <li><strong>Die App ist einsprachig.</strong></li>
+  <li><strong>Kein Anbieter-Login</strong>, und seit dieser Runde auch kein HTTPS: der Transport,
+    der ein Passwort oder ein Token im Klartext in der App braucht, um es bei jedem Sync
+    wiederzugeben.</li>
+  <li><strong>Zugangsdaten bleiben unverschlüsselt im DataStore</strong> — mit dem Keystore als
+    benanntem nächsten Schritt.</li>
+  <li><strong>Kein Speichern-Knopf im Editor</strong>, und die Pause davor wächst mit der
+    Notiz.</li>
+  <li><strong>Neue Ordner bekommen eine <code>.gitkeep</code></strong> — und die Liste zeigt sie
+    nicht, weil versteckte Dateien übersprungen werden.</li>
+  <li><strong>SSH-Hostkeys per Trust-on-first-use.</strong></li>
+  <li><strong>Kein Pull-to-Refresh.</strong></li>
+  <li><strong>Die Tabelle im Lesemodus wird selbst gesetzt.</strong></li>
+</ul>
+
+<p class="legend" style="margin-top:2.5rem">
+  <span><span class="tag t-crit">kritisch</span> Datenverlust oder Kompromittierung</span>
+  <span><span class="tag t-high">hoch</span> spürbar falsches Verhalten</span>
+  <span><span class="tag t-med">mittel</span> Funktionslücke oder Sackgasse</span>
+  <span><span class="tag t-low">niedrig</span> Qualität und Wartbarkeit</span>
+  <span><span class="tag t-info">Info</span> nur zur Kenntnis</span>
+</p>
+
+</div>
+</body>
+</html>

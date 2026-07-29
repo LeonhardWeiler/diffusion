@@ -1,0 +1,3 @@
+- make the gap even smaller between the input box (or the delete warning, etc.) and the button below
+- why is there a prettierconfig, remove if not necessary
+- the layout looks like its moving upwards when going into the settings
