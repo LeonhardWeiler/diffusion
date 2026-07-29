@@ -21,8 +21,20 @@ import kotlin.test.assertTrue
  */
 class NoteIndexTest {
 
-    private fun indexOf(vararg paths: String): NoteIndex {
+    /**
+     * The one date every note of [indexOf] carries. Notes of the same date are
+     * ordered by path, so a test that is not about dates does not have to name
+     * any — and none of them is the moment the test ran, which nothing can
+     * predict.
+     */
+    private val sameDate = 1_000_000L
+
+    private fun indexOf(vararg paths: String): NoteIndex =
+        indexOfDated(*paths.map { it to sameDate }.toTypedArray())
+
+    private fun indexOfDated(vararg dated: Pair<String, Long>): NoteIndex {
         val index = NoteIndex()
+        val paths = dated.map { it.first }
 
         val folders = paths
             .map { it.substringBeforeLast("/", missingDelimiterValue = "") }
@@ -36,7 +48,9 @@ class NoteIndexTest {
 
         index.putFolder(NoteFolder.new(relativePath = ""))
         folders.forEach { index.putFolder(NoteFolder.new(relativePath = it)) }
-        paths.forEach { index.putNote(Note.new(relativePath = it)) }
+        dated.forEach { (path, date) ->
+            index.putNote(Note.new(relativePath = path, lastModifiedTimeMillis = date))
+        }
 
         return index
     }
@@ -54,12 +68,59 @@ class NoteIndexTest {
     }
 
     @Test
-    fun the_notes_of_a_folder_are_in_alphabetical_order() {
+    fun the_note_written_last_is_at_the_top() {
+        val index = indexOfDated(
+            "older.md" to 2_000L,
+            "newest.md" to 9_000L,
+            "oldest.md" to 1_000L,
+        )
+
+        assertEquals(
+            listOf("newest.md", "older.md", "oldest.md"),
+            index.namesIn("")
+        )
+    }
+
+    @Test
+    fun notes_of_the_same_date_are_in_path_order() {
+        // a clone dates every file by the commit it came from, so a whole folder
+        // of them shares one minute and the order still has to be the same twice
         val index = indexOf("beta.md", "Alpha.md", "gamma.md", "delta.md")
 
         assertEquals(
             listOf("Alpha.md", "beta.md", "delta.md", "gamma.md"),
             index.namesIn("")
+        )
+    }
+
+    @Test
+    fun a_folder_stands_where_the_last_note_written_in_it_puts_it() {
+        val index = indexOfDated(
+            "old/a.md" to 1_000L,
+            "fresh/deep/b.md" to 9_000L,
+            "fresh/c.md" to 2_000L,
+            "middle/d.md" to 5_000L,
+        )
+
+        assertEquals(
+            listOf("fresh", "middle", "old"),
+            index.state.value.foldersIn("").map { it.noteFolder.relativePath }
+        )
+        // the date of a folder is the newest note under it, however deep
+        assertEquals(
+            9_000L,
+            index.state.value.foldersIn("").first().lastModifiedTimeMillis
+        )
+    }
+
+    @Test
+    fun a_folder_with_nothing_in_it_goes_last() {
+        val index = indexOf("full/a.md")
+        index.putFolder(NoteFolder.new(relativePath = "empty"))
+
+        assertEquals(
+            listOf("full", "empty"),
+            index.state.value.foldersIn("").map { it.noteFolder.relativePath }
         )
     }
 

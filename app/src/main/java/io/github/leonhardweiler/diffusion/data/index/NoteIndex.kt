@@ -254,7 +254,7 @@ private fun NoteHeader.at(relativePath: String) = NoteHeader(
 )
 
 /**
- * The notes of one folder, in alphabetical order.
+ * The notes of one folder, the most recently written first.
  *
  * Not recursive: a folder is a row of its own and opening it is what shows what
  * is inside. Only the search reaches further.
@@ -262,31 +262,47 @@ private fun NoteHeader.at(relativePath: String) = NoteHeader(
 fun IndexState.notesIn(folderPath: String): List<NoteHeader> =
     notes.values
         .filter { it.parentPath() == folderPath }
-        .sortedWith(byName)
+        .sortedWith(byDate)
 
 /**
- * The subfolders of one folder, in alphabetical order, each with how many notes
- * stand under it — its own and those of everything inside it, which is what
- * deleting it would take.
+ * The subfolders of one folder, each with how many notes stand under it — its
+ * own and those of everything inside it, which is what deleting it would take —
+ * and when the most recent of them was written, which is the order they are in.
+ *
+ * A folder is where notes are, so the last thing written in it is the only date
+ * it has. One with nothing in it has none and goes last.
  */
 fun IndexState.foldersIn(folderPath: String): List<FolderModel> =
     folders.values
         .filter { it.relativePath.isNotEmpty() && parentOf(it.relativePath) == folderPath }
-        .sortedBy { it.fullName().lowercase() }
         .map { folder ->
+            var count = 0
+            var newest = 0L
+
+            // one walk for both, rather than one per question
+            notes.values.forEach { note ->
+                if (!note.relativePath.isUnder(folder.relativePath)) return@forEach
+
+                count++
+                newest = maxOf(newest, note.lastModifiedTimeMillis)
+            }
+
             FolderModel(
                 noteFolder = folder,
-                noteCount = notes.keys.count { it.isUnder(folder.relativePath) },
+                noteCount = count,
+                lastModifiedTimeMillis = newest,
             )
         }
+        .sortedWith(byFolderDate)
 
 /**
  * What a search finds: the notes under the folder being looked at whose name or
- * whose text holds what was typed, in alphabetical order.
+ * whose text holds what was typed, the most recently written first.
  *
  * There is no ranking anymore. It was a function over FTS4 match info that put
  * a hit in the name above a hit in the text, and the whole of what it bought
- * was an order nobody could predict. A name is a name and the list is sorted.
+ * was an order nobody could predict. A hit is a hit and the list is sorted by
+ * date, like every other list here.
  *
  * The text is read from the files, one after the other, and only for what the
  * app can read at all: a jpeg is not text, and a file above [LIMIT_FILE_SIZE]
@@ -299,7 +315,7 @@ suspend fun IndexState.search(folderPath: String, query: String): List<NoteHeade
 
     val under = notes.values
         .filter { folderPath.isEmpty() || it.relativePath.isUnder(folderPath) }
-        .sortedWith(byName)
+        .sortedWith(byDate)
 
     val found = mutableListOf<NoteHeader>()
 
@@ -332,11 +348,19 @@ private fun NoteHeader.holdsText(rootPath: String, needle: String): Boolean {
 }
 
 /**
- * Alphabetically, and by path where two files are called the same — a list that
- * changes order between two reads of the same folder is worse than one whose
- * order is only nearly the one expected.
+ * The note written last at the top, and by path where two carry the same date —
+ * a list that changes order between two reads of the same folder is worse than
+ * one whose order is only nearly the one expected. A clone dates every file it
+ * writes by the commit it came from, so whole folders of them share a minute.
+ *
+ * The date is the file's mtime, which is what a row shows.
  */
-private val byName = compareBy<NoteHeader>({ it.fileName.lowercase() }, { it.relativePath })
+private val byDate =
+    compareByDescending<NoteHeader> { it.lastModifiedTimeMillis }.thenBy { it.relativePath }
+
+/** The same for a folder, whose date is the last thing written inside it. */
+private val byFolderDate = compareByDescending<FolderModel> { it.lastModifiedTimeMillis }
+    .thenBy { it.noteFolder.relativePath }
 
 private fun NoteHeader.parentPath(): String = parentOf(relativePath)
 

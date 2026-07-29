@@ -11,6 +11,12 @@ import io.github.leonhardweiler.diffusion.manager.isExtensionSupported
 data class FolderModel(
     val noteFolder: NoteFolder,
     val noteCount: Int,
+    /**
+     * When the most recently written note under it was written, which is what a
+     * folder is sorted by. Zero for one with nothing in it: a folder has no date
+     * of its own, and there is nothing in it to speak for one.
+     */
+    val lastModifiedTimeMillis: Long,
 )
 
 /**
