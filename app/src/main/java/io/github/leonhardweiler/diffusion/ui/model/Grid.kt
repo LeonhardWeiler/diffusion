@@ -2,6 +2,8 @@ package io.github.leonhardweiler.diffusion.ui.model
 
 import androidx.room.Embedded
 import io.github.leonhardweiler.diffusion.data.room.NoteFolder
+import io.github.leonhardweiler.diffusion.manager.extensionType
+import io.github.leonhardweiler.diffusion.manager.isExtensionSupported
 
 enum class SortOrder {
     AZ,
@@ -30,6 +32,16 @@ data class NoteHeader(
 ) {
     fun nameWithoutExtension(): String =
         fileName.substringBeforeLast(".", missingDelimiterValue = fileName)
+
+    fun extension(): String = fileName.substringAfterLast(".", missingDelimiterValue = "")
+
+    /**
+     * Whether this is a file the app itself can show. Everything in the
+     * repository is listed, so a row can just as well be a photo or a pdf —
+     * tapping one of those hands it to another app instead of opening an
+     * editor. The answer is remembered per extension, see [extensionType].
+     */
+    fun isNote(): Boolean = isExtensionSupported(extension())
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

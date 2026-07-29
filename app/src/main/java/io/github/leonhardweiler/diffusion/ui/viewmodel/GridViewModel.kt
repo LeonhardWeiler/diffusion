@@ -12,8 +12,10 @@ import androidx.paging.map
 import io.github.leonhardweiler.diffusion.MyApp
 import io.github.leonhardweiler.diffusion.R
 import io.github.leonhardweiler.diffusion.data.AppPreferences
+import io.github.leonhardweiler.diffusion.data.platform.NodeFs
 import io.github.leonhardweiler.diffusion.data.room.Note
 import io.github.leonhardweiler.diffusion.data.room.NoteFolder
+import io.github.leonhardweiler.diffusion.data.room.LIMIT_FILE_SIZE_DB
 import io.github.leonhardweiler.diffusion.data.room.RepoDatabase
 import io.github.leonhardweiler.diffusion.helper.NameValidation
 import io.github.leonhardweiler.diffusion.manager.StorageManager
@@ -23,6 +25,7 @@ import io.github.leonhardweiler.diffusion.ui.model.GridNote
 import io.github.leonhardweiler.diffusion.ui.model.NoteHeader
 import io.github.leonhardweiler.diffusion.ui.model.SortOrder
 import io.github.leonhardweiler.diffusion.utils.getParentPath
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,6 +38,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class GridViewModel : ViewModel() {
 
@@ -248,6 +252,12 @@ class GridViewModel : ViewModel() {
      * Reads the note behind a row of the list, which carries no content, and
      * hands it to the editor. A note that is gone by the time it is tapped —
      * deleted outside the app, say — says so instead of opening empty.
+     *
+     * So does one the index refused to read. The row is there either way, since
+     * the list shows every file in the repository, but the editor is given what
+     * the index holds — and for a file above [LIMIT_FILE_SIZE_DB] that is
+     * nothing. Opening it would show an empty note, and the first save would
+     * make the file agree with it.
      */
     fun openNote(note: NoteHeader, onLoaded: (Note) -> Unit) = viewModelScope.launch {
         val loaded = dao.note(note.relativePath)
@@ -255,7 +265,30 @@ class GridViewModel : ViewModel() {
             uiHelper.makeToast(uiHelper.getString(R.string.error_note_not_found))
             return@launch
         }
+
+        val size = withContext(Dispatchers.IO) {
+            runCatching { NodeFs.File.fromPath(prefs.repoPath(), note.relativePath).fileSize() }
+                .getOrDefault(0L)
+        }
+        if (size > LIMIT_FILE_SIZE_DB) {
+            uiHelper.makeToast(uiHelper.getString(R.string.error_note_too_large, note.fileName))
+            return@launch
+        }
+
         onLoaded(loaded)
+    }
+
+    /**
+     * Where a row's file actually is, for the one thing this app does not do
+     * with it: hand it to another one.
+     *
+     * The path is put together here rather than in the row, because the row
+     * knows the note only by its place in the repository and the repository
+     * path is a preference — [onResolved] then runs on the main thread, where
+     * starting an activity belongs.
+     */
+    fun openExternally(note: NoteHeader, onResolved: (String) -> Unit) = viewModelScope.launch {
+        onResolved("${prefs.repoPath()}/${note.relativePath}")
     }
 
     fun deleteFolder(noteFolder: NoteFolder) {

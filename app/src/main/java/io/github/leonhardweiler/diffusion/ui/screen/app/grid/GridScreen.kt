@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Offset
@@ -44,6 +45,7 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import io.github.leonhardweiler.diffusion.R
 import io.github.leonhardweiler.diffusion.data.room.Note
 import io.github.leonhardweiler.diffusion.data.room.NoteFolder
+import io.github.leonhardweiler.diffusion.helper.openFileWithAnotherApp
 import io.github.leonhardweiler.diffusion.ui.component.CustomDropDown
 import io.github.leonhardweiler.diffusion.ui.component.CustomDropDownModel
 import io.github.leonhardweiler.diffusion.ui.model.EditType
@@ -194,6 +196,8 @@ internal fun NoteActionsDropdown(
     // the row whose menu is actually open
     if (!dropDownExpanded.value) return
 
+    val context = LocalContext.current
+
     // need this box for clickPosition
     Box {
         CustomDropDown(
@@ -203,6 +207,15 @@ internal fun NoteActionsDropdown(
                 CustomDropDownModel(
                     text = stringResource(R.string.delete_this_note),
                     onClick = { vm.deleteNote(gridNote.note) }),
+                // On every row, not only on the ones this app cannot read: a
+                // note above the size limit is opened here by nobody, and a
+                // markdown file is something a user may well want to hand to
+                // something else.
+                CustomDropDownModel(
+                    text = stringResource(R.string.open_with_another_app_action),
+                    onClick = {
+                        vm.openExternally(gridNote.note) { openFileWithAnotherApp(context, it) }
+                    }),
                 if (!isSelecting) CustomDropDownModel(
                     text = stringResource(R.string.select_multiple_notes),
                     onClick = { vm.selectNote(gridNote.note, true) }) else null,

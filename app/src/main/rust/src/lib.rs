@@ -1,5 +1,5 @@
 use jni::objects::{JClass, JObject, JString, JValue};
-use jni::sys::{jboolean, jint};
+use jni::sys::jint;
 use jni::{Env, NativeMethod, jni_sig, jni_str, native_method};
 
 use crate::callback::ProgressCB;
@@ -107,11 +107,6 @@ const _GENERATE_SSH_KEYS_LIB_METHOD: NativeMethod = native_method! {
 const _EXTENSION_TYPE_LIB_METHOD: NativeMethod = native_method! {
     java_type = "io.github.leonhardweiler.diffusion.manager.MimeTypeManagerKt",
     static extern fn extension_type_lib(extension: JString) -> jint,
-};
-
-const _IS_EXTENSION_SUPPORTED_LIB_METHOD: NativeMethod = native_method! {
-    java_type = "io.github.leonhardweiler.diffusion.manager.MimeTypeManagerKt",
-    static extern fn is_extension_supported_lib(extension: JString) -> jboolean,
 };
 
 const _GET_URL_INFO_LIB_METHOD: NativeMethod = native_method! {
@@ -391,17 +386,6 @@ fn extension_type_lib<'local>(
         None => 0,
     };
 
-    Ok(res)
-}
-
-fn is_extension_supported_lib<'local>(
-    env: &mut Env<'local>,
-    _class: JClass<'local>,
-    extension: JString<'local>,
-) -> Result<jboolean, jni::errors::Error> {
-    let extension = extension.try_to_string(env).unwrap();
-
-    let res = mime_types::is_extension_supported(extension.as_str());
     Ok(res)
 }
 

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    A repository always lives on the shared internal storage — that is the only
+    place the folder picker yields a real path for, and libgit2 needs one. So
+    the whole of it is what the provider may hand out, and nothing else is.
+-->
+<paths>
+    <external-path
+        name="repository"
+        path="." />
+</paths>

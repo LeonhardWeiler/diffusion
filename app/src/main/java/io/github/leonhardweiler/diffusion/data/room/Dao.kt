@@ -14,7 +14,7 @@ import androidx.sqlite.db.SimpleSQLiteQuery
 import androidx.sqlite.db.SupportSQLiteQuery
 import io.github.leonhardweiler.diffusion.data.platform.NodeFs
 import io.github.leonhardweiler.diffusion.manager.Progress
-import io.github.leonhardweiler.diffusion.manager.isExtensionSupportedLib
+import io.github.leonhardweiler.diffusion.manager.isExtensionSupported
 import io.github.leonhardweiler.diffusion.ui.model.GridNote
 import io.github.leonhardweiler.diffusion.ui.model.NoteHeader
 import io.github.leonhardweiler.diffusion.ui.model.SortOrder
@@ -24,7 +24,33 @@ import kotlinx.coroutines.flow.Flow
 
 private const val TAG = "Dao"
 
-private const val LIMIT_FILE_SIZE_DB = 2 * 1024 * 1024
+/**
+ * The largest file whose text is read into the index — and, because the editor
+ * is handed what the index holds, the largest note that can be opened here.
+ */
+const val LIMIT_FILE_SIZE_DB = 2 * 1024 * 1024
+
+/**
+ * What of a file goes into the index.
+ *
+ * Every file in the repository gets a row, so that the list is the repository
+ * and not a filtered view of it — a photo next to the note that mentions it is
+ * the thing a user came looking for. Only what the app can show itself is read:
+ * a jpeg is not text, and a note above the size limit is one the search would
+ * choke on rather than help with. Everything else is a row with a name, a date
+ * and nothing to search in.
+ */
+private fun NodeFs.File.contentForIndex(): String {
+    if (!isExtensionSupported(extension.text)) return ""
+
+    val fileSize = fileSize()
+    if (fileSize > LIMIT_FILE_SIZE_DB) {
+        Log.d(TAG, "not reading $path: $fileSize is above $LIMIT_FILE_SIZE_DB")
+        return ""
+    }
+
+    return readText()
+}
 
 /**
  * What a row of the note list is made of: what it shows, plus whether its file
@@ -91,17 +117,10 @@ interface RepoDatabaseDao {
 
                 when (nodeFs) {
                     is NodeFs.File -> {
-                        if (!isExtensionSupportedLib(nodeFs.extension.text)) {
-                            //Log.d(TAG, "skipped ${nodeFs.path} because extension not supported")
-                            return@forEachNodeFs
-                        }
-
-                        val fileSize = nodeFs.fileSize()
-                        if (fileSize > LIMIT_FILE_SIZE_DB) {
-                            Log.d(
-                                TAG,
-                                "skipped ${nodeFs.path} because size was above $LIMIT_FILE_SIZE_DB ($fileSize)"
-                            )
+                        // .gitkeep, .gitignore and whatever else a repository
+                        // keeps for itself are not files anybody came here to
+                        // read — and .gitkeep is one this app writes.
+                        if (nodeFs.isHidden() || nodeFs.isSym()) {
                             return@forEachNodeFs
                         }
 
@@ -113,7 +132,7 @@ interface RepoDatabaseDao {
                         val note = Note.new(
                             relativePath = nodeFs.path.substring(startIndex = rootLength),
                             lastModifiedTimeMillis = nodeFs.lastModifiedTime().toMillis(),
-                            content = nodeFs.readText(),
+                            content = nodeFs.contentForIndex(),
                         )
                         // straight in: the table was cleared a moment ago, so
                         // there is nothing here that could already be there

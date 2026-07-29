@@ -19,6 +19,7 @@ pub fn extension_type(extension: &str) -> Option<ExtensionType> {
     None
 }
 
+#[cfg(test)]
 pub fn is_extension_supported(extension: &str) -> bool {
     extension_type(extension).is_some()
 }

@@ -14,7 +14,6 @@ use git2::{
 use crate::callback::ProgressCB;
 use crate::cred::{Cred, GitAuthor};
 use crate::error::Error;
-use crate::mime_types::is_extension_supported;
 use transport::{HOME_PATH, apply_ssh_workaround, certificate_check, credential_helper};
 
 mod merge;
@@ -640,12 +639,12 @@ fn commit_timestamps(
 
     let mut pending = HashSet::new();
 
+    // Every blob, not only the ones the app can read itself: the list shows
+    // every file in the repository with a date beside it, and a photo that was
+    // committed a year ago should not read as written the minute it was cloned.
     head.tree()?.walk(TreeWalkMode::PreOrder, |root, entry| {
         if entry.kind() == Some(git2::ObjectType::Blob)
             && let Ok(name) = entry.name()
-            && let Some(extension) = Path::new(name).extension()
-            && let Some(extension) = extension.to_str()
-            && is_extension_supported(extension)
         {
             let path = format!("{root}{name}");
             if only.is_none_or(|only| only.contains(&path)) {

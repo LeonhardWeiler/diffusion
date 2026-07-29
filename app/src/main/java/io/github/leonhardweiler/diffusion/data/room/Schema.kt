@@ -103,11 +103,14 @@ data class Note(
             .let { FileExtension.match(it) }
     }
 
-    /** The file name with the dot and what follows it taken off. */
-    fun nameWithoutExtension(): String = fileName.substring(
-        startIndex = 0,
-        endIndex = fileName.length - (fileExtension().text.length + 1)
-    )
+    /**
+     * The file name with the dot and what follows it taken off — and the whole
+     * name when there is no dot. Every file in the repository is listed now,
+     * and a `LICENSE` or a `Makefile` has no extension to take off; computing
+     * the cut from the extension's length used to eat its last character.
+     */
+    fun nameWithoutExtension(): String =
+        fileName.substringBeforeLast(".", missingDelimiterValue = fileName)
 
     init {
         if (BuildConfig.DEBUG) {

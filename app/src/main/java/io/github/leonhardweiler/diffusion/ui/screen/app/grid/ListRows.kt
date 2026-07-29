@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AttachFile
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material3.HorizontalDivider
@@ -25,12 +26,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInteropFilter
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.leonhardweiler.diffusion.R
 import io.github.leonhardweiler.diffusion.data.room.Note
+import io.github.leonhardweiler.diffusion.helper.openFileWithAnotherApp
 import io.github.leonhardweiler.diffusion.ui.component.CustomDropDown
 import io.github.leonhardweiler.diffusion.ui.component.CustomDropDownModel
 import io.github.leonhardweiler.diffusion.ui.model.EditType
@@ -181,6 +184,7 @@ internal fun NoteListRow(
 ) {
     val dropDownExpanded = remember { mutableStateOf(false) }
     val clickPosition = remember { mutableStateOf(Offset.Zero) }
+    val context = LocalContext.current
 
     // Asked of the selection here rather than folded into the row by the view
     // model: a PagingData may be collected once, and combining the selection
@@ -191,12 +195,17 @@ internal fun NoteListRow(
         dateFormat.format(Date(gridNote.note.lastModifiedTimeMillis))
     }
 
+    // Everything in the repository is a row, not only what this app can read.
+    val isNote = remember(gridNote.note.fileName) { gridNote.note.isNote() }
+
     // A search spans the whole repository, so the name alone does not say which
-    // note was found: results are named by their path.
-    val title = if (isSearching || !gridNote.isUnique) {
-        gridNote.note.relativePath
-    } else {
-        gridNote.note.nameWithoutExtension()
+    // note was found: results are named by their path. A file that is not a
+    // note keeps its extension either way — a row saying "holiday" for a jpeg
+    // is a row that lies about what tapping it will do.
+    val title = when {
+        isSearching || !gridNote.isUnique -> gridNote.note.relativePath
+        isNote -> gridNote.note.nameWithoutExtension()
+        else -> gridNote.note.fileName
     }
 
     val rowBackground =
@@ -210,10 +219,12 @@ internal fun NoteListRow(
             .combinedClickable(
                 onLongClick = { dropDownExpanded.value = true },
                 onClick = {
-                    if (isSelecting) {
-                        vm.selectNote(gridNote.note, add = !selected)
-                    } else {
-                        vm.openNote(gridNote.note) { onEditClick(it, EditType.Update) }
+                    when {
+                        isSelecting -> vm.selectNote(gridNote.note, add = !selected)
+                        isNote -> vm.openNote(gridNote.note) { onEditClick(it, EditType.Update) }
+                        else -> vm.openExternally(gridNote.note) {
+                            openFileWithAnotherApp(context, it)
+                        }
                     }
                 }
             )
@@ -240,7 +251,11 @@ internal fun NoteListRow(
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Rounded.Description,
+                    imageVector = if (isNote) {
+                        Icons.Rounded.Description
+                    } else {
+                        Icons.Rounded.AttachFile
+                    },
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurface
                 )
