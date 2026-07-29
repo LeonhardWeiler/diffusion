@@ -1,19 +1,41 @@
 package io.github.leonhardweiler.diffusion.manager
 
 import android.util.Log
-import androidx.annotation.Keep
 import io.github.leonhardweiler.diffusion.MyApp
 import io.github.leonhardweiler.diffusion.R
+import io.github.leonhardweiler.diffusion.manager.git.GitEnvironment
+import io.github.leonhardweiler.diffusion.manager.git.MergeConflictException
+import io.github.leonhardweiler.diffusion.manager.git.UnresolvedConflictException
+import io.github.leonhardweiler.diffusion.manager.git.applyCommitTimestamps
+import io.github.leonhardweiler.diffusion.manager.git.cloneRepository
+import io.github.leonhardweiler.diffusion.manager.git.commitAll
+import io.github.leonhardweiler.diffusion.manager.git.isChange
+import io.github.leonhardweiler.diffusion.manager.git.lastCommit
+import io.github.leonhardweiler.diffusion.manager.git.openRepository
+import io.github.leonhardweiler.diffusion.manager.git.pull
+import io.github.leonhardweiler.diffusion.manager.git.push
+import io.github.leonhardweiler.diffusion.manager.git.remoteUrl
+import io.github.leonhardweiler.diffusion.manager.git.setRemoteUrl
+import io.github.leonhardweiler.diffusion.manager.git.signature
 import io.github.leonhardweiler.diffusion.ui.model.Cred
 import io.github.leonhardweiler.diffusion.ui.model.GitAuthor
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+import org.eclipse.jgit.api.Git
+import java.io.File
+import java.io.IOException
+import java.net.ConnectException
+import java.net.NoRouteToHostException
+import java.net.SocketException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 import kotlin.Result.Companion.failure
 import kotlin.Result.Companion.success
 
 
 enum class GitExceptionType {
-    InitLib,
     RepoAlreadyInit,
     RepoNotInit,
 
@@ -59,34 +81,18 @@ class GitException(
     constructor(type: GitExceptionType) : this(type, null)
 }
 
+/**
+ * Everything this app does to a git repository.
+ *
+ * The repository itself is JGit's, held open here for as long as the app has one
+ * — opening it walks the refs and the config, and the note list asks about it on
+ * every sync. One [locker] around all of it: JGit's index and refs are files, and
+ * two threads writing them is a repository that has to be repaired by hand.
+ */
 class GitManager {
 
     companion object {
         private const val TAG = "GitManager"
-
-        /**
-         * Returned by the rust side when a pull cannot be merged automatically.
-         * Not a libgit2 code, see MERGE_CONFLICT in rust/src/lib.rs.
-         */
-        private const val MERGE_CONFLICT = -1000
-
-        /**
-         * Returned by the rust side when the working tree still holds conflict
-         * markers, so that they are not committed. See UNRESOLVED_CONFLICT in
-         * rust/src/error.rs.
-         */
-        private const val UNRESOLVED_CONFLICT = -1001
-
-        /**
-         * Returned by the rust side when libgit2 never reached the far end.
-         * See NETWORK_UNREACHABLE in rust/src/error.rs.
-         */
-        private const val NETWORK_UNREACHABLE = -1002
-
-        init {
-            Log.d(TAG, "init")
-            System.loadLibrary("git_wrapper")
-        }
     }
 
     private val uiHelper = MyApp.appModule.uiHelper
@@ -105,61 +111,95 @@ class GitManager {
         private set
 
     /** Only ever touched under [locker], where the lock carries it across. */
-    private var isLibInitialized = false
+    private var git: Git? = null
 
-    private suspend fun <T> safelyAccessLibGit2(f: suspend () -> T): Result<T> = locker.withLock {
-        try {
-            if (!isLibInitialized) {
-                val res = initLib()
-                Log.d(TAG, "res on init = $res")
-                if (res < 0) {
-                    throw GitException(GitExceptionType.InitLib)
+    private fun requireGit(): Git =
+        git ?: throw GitException(GitExceptionType.RepoNotInit)
+
+    private suspend fun <T> safelyAccessGit(f: suspend () -> T): Result<T> = locker.withLock {
+        withContext(Dispatchers.IO) {
+            try {
+                GitEnvironment.install(MyApp.appModule.context.filesDir)
+                success(f())
+            } catch (e: Exception) {
+                val failure = asGitException(e)
+
+                // A network that is not there is not a fault to hand a stack
+                // trace about: it is the ordinary answer when the app is opened
+                // before wifi is back, and twelve of those filled the log.
+                if (failure.type == GitExceptionType.NetworkUnreachable) {
+                    Log.i(TAG, failure.message ?: "no network")
+                } else {
+                    Log.e(TAG, failure.message ?: "git call failed", e)
                 }
-                isLibInitialized = true
+                failure(failure)
             }
-            success(f())
-        } catch (e: Exception) {
-            // A network that is not there is not a fault to hand a stack trace
-            // about: it is the ordinary answer when the app is opened before
-            // wifi is back, and twelve of those filled the log.
-            if (e is GitException && e.type == GitExceptionType.NetworkUnreachable) {
-                Log.i(TAG, e.message ?: "no network")
-            } else {
-                Log.e(TAG, e.message ?: "libgit2 call failed", e)
-            }
-            failure(e)
         }
     }
 
+    /** What a failure of this layer is, as far as the caller has to care. */
+    private fun asGitException(e: Exception): GitException = when {
+        e is GitException -> e
+
+        e is MergeConflictException -> GitException(
+            GitExceptionType.MergeConflict,
+            uiHelper.getString(R.string.error_merge_conflict, e.paths.joinToString(", "))
+        )
+
+        e is UnresolvedConflictException -> GitException(
+            GitExceptionType.UnresolvedConflict,
+            uiHelper.getString(R.string.error_unresolved_conflict, e.paths.joinToString(", "))
+        )
+
+        isNetworkFailure(e) -> GitException(GitExceptionType.NetworkUnreachable, detail(e))
+
+        else -> GitException(detail(e))
+    }
+
     /**
-     * What to show the user for a negative return code. libgit2 writes a usable
-     * sentence for most failures, which the rust side keeps around; the bare
-     * number is only the fallback when there is nothing.
+     * What to show the user for a failure. JGit writes a usable sentence for most
+     * of them; the class name is the fallback for the ones that carry nothing.
      */
-    private fun errorDetail(res: Int): String = lastErrorMessageLib() ?: res.toString()
+    private fun detail(e: Throwable): String =
+        e.message?.takeIf { it.isNotBlank() } ?: e::class.java.simpleName
 
+    /**
+     * Whether the far end was never reached.
+     *
+     * Told apart from everything else by the exception underneath rather than by
+     * the sentence on top: JGit wraps a name that would not resolve and a key
+     * that was refused in the same TransportException, and only one of the two is
+     * something to keep quiet about.
+     */
+    private fun isNetworkFailure(e: Throwable): Boolean {
+        var cause: Throwable? = e
 
+        while (cause != null) {
+            when (cause) {
+                is UnknownHostException,
+                is ConnectException,
+                is NoRouteToHostException,
+                is SocketTimeoutException,
+                is SocketException,
+                    -> return true
+            }
+            cause = cause.cause.takeIf { it != cause }
+        }
 
+        return false
+    }
 
-    suspend fun openRepo(repoPath: String): Result<Unit> = safelyAccessLibGit2 {
+    suspend fun openRepo(repoPath: String): Result<Unit> = safelyAccessGit {
         Log.d(TAG, "open repo: $repoPath")
-        if (isRepoInitialized) return@safelyAccessLibGit2
+        if (isRepoInitialized) return@safelyAccessGit
 
-        val res = openRepoLib(repoPath)
-        if (res < 0) {
-            throw GitException(uiHelper.getString(R.string.error_open_repo, errorDetail(res)))
+        git = try {
+            openRepository(File(repoPath))
+        } catch (e: IOException) {
+            throw GitException(uiHelper.getString(R.string.error_open_repo, detail(e)))
         }
+
         isRepoInitialized = true
-    }
-
-    private var actualCb: ((Int) -> Boolean)? = null
-
-    /**
-     * This function is called from native code
-     */
-    @Keep
-    fun progressCb(progress: Int): Boolean {
-        return actualCb?.invoke(progress) != false
     }
 
     suspend fun cloneRepo(
@@ -167,28 +207,19 @@ class GitManager {
         repoUrl: String,
         cred: Cred?,
         progressCallback: (Int) -> Boolean
-    ): Result<Unit> = safelyAccessLibGit2 {
+    ): Result<Unit> = safelyAccessGit {
         Log.d(TAG, "clone repo: $repoPath, $repoUrl, $cred")
 
         if (isRepoInitialized) throw GitException(GitExceptionType.RepoAlreadyInit)
 
-        actualCb = progressCallback
-
-        val res = cloneRepoLib(
-            repoPath = repoPath,
-            remoteUrl = repoUrl,
-            cred = cred,
-            progressCallback = this
-        )
-
-        actualCb = null
-
-        if (res < 0) {
-            throw GitException(uiHelper.getString(R.string.error_clone_repo, errorDetail(res)))
+        git = try {
+            cloneRepository(File(repoPath), repoUrl, cred, progressCallback)
+        } catch (e: Exception) {
+            if (isNetworkFailure(e)) throw e
+            throw GitException(uiHelper.getString(R.string.error_clone_repo, detail(e)))
         }
 
         isRepoInitialized = true
-
     }
 
     /**
@@ -198,17 +229,15 @@ class GitManager {
      * cannot be read at all is not a repository that has nothing to say, and
      * the database used to take the one for the other and stay empty.
      */
-    suspend fun lastCommit(): Result<String?> = safelyAccessLibGit2 {
+    suspend fun lastCommit(): Result<String?> = safelyAccessGit {
         Log.d(TAG, "last commit")
-        if (!isRepoInitialized) throw GitException(GitExceptionType.RepoNotInit)
-        lastCommitLib()
+        lastCommit(requireGit().repository)
     }
 
     /** What the repository already knows about its remote, if it has one. */
-    suspend fun remoteUrl(): String? = safelyAccessLibGit2 {
+    suspend fun remoteUrl(): String? = safelyAccessGit {
         Log.d(TAG, "remote url")
-        if (!isRepoInitialized) throw GitException(GitExceptionType.RepoNotInit)
-        remoteUrlLib()
+        remoteUrl(requireGit().repository)
     }.getOrNull()
 
     /**
@@ -216,118 +245,80 @@ class GitManager {
      * repository, not from the preferences, so a url that is only stored in the
      * app would leave them with nothing to talk to.
      */
-    suspend fun setRemoteUrl(url: String): Result<Unit> = safelyAccessLibGit2 {
+    suspend fun setRemoteUrl(url: String): Result<Unit> = safelyAccessGit {
         Log.d(TAG, "set remote url")
-        if (!isRepoInitialized) throw GitException(GitExceptionType.RepoNotInit)
 
-        val res = setRemoteUrlLib(url)
-        if (res < 0) {
-            throw GitException(uiHelper.getString(R.string.error_set_remote_url, errorDetail(res)))
+        try {
+            setRemoteUrl(requireGit(), url)
+        } catch (e: Exception) {
+            if (e is GitException) throw e
+            throw GitException(uiHelper.getString(R.string.error_set_remote_url, detail(e)))
         }
     }
 
     /**
      * @param fallbackMessage what the commit is called when the notes it holds
      * cannot be worked out — a merge that changed no file, say. Otherwise the
-     * rust side names them, because it is the side that stages them.
+     * notes are named, because the commit is made of them.
      */
-    suspend fun commitAll(author: GitAuthor, fallbackMessage: String): Result<Unit> = safelyAccessLibGit2 {
-        Log.d(TAG, "commit all: ${author.name}")
-        if (!isRepoInitialized) throw GitException(GitExceptionType.RepoNotInit)
+    suspend fun commitAll(author: GitAuthor, fallbackMessage: String): Result<Unit> =
+        safelyAccessGit {
+            Log.d(TAG, "commit all: ${author.name}")
+            val git = requireGit()
 
-        var res = isChangeLib()
+            if (!changed(git)) {
+                // nothing to commit
+                Log.d(TAG, "nothing to commit")
+                return@safelyAccessGit
+            }
 
-        if (res < 0) {
-            throw GitException(uiHelper.getString(R.string.error_commit_file_change, errorDetail(res)))
+            try {
+                commitAll(git, author, fallbackMessage)
+            } catch (e: Exception) {
+                if (e is UnresolvedConflictException || e is GitException) throw e
+                throw GitException(uiHelper.getString(R.string.error_commit_repo, detail(e)))
+            }
         }
-
-        if (res == 0) {
-            // nothing to commit
-            Log.d(TAG, "nothing to commit")
-            return@safelyAccessLibGit2
-        }
-
-        res = commitAllLib(author.name, author.email, fallbackMessage)
-
-        if (res == UNRESOLVED_CONFLICT) {
-            // the detail names the notes that still have the markers in them,
-            // which is where the user has to go
-            throw GitException(
-                GitExceptionType.UnresolvedConflict,
-                uiHelper.getString(R.string.error_unresolved_conflict, errorDetail(res))
-            )
-        }
-
-        if (res < 0) {
-            throw GitException(uiHelper.getString(R.string.error_commit_repo, errorDetail(res)))
-        }
-
-    }
 
     /**
      * Whether the working tree holds anything the repository has not been told
      * about — a note written, renamed or deleted since the last sync.
      */
-    suspend fun isChange(): Result<Boolean> = safelyAccessLibGit2 {
-        if (!isRepoInitialized) throw GitException(GitExceptionType.RepoNotInit)
+    suspend fun isChange(): Result<Boolean> = safelyAccessGit { changed(requireGit()) }
 
-        val res = isChangeLib()
-        if (res < 0) {
-            throw GitException(
-                uiHelper.getString(R.string.error_commit_file_change, errorDetail(res))
-            )
-        }
-        res > 0
+    private fun changed(git: Git): Boolean = try {
+        isChange(git)
+    } catch (e: Exception) {
+        throw GitException(uiHelper.getString(R.string.error_commit_file_change, detail(e)))
     }
 
-    suspend fun currentSignature(): GitAuthor? = safelyAccessLibGit2 {
+    suspend fun currentSignature(): GitAuthor? = safelyAccessGit {
         Log.d(TAG, "currentSignature")
-        if (!isRepoInitialized) throw GitException(GitExceptionType.RepoNotInit)
-
-        currentSignatureLib()
+        signature(requireGit().repository)
     }.getOrNull()?.let { GitAuthor(name = it.first, email = it.second) }
 
-    suspend fun push(cred: Cred?): Result<Unit> = safelyAccessLibGit2 {
+    suspend fun push(cred: Cred?): Result<Unit> = safelyAccessGit {
         Log.d(TAG, "push: $cred")
-        if (!isRepoInitialized) throw GitException(GitExceptionType.RepoNotInit)
-        val res = pushLib(cred)
+        val git = requireGit()
 
-        if (res < 0) {
-            throw GitException(
-                typeOf(res),
-                uiHelper.getString(R.string.error_push_repo, errorDetail(res))
-            )
+        try {
+            push(git, cred)
+        } catch (e: Exception) {
+            if (isNetworkFailure(e)) throw e
+            throw GitException(uiHelper.getString(R.string.error_push_repo, detail(e)))
         }
-
     }
 
-    suspend fun pull(cred: Cred?, author: GitAuthor): Result<Unit> = safelyAccessLibGit2 {
+    suspend fun pull(cred: Cred?, author: GitAuthor): Result<Unit> = safelyAccessGit {
         Log.d(TAG, "pull: $cred")
-        if (!isRepoInitialized) throw GitException(GitExceptionType.RepoNotInit)
+        val git = requireGit()
 
-        val res = pullLib(cred, author.name, author.email)
-
-        if (res == MERGE_CONFLICT) {
-            // the detail names the notes it could not merge, which is the whole
-            // of what the user has to go and look at
-            throw GitException(
-                GitExceptionType.MergeConflict,
-                uiHelper.getString(R.string.error_merge_conflict, errorDetail(res))
-            )
+        try {
+            pull(git, cred, author)
+        } catch (e: Exception) {
+            if (isNetworkFailure(e) || e is MergeConflictException) throw e
+            throw GitException(uiHelper.getString(R.string.error_pull_repo, detail(e)))
         }
-
-        if (res < 0) {
-            throw GitException(
-                typeOf(res),
-                uiHelper.getString(R.string.error_pull_repo, errorDetail(res))
-            )
-        }
-    }
-
-    /** What a negative return code is, as far as the caller has to care. */
-    private fun typeOf(res: Int): GitExceptionType = when (res) {
-        NETWORK_UNREACHABLE -> GitExceptionType.NetworkUnreachable
-        else -> GitExceptionType.Other
     }
 
     /**
@@ -338,83 +329,29 @@ class GitManager {
      * files without the user having written them. Best effort: a note that
      * keeps the wrong date is worth less than one that fails to open.
      */
-    suspend fun applyCommitTimestamps(): Result<Unit> = safelyAccessLibGit2 {
+    suspend fun applyCommitTimestamps(): Result<Unit> = safelyAccessGit {
         Log.d(TAG, "applyCommitTimestamps")
-        if (!isRepoInitialized) throw GitException(GitExceptionType.RepoNotInit)
+        val git = requireGit()
 
-        val res = applyCommitTimestampsLib()
-        if (res < 0) {
-            Log.w(TAG, "applyCommitTimestamps: ${errorDetail(res)}")
+        try {
+            applyCommitTimestamps(git)
+        } catch (e: Exception) {
+            Log.w(TAG, "applyCommitTimestamps: ${detail(e)}")
         }
     }
 
-
     fun closeRepoWithoutLock() {
-        if (isRepoInitialized) closeRepoLib()
+        git?.close()
+        git = null
         isRepoInitialized = false
     }
 
-    suspend fun closeRepo() = safelyAccessLibGit2 {
+    suspend fun closeRepo() = safelyAccessGit {
         closeRepoWithoutLock()
     }
 
-    suspend fun shutdown() = safelyAccessLibGit2 {
+    suspend fun shutdown() = safelyAccessGit {
         closeRepoWithoutLock()
-        if (isLibInitialized) freeLib()
-        isLibInitialized = false
     }
 
 }
-
-private external fun initLib(
-    homePath: String = MyApp.appModule.context.filesDir.toPath().toString()
-): Int
-
-
-private external fun openRepoLib(repoPath: String): Int
-
-private external fun cloneRepoLib(
-    repoPath: String,
-    remoteUrl: String,
-    cred: Cred?,
-    progressCallback: GitManager
-): Int
-
-
-private external fun lastCommitLib(): String?
-
-private external fun remoteUrlLib(): String?
-
-private external fun setRemoteUrlLib(url: String): Int
-
-private external fun commitAllLib(name: String, email: String, message: String): Int
-private external fun currentSignatureLib(): Pair<String, String>?
-private external fun pushLib(cred: Cred?): Int
-private external fun pullLib(cred: Cred?, name: String, email: String): Int
-
-private external fun freeLib()
-
-
-private external fun closeRepoLib()
-
-private external fun isChangeLib(): Int
-
-/**
- * The message behind the last negative return code, or null when there is none.
- * Reading it clears it on the rust side.
- */
-private external fun lastErrorMessageLib(): String?
-
-private external fun applyCommitTimestampsLib(): Int
-
-external fun generateSshKeysLib(): Pair<String, String>
-
-// return true if url is ssh
-external fun getUrlInfoLib(url: String): Boolean?
-
-/**
- * The remote url as something a browser can follow, or null if it cannot be
- * read as a repository url at all.
- */
-external fun browserUrlLib(url: String): String?
-

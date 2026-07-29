@@ -25,7 +25,8 @@ import io.github.leonhardweiler.diffusion.MyApp
 import io.github.leonhardweiler.diffusion.R
 import io.github.leonhardweiler.diffusion.helper.NetworkPermissionHelper
 import kotlinx.coroutines.launch
-import io.github.leonhardweiler.diffusion.manager.getUrlInfoLib
+import io.github.leonhardweiler.diffusion.helper.CloneUrlKind
+import io.github.leonhardweiler.diffusion.helper.cloneUrlKind
 import io.github.leonhardweiler.diffusion.ui.component.AppPage
 import io.github.leonhardweiler.diffusion.ui.component.SetupButton
 import io.github.leonhardweiler.diffusion.ui.component.SetupLine
@@ -40,10 +41,11 @@ import io.github.leonhardweiler.diffusion.ui.component.SetupPage
  * it — an ssh key is at least a thing the remote can be told to stop trusting
  * without changing anything else about the account.
  */
-fun isCloneUrlSupported(url: String): Boolean = getUrlInfoLib(url) == true
+fun isCloneUrlSupported(url: String): Boolean = cloneUrlKind(url) == CloneUrlKind.Ssh
 
 /** An address that is a clone url, but one over http or https. */
-private fun isUnsupportedTransport(url: String): Boolean = getUrlInfoLib(url) == false
+private fun isUnsupportedTransport(url: String): Boolean =
+    cloneUrlKind(url).let { it == CloneUrlKind.Http || it == CloneUrlKind.Https }
 
 @Composable
 fun EnterUrlScreen(

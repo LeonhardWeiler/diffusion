@@ -5,7 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import io.github.leonhardweiler.diffusion.ui.navigation.NavHost
 import io.github.leonhardweiler.diffusion.ui.navigation.rememberBackstack
-import io.github.leonhardweiler.diffusion.manager.generateSshKeysLib
+import io.github.leonhardweiler.diffusion.manager.git.generateSshKeys
 import io.github.leonhardweiler.diffusion.ui.destination.RemoteDestination
 import io.github.leonhardweiler.diffusion.ui.destination.RemoteDestination.EnterUrl
 import io.github.leonhardweiler.diffusion.ui.destination.RemoteDestination.GenerateNewKeys
@@ -110,7 +110,7 @@ fun RemoteScreen(
                 cloneState = initState,
                 remoteUrl = remoteDestination.url,
                 alreadyOnDevice = alreadyOnDevice,
-                generateSshKeys = ::generateSshKeysLib,
+                generateSshKeys = ::generateSshKeys,
                 cloneWith = { cred -> clone(remoteDestination.url, cred) },
                 storedKey = storedSshKey.takeIf { remoteDestination.useStored },
             )

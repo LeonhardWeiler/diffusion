@@ -9,6 +9,11 @@ datastore-preferences = "1.2.1"
 compose-bom = "2026.06.01"
 compose-markdown = "0.43.0"
 
+jgit = "7.7.1.202607240634-r"
+jsch = "2.28.6"
+bouncycastle = "1.85"
+slf4j = "2.0.17"
+
 androidx-benchmark = "1.5.0-alpha07"
 profileinstaller = "1.4.1"
 uiautomator = "2.4.0"
@@ -42,6 +47,13 @@ compose-markdown-renderer = { group = "com.mikepenz", name = "multiplatform-mark
 compose-markdown-android = { group = "com.mikepenz", name = "multiplatform-markdown-renderer-android", version.ref = "compose-markdown" }
 
 # 3-party
+# Git itself: JGit does the repository, jsch the ssh transport underneath it,
+# and bouncycastle the ed25519 a generated key is made of.
+jgit = { group = "org.eclipse.jgit", name = "org.eclipse.jgit", version.ref = "jgit" }
+jgit-ssh-jsch = { group = "org.eclipse.jgit", name = "org.eclipse.jgit.ssh.jsch", version.ref = "jgit" }
+jsch = { group = "com.github.mwiede", name = "jsch", version.ref = "jsch" }
+bouncycastle = { group = "org.bouncycastle", name = "bcprov-jdk18on", version.ref = "bouncycastle" }
+slf4j-simple = { group = "org.slf4j", name = "slf4j-simple", version.ref = "slf4j" }
 
 # Test
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinx-coroutines-test" }

@@ -23,7 +23,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.lifecycle.viewModelScope
 import io.github.leonhardweiler.diffusion.BuildConfig
 import io.github.leonhardweiler.diffusion.R
-import io.github.leonhardweiler.diffusion.manager.browserUrlLib
+import io.github.leonhardweiler.diffusion.helper.repoWebUrl
 import io.github.leonhardweiler.diffusion.ui.component.AppPage
 import io.github.leonhardweiler.diffusion.ui.component.DefaultSettingsRow
 import io.github.leonhardweiler.diffusion.ui.component.MultipleChoiceSettings
@@ -118,7 +118,7 @@ fun SettingsScreen(
                         onClick = {
                             // an ssh remote is not an address a browser can
                             // follow, so it is offered the https form of it
-                            val link = browserUrlLib(remoteUrl)
+                            val link = repoWebUrl(remoteUrl)
                             if (link == null) {
                                 vm.uiHelper.makeToast(vm.uiHelper.getString(R.string.error_invalid_link))
                                 return@Button

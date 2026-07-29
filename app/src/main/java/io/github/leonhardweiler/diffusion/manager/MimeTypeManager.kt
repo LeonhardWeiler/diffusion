@@ -2,7 +2,6 @@ package io.github.leonhardweiler.diffusion.manager
 
 import io.github.leonhardweiler.diffusion.manager.ExtensionType.Markdown
 import io.github.leonhardweiler.diffusion.manager.ExtensionType.Text
-import java.util.concurrent.ConcurrentHashMap
 
 
 enum class ExtensionType {
@@ -11,32 +10,25 @@ enum class ExtensionType {
 }
 
 /**
- * What the rust side answered for an extension, so that it is asked once.
+ * The extensions this app treats as notes, one file per kind.
  *
- * Every row of the list asks whether its file is a note the app can show, and
- * the answer depends on nothing but the extension — without this, each row of
- * each frame paid a JNI transition and a binary search for it. A repository
- * holds a handful of distinct extensions, so the map stays small.
- *
- * It holds the raw number rather than the enum because a map cannot hold null,
- * and "not a note" is the answer for most of what a repository contains.
+ * They are read off the classpath rather than written into the source: the lists
+ * are long, and a text file with one extension per line is what a list of
+ * extensions wants to be. Read once and held — every row of the note list asks
+ * whether its file is a note, and the answer depends on nothing but the
+ * extension.
  */
-private val knownExtensions = ConcurrentHashMap<String, Int>()
+private val extensions: Map<String, ExtensionType> by lazy {
+    read("text").associateWith { Text } + read("markdown").associateWith { Markdown }
+}
 
-fun extensionType(extension: String): ExtensionType? =
-    extensionTypeFromNumber(
-        knownExtensions.getOrPut(extension) { extensionTypeLib(extension) }
-    )
+private fun read(name: String): List<String> =
+    ExtensionType::class.java.getResourceAsStream("/supported_extensions/$name.txt")
+        ?.bufferedReader()
+        ?.useLines { lines -> lines.map { it.trim() }.filter { it.isNotEmpty() }.toList() }
+        ?: error("the list of $name extensions is missing")
+
+fun extensionType(extension: String): ExtensionType? = extensions[extension]
 
 /** Whether a file with this extension is one the app itself can show. */
 fun isExtensionSupported(extension: String): Boolean = extensionType(extension) != null
-
-private fun extensionTypeFromNumber(num: Int): ExtensionType? =
-    when (num) {
-        0 -> null
-        1 -> Text
-        2 -> Markdown
-        else -> throw Exception("Invalid number for ExtensionType: ^$num")
-    }
-
-private external fun extensionTypeLib(extension: String): Int
