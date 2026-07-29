@@ -1,16 +1,10 @@
 package io.github.leonhardweiler.diffusion.ui.screen.setup.remote
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import io.github.leonhardweiler.diffusion.R
 import io.github.leonhardweiler.diffusion.ui.component.AppPage
 import io.github.leonhardweiler.diffusion.ui.component.SetupButton
@@ -23,7 +17,8 @@ fun SelectGenerateNewSshKeysScreen(
     onBackClick: () -> Unit,
     onGenerate: () -> Unit,
     onCustom: () -> Unit,
-    storedKeyFingerprint: String? = null,
+    /** Whether there is a pair in the store to be offered at all. */
+    hasStoredKey: Boolean = false,
     onUseStored: () -> Unit = {},
 ) {
 
@@ -44,18 +39,14 @@ fun SelectGenerateNewSshKeysScreen(
                 // is one the repository probably already trusts, and taking it
                 // costs no further deploy key — which is what both of the other
                 // ways out of this screen do.
-                if (storedKeyFingerprint != null) {
+                //
+                // Its fingerprint stood under the button and said nothing: the
+                // key itself, and what to do with it, is on the screen the
+                // button leads to.
+                if (hasStoredKey) {
                     SetupButton(
                         onClick = onUseStored,
                         text = stringResource(R.string.use_stored_key)
-                    )
-
-                    Text(
-                        modifier = Modifier.padding(bottom = 8.dp),
-                        text = storedKeyFingerprint,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
                     )
                 }
 
@@ -81,7 +72,7 @@ private fun SelectGenerateNewSshKeysScreenPreview() {
         onBackClick = {},
         onGenerate = {},
         onCustom = {},
-        storedKeyFingerprint = "SHA256:kPBQ1w0kSjTNciZ2mR7pW9xV4kL0aB3cD5eFgHiJkLm",
+        hasStoredKey = true,
         onUseStored = {},
     )
 }

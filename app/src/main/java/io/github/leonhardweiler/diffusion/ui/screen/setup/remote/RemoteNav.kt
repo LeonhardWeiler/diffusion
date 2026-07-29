@@ -5,7 +5,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import io.github.leonhardweiler.diffusion.ui.navigation.NavHost
 import io.github.leonhardweiler.diffusion.ui.navigation.rememberBackstack
-import io.github.leonhardweiler.diffusion.helper.sshFingerprint
 import io.github.leonhardweiler.diffusion.manager.generateSshKeysLib
 import io.github.leonhardweiler.diffusion.ui.destination.RemoteDestination
 import io.github.leonhardweiler.diffusion.ui.destination.RemoteDestination.EnterUrl
@@ -81,7 +80,7 @@ fun RemoteScreen(
 
             is SelectGenerateNewSshKeys -> SelectGenerateNewSshKeysScreen(
                 onBackClick = { back() },
-                storedKeyFingerprint = storedSshKey?.let { sshFingerprint(it.publicKey) },
+                hasStoredKey = storedSshKey != null,
                 onUseStored = {
                     backstack.navigate(
                         GenerateNewKeys(
