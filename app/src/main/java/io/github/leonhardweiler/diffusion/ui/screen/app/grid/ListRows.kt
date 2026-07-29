@@ -38,7 +38,6 @@ import io.github.leonhardweiler.diffusion.ui.component.CustomDropDown
 import io.github.leonhardweiler.diffusion.ui.component.GetStringDialog
 import io.github.leonhardweiler.diffusion.ui.component.RequestConfirmationDialog
 import io.github.leonhardweiler.diffusion.ui.component.CustomDropDownModel
-import io.github.leonhardweiler.diffusion.ui.model.EditType
 import io.github.leonhardweiler.diffusion.ui.model.FolderModel
 import io.github.leonhardweiler.diffusion.ui.model.GridNote
 import io.github.leonhardweiler.diffusion.ui.model.NoteHeader
@@ -210,7 +209,7 @@ internal fun FolderRow(
 internal fun NoteListRow(
     gridNote: GridNote,
     vm: GridViewModel,
-    onEditClick: (Note, EditType) -> Unit,
+    onEditClick: (Note) -> Unit,
     selectedNotes: List<NoteHeader>,
     isSelecting: Boolean,
     isSearching: Boolean,
@@ -279,7 +278,7 @@ internal fun NoteListRow(
                 onClick = {
                     when {
                         isSelecting -> vm.selectNote(gridNote.note, add = !selected)
-                        isNote -> vm.openNote(gridNote.note) { onEditClick(it, EditType.Update) }
+                        isNote -> vm.openNote(gridNote.note, onEditClick)
                         else -> vm.openExternally(gridNote.note) {
                             openFileWithAnotherApp(context, it)
                         }

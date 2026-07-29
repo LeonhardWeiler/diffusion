@@ -2,7 +2,6 @@ package io.github.leonhardweiler.diffusion.ui.viewmodel.edit
 
 import android.util.Log
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.text.TextRange
@@ -11,19 +10,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.leonhardweiler.diffusion.MyApp
-import io.github.leonhardweiler.diffusion.R
-import io.github.leonhardweiler.diffusion.data.platform.NodeFs
 import io.github.leonhardweiler.diffusion.data.index.Note
 import io.github.leonhardweiler.diffusion.helper.EditHistory
-import io.github.leonhardweiler.diffusion.helper.NameValidation
-import io.github.leonhardweiler.diffusion.helper.describe
-import io.github.leonhardweiler.diffusion.helper.ResolvedPath
-import io.github.leonhardweiler.diffusion.helper.keepExtension
-import io.github.leonhardweiler.diffusion.helper.resolveRepoPath
 import io.github.leonhardweiler.diffusion.helper.UiHelper
 import io.github.leonhardweiler.diffusion.manager.StorageManager
-import io.github.leonhardweiler.diffusion.ui.destination.EditParams
-import io.github.leonhardweiler.diffusion.ui.model.EditType
 import io.github.leonhardweiler.diffusion.ui.viewmodel.viewModelFactory
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -32,29 +22,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.time.Instant
-import java.util.zip.DataFormatException
-import kotlin.Result.Companion.failure
-import kotlin.Result.Companion.success
 
 data class History(
     val index: Int,
     val size: Int,
 )
-
-/** The name and the text of an edit that could not be written to disk yet. */
-data class Draft(
-    val name: String,
-    val content: String,
-)
-
-enum class EditExceptionType {
-    NoteAlreadyExist,
-    FolderNotFound,
-}
-
-class EditException(
-    val type: EditExceptionType,
-) : Exception(type.name)
 
 private const val TAG = "TextVM"
 
@@ -89,11 +61,14 @@ internal fun saveDelayMillis(length: Int): Long {
 
 open class TextVM() : ViewModel() {
 
-    lateinit var editType: EditType
-        private set
-
     lateinit var previousNote: Note
         private set
+
+    /**
+     * What the note is called, which the editor shows and does not change: a
+     * rename is one act and it happens from the note's row in the list.
+     */
+    val fileName: String get() = previousNote.fileName
 
     /**
      * The note as it stood when the editor was opened, date and all.
@@ -103,9 +78,6 @@ open class TextVM() : ViewModel() {
      * moves along with every save.
      */
     private lateinit var openedNote: Note
-
-    private val _name = mutableStateOf(TextFieldValue())
-    val name: State<TextFieldValue> get() = _name
 
     private val _content = mutableStateOf(TextFieldValue())
     val content: State<TextFieldValue> get() = _content
@@ -135,19 +107,10 @@ open class TextVM() : ViewModel() {
     }
 
 
-    val shouldForceNotReadOnlyMode: MutableState<Boolean> = mutableStateOf(false)
+    constructor(previousNote: Note) : this() {
 
-    constructor(editType: EditType, previousNote: Note) : this() {
-
-        shouldForceNotReadOnlyMode.value = editType == EditType.Create
-
-        this.editType = editType
         this.previousNote = previousNote
         this.openedNote = previousNote
-
-        _name.value = previousNote.fileName.let {
-            TextFieldValue(it, selection = TextRange(it.length))
-        }
 
         val textFieldValue = TextFieldValue(
             previousNote.content,
@@ -157,31 +120,7 @@ open class TextVM() : ViewModel() {
         _content.value = textFieldValue.copy()
         initHistory(textFieldValue)
 
-        Log.d(TAG, "init: $previousNote, $editType")
-    }
-
-    constructor(
-        editType: EditType,
-        previousNote: Note,
-        name: String,
-        content: String,
-    ) : this() {
-
-        shouldForceNotReadOnlyMode.value = editType == EditType.Create
-
-        this.editType = editType
-        this.previousNote = previousNote
-        this.openedNote = previousNote
-        _name.value = TextFieldValue(name, selection = TextRange(name.length))
-        val textFieldValue = TextFieldValue(
-            content,
-            selection = TextRange(0)
-        )
-
-        _content.value = textFieldValue.copy()
-        initHistory(textFieldValue)
-
-        Log.d(TAG, "init saved: $previousNote, $editType")
+        Log.d(TAG, "init: $previousNote")
     }
 
     /**
@@ -203,12 +142,6 @@ open class TextVM() : ViewModel() {
         scheduleSave()
     }
 
-    fun onNameChange(v: TextFieldValue) {
-        _name.value = v
-        scheduleSave()
-    }
-
-
     fun undo() {
         moveInHistory(editHistory.index - 1)
     }
@@ -227,8 +160,6 @@ open class TextVM() : ViewModel() {
     }
 
     fun setReadOnlyMode(value: Boolean) {
-        shouldForceNotReadOnlyMode.value = false
-
         viewModelScope.launch {
             prefs.isReadOnlyModeActive.update(value)
         }
@@ -254,11 +185,8 @@ open class TextVM() : ViewModel() {
             return
         }
 
-        val note = noteAsEdited().getOrElse { return }
-        refuseToOverwrite(note).getOrElse { return }
-
+        val note = noteAsEdited()
         val previous = previousNote
-        val isNew = editType == EditType.Create
         // undone back to what it was, so what was written may be nothing at all
         val restored = isOpenedNoteTheSame()
 
@@ -266,11 +194,8 @@ open class TextVM() : ViewModel() {
         // leaving the app writes and syncs at the same moment, and the sync
         // waits for the write it can see
         storageManager.startWrite {
-            if (isNew) {
-                storageManager.createNote(note)
-            } else {
-                storageManager.updateNote(new = note, previous = previous)
-            }.onFailure { uiHelper.makeToast(it.message) }
+            storageManager.updateNote(new = note, previous = previous)
+                .onFailure { uiHelper.makeToast(it.message) }
 
             // Writing a note means there is something to sync, except when the
             // note is the one that was already there — then only git can say
@@ -279,123 +204,40 @@ open class TextVM() : ViewModel() {
             if (restored) storageManager.refreshChangeState()
         }
 
-        // the note is now the one on disk, whatever the write makes of it: a
-        // second save must not try to create it again or rename it from a name
-        // that is gone
-        editType = EditType.Update
+        // the note is now the one on disk, whatever the write makes of it
         previousNote = note
-
-        // A move is read against where the note is, so once it has moved the
-        // field has to say where it now is — "../notes.md" left standing would
-        // take it a folder further up on the next save, and keep going.
-        if (note.parentPath != previous.parentPath) {
-            _name.value = TextFieldValue(note.fileName, selection = TextRange(note.fileName.length))
-        }
 
         onSuccess()
     }
 
     /**
-     * Where the typed name says the note belongs.
-     *
-     * The field is a path, not only a name: `../notes.md` moves the note a
-     * folder up, `archive/notes.md` into one beside it. What is typed is read
-     * against the folder the note is in *now*, which is why a save that moved it
-     * writes the plain file name back into the field — otherwise the next save
-     * would move it the same way again.
-     *
-     * A last segment without a dot keeps the extension the note already has, so
-     * that typing a plain name still means what it always did and only somebody
-     * who writes one changes the type.
-     */
-    private fun editedPath(): ResolvedPath {
-        val typed = NameValidation.removeEndingWhiteSpace(name.value.text)
-
-        val withExtension = keepExtension(typed, previousNote.fileExtension().text)
-
-        return resolveRepoPath(previousNote.parentPath, withExtension)
-    }
-
-    /**
-     * The note the editor is describing, or why it does not describe one.
+     * The note the editor is describing: the one it was opened on, with whatever
+     * has been typed into it. Where it stands is not in question — the editor
+     * cannot move a note, only write it.
      *
      * It keeps the id across a save. That is what the undo history and the list
      * rows are keyed by, and with the editor saving every 500 ms a new id per
      * keystroke meant moving both along every time.
      */
-    private fun noteAsEdited(): Result<Note> {
-        val relativePath = when (val resolved = editedPath()) {
-            is ResolvedPath.Ok -> resolved.relativePath
-
-            is ResolvedPath.Bad -> {
-                uiHelper.makeToast(resolved.problem.describe(uiHelper))
-                return failure(DataFormatException("path invalid: ${name.value.text}"))
-            }
-        }
-
-        return success(
-            Note.new(
-                relativePath = relativePath,
-                content = content.value.text,
-                lastModifiedTimeMillis = if (isOpenedNoteTheSame()) {
-                    openedNote.lastModifiedTimeMillis
-                } else {
-                    Instant.now().toEpochMilli()
-                },
-                id = previousNote.id,
-            )
-        )
-    }
+    private fun noteAsEdited(): Note = Note.new(
+        relativePath = previousNote.relativePath,
+        content = content.value.text,
+        lastModifiedTimeMillis = if (isOpenedNoteTheSame()) {
+            openedNote.lastModifiedTimeMillis
+        } else {
+            Instant.now().toEpochMilli()
+        },
+        id = previousNote.id,
+    )
 
     /**
      * Whether the editor holds exactly what it was opened with, which is where
      * undoing everything ends up. Such a note was not written today: it is the
      * one it already was, and it keeps its date.
      */
-    private fun isOpenedNoteTheSame(): Boolean =
-        editedPath().let { it is ResolvedPath.Ok && it.relativePath == openedNote.relativePath }
-                && openedNote.content == content.value.text
+    private fun isOpenedNoteTheSame(): Boolean = openedNote.content == content.value.text
 
-    /**
-     * Refuses a note whose file is already somebody else's, or whose folder does
-     * not exist.
-     *
-     * Writing over the note it already is, is not that — which is the usual
-     * case, since this runs on every typing pause.
-     *
-     * The folder has to be there already, the way `mv` wants it to be: a typo in
-     * a path would otherwise leave a folder behind that nobody asked for, and
-     * the note in it would be somewhere the user did not mean.
-     */
-    private fun refuseToOverwrite(note: Note): Result<Unit> {
-        if (editType == EditType.Update && note.relativePath == previousNote.relativePath) {
-            return success(Unit)
-        }
-
-        val repoPath = prefs.repoPathBlocking()
-
-        if (note.parentPath.isNotEmpty() &&
-            !NodeFs.Folder.fromPath(repoPath, note.parentPath).exist()
-        ) {
-            uiHelper.makeToast(
-                uiHelper.getString(R.string.error_folder_not_found, note.parentPath)
-            )
-            return failure(EditException(EditExceptionType.FolderNotFound))
-        }
-
-        if (note.toFileFs(repoPath).exist()) {
-            uiHelper.makeToast(
-                uiHelper.getString(R.string.error_file_already_exist, note.fileName)
-            )
-            return failure(EditException(EditExceptionType.NoteAlreadyExist))
-        }
-
-        return success(Unit)
-    }
-
-    fun isPreviousNoteTheSame(): Boolean =
-        editedPath().let { it is ResolvedPath.Ok && it.relativePath == previousNote.relativePath }
-                && previousNote.content == content.value.text
+    fun isPreviousNoteTheSame(): Boolean = previousNote.content == content.value.text
 
     private var saveJob: Job? = null
 
@@ -407,47 +249,20 @@ open class TextVM() : ViewModel() {
         }
     }
 
-    /** The name that was last complained about, so the toast is shown once. */
-    private var rejectedName: String? = null
-
     /**
      * Writes the note to disk. There is no save button anymore, so this runs
      * while typing, when the editor is left and when the app is stopped.
      * Committing is not part of it, that waits for the user to sync.
+     *
+     * Nothing can stand in the way of it: the note has a file, and the only
+     * thing the editor changes is what is in it. There used to be a draft here
+     * for the one case that could not be written — text under a name no file can
+     * carry, which is what the editor's name field could produce while a note
+     * was being created in it.
      */
     fun saveNow() {
         saveJob?.cancel()
-
-        val typed = NameValidation.removeEndingWhiteSpace(name.value.text)
-        val resolved = editedPath()
-        if (resolved is ResolvedPath.Bad) {
-            // a note without a usable path has nowhere to go on disk; the draft
-            // holds the text until the name is one a file can carry
-            if (typed.isNotEmpty() && typed != rejectedName) {
-                rejectedName = typed
-                uiHelper.makeToast(resolved.problem.describe(uiHelper))
-            }
-            return
-        }
-        rejectedName = null
-
         save()
-    }
-
-    /**
-     * What the editor holds that the disk does not, or null when the disk has
-     * it all.
-     *
-     * There is exactly one thing that can be in the first case: text under a
-     * name no file can carry. Everything else is written within a typing pause.
-     * The screen puts this into its saved state when the app is stopped, which
-     * is the same moment Android writes that state out, and hands it back when
-     * the process comes up again — so it costs nothing while somebody types.
-     */
-    fun draft(): Draft? {
-        if (isPreviousNoteTheSame()) return null
-
-        return Draft(name = name.value.text, content = content.value.text)
     }
 
     override fun onCleared() {
@@ -457,19 +272,6 @@ open class TextVM() : ViewModel() {
 
 
 @Composable
-fun newEditViewModel(editParams: EditParams, draft: Draft?): TextVM =
-    viewModel<TextVM>(
-        factory = viewModelFactory {
-            if (draft == null) {
-                TextVM(editParams.editType, editParams.note)
-            } else {
-                TextVM(
-                    editType = editParams.editType,
-                    previousNote = editParams.note,
-                    name = draft.name,
-                    content = draft.content,
-                )
-            }
-        }
-    )
+fun newEditViewModel(note: Note): TextVM =
+    viewModel<TextVM>(factory = viewModelFactory { TextVM(note) })
 

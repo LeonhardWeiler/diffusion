@@ -358,20 +358,62 @@ class GridViewModel : ViewModel() {
     }
 
 
-    fun defaultNewNote(): Note {
+    /**
+     * What the name of a new note starts out as: whatever is in the search field,
+     * when that is something a file can be called, and the default extension
+     * after it. Somebody searching for a note that is not there is somebody about
+     * to write it.
+     */
+    fun defaultNewNoteName(): String {
+        val name = query.value.let { if (NameValidation.check(it)) it else "" }
 
-        val defaultName = query.value.let {
-            if (NameValidation.check(it)) {
-                it
-            } else ""
+        return "$name.${FileExtension.match(prefs.defaultExtension.getBlocking()).text}"
+    }
+
+    /**
+     * Writes an empty note where the typed name says, and leaves it in the list.
+     *
+     * Creating a note does not open it. It used to open the editor on a note that
+     * had no file yet, with the name to type in above it — so a note existed only
+     * once something had been typed into it, the name was being edited halfway
+     * through every save, and leaving the screen early left nothing behind. The
+     * name is asked for here, the file is written here, and the note is a row of
+     * the list like any other: opened by tapping it, renamed from its own menu.
+     *
+     * The typed text is a path, read exactly the way a rename reads one, and the
+     * folder it names has to exist already — the way `mv` wants it.
+     *
+     * @return whether the dialog that asked can close.
+     */
+    fun createNote(typed: String): Boolean {
+        val resolved = resolveRepoPath(currentNoteFolderRelativePath.value, typed.trim())
+        if (resolved !is ResolvedPath.Ok) {
+            uiHelper.makeToast((resolved as ResolvedPath.Bad).problem.describe(uiHelper))
+            return false
         }
 
-        val defaultExtension = FileExtension.match(prefs.defaultExtension.getBlocking())
-        val defaultFullName = "$defaultName.${defaultExtension.text}"
+        val note = Note.new(relativePath = resolved.relativePath)
+        val repoPath = prefs.repoPathBlocking()
 
-        return Note.new(
-            relativePath = "${currentNoteFolderRelativePath.value}/$defaultFullName",
-        )
+        if (note.parentPath.isNotEmpty() &&
+            !NodeFs.Folder.fromPath(repoPath, note.parentPath).exist()
+        ) {
+            uiHelper.makeToast(uiHelper.getString(R.string.error_folder_not_found, note.parentPath))
+            return false
+        }
+
+        if (note.toFileFs(repoPath).exist()) {
+            uiHelper.makeToast(
+                uiHelper.getString(R.string.error_file_already_exist, note.fileName)
+            )
+            return false
+        }
+
+        appScope.launch {
+            storageManager.createNote(note)
+        }
+
+        return true
     }
 
 

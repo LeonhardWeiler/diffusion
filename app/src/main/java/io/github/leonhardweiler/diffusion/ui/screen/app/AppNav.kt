@@ -5,7 +5,6 @@ import androidx.compose.runtime.Composable
 import io.github.leonhardweiler.diffusion.ui.navigation.NavHost
 import io.github.leonhardweiler.diffusion.ui.navigation.rememberBackstack
 import io.github.leonhardweiler.diffusion.ui.destination.AppDestination
-import io.github.leonhardweiler.diffusion.ui.destination.EditParams
 import io.github.leonhardweiler.diffusion.ui.destination.SettingsDestination
 import io.github.leonhardweiler.diffusion.ui.screen.app.edit.EditScreen
 import io.github.leonhardweiler.diffusion.ui.screen.app.grid.GridScreen
@@ -38,14 +37,14 @@ fun AppScreen(
                             )
                         )
                     },
-                    onEditClick = { note, editType ->
-                        backstack.navigate(AppDestination.Edit(EditParams(note, editType)))
+                    onEditClick = { note ->
+                        backstack.navigate(AppDestination.Edit(note))
                     },
                 )
             }
 
             is AppDestination.Edit -> EditScreen(
-                editParams = it.params,
+                note = it.note,
                 onFinished = {
                     backstack.pop()
                 }

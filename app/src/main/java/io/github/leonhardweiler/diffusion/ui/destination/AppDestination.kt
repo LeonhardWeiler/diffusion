@@ -2,8 +2,6 @@ package io.github.leonhardweiler.diffusion.ui.destination
 
 import android.os.Parcelable
 import io.github.leonhardweiler.diffusion.data.index.Note
-import io.github.leonhardweiler.diffusion.ui.model.EditType
-import io.github.leonhardweiler.diffusion.ui.model.FileExtension
 import kotlinx.parcelize.Parcelize
 
 
@@ -11,25 +9,18 @@ sealed interface AppDestination : Parcelable {
     @Parcelize
     data object Grid : AppDestination
 
+    /**
+     * Which note the editor was opened on, and nothing else.
+     *
+     * It used to carry an EditParams saying whether the note was being created as
+     * well: the editor was where a note came into being, on a path that had no
+     * file behind it yet. A note is written before it is opened now, so every note
+     * the editor is given is one that exists.
+     */
     @Parcelize
-    data class Edit(val params: EditParams) : AppDestination
+    data class Edit(val note: Note) : AppDestination
 
     @Parcelize
     data class Settings(val settingsDestination: SettingsDestination) : AppDestination
 
-}
-
-/**
- * Which note the editor was opened on, and whether it is being created.
- *
- * Only that. What is being typed lives in the editor's own saved state, which
- * is where a half written note survives the process dying — there used to be a
- * second variant here for that, fed from a file in the app's private directory.
- */
-@Parcelize
-data class EditParams(
-    val note: Note,
-    val editType: EditType,
-) : Parcelable {
-    fun fileExtension(): FileExtension = note.fileExtension()
 }

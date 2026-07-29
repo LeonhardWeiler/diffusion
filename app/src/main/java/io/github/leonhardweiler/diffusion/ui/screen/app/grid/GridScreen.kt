@@ -44,7 +44,6 @@ import io.github.leonhardweiler.diffusion.data.index.NoteFolder
 import io.github.leonhardweiler.diffusion.helper.openFileWithAnotherApp
 import io.github.leonhardweiler.diffusion.ui.component.CustomDropDown
 import io.github.leonhardweiler.diffusion.ui.component.CustomDropDownModel
-import io.github.leonhardweiler.diffusion.ui.model.EditType
 import io.github.leonhardweiler.diffusion.ui.model.GridNote
 import io.github.leonhardweiler.diffusion.ui.model.NoteHeader
 import io.github.leonhardweiler.diffusion.ui.viewmodel.GridViewModel
@@ -58,7 +57,7 @@ internal val topBarHeight = 80.dp
 @Composable
 fun GridScreen(
     onSettingsClick: () -> Unit,
-    onEditClick: (Note, EditType) -> Unit,
+    onEditClick: (Note) -> Unit,
 ) {
 
     val vm: GridViewModel = viewModel()
@@ -90,10 +89,7 @@ fun GridScreen(
         floatingActionButton = {
 
             if (selectionSize == 0) {
-                FloatingActionButtons(
-                    vm = vm,
-                    onEditClick = onEditClick,
-                )
+                FloatingActionButtons(vm = vm)
             }
 
         }) { padding ->
@@ -156,7 +152,7 @@ fun GridScreen(
 private fun GridView(
     vm: GridViewModel,
     nestedScrollConnection: NestedScrollConnection,
-    onEditClick: (Note, EditType) -> Unit,
+    onEditClick: (Note) -> Unit,
     selectedNotes: List<NoteHeader>,
     selectedFolders: List<NoteFolder>,
     topSpacerHeight: Dp,

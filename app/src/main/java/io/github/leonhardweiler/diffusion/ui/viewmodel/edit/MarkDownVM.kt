@@ -4,23 +4,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.leonhardweiler.diffusion.data.index.Note
-import io.github.leonhardweiler.diffusion.ui.destination.EditParams
-import io.github.leonhardweiler.diffusion.ui.model.EditType
 import io.github.leonhardweiler.diffusion.ui.viewmodel.viewModelFactory
 
 private const val TAG = "MarkDownVM"
 
 
-class MarkDownVM : TextVM {
-
-    constructor(editType: EditType, previousNote: Note) : super(editType, previousNote)
-
-    constructor(
-        editType: EditType,
-        previousNote: Note,
-        name: String,
-        content: String,
-    ) : super(editType, previousNote, name, content)
+class MarkDownVM(previousNote: Note) : TextVM(previousNote) {
 
     override fun onValueChange(v: TextFieldValue) {
         val newValue = markdownSmartEditor(content.value, v)
@@ -96,18 +85,5 @@ class MarkDownVM : TextVM {
 
 
 @Composable
-fun newMarkDownVM(editParams: EditParams, draft: Draft?): MarkDownVM =
-    viewModel<MarkDownVM>(
-        factory = viewModelFactory {
-            if (draft == null) {
-                MarkDownVM(editParams.editType, editParams.note)
-            } else {
-                MarkDownVM(
-                    editType = editParams.editType,
-                    previousNote = editParams.note,
-                    name = draft.name,
-                    content = draft.content,
-                )
-            }
-        }
-    )
+fun newMarkDownVM(note: Note): MarkDownVM =
+    viewModel<MarkDownVM>(factory = viewModelFactory { MarkDownVM(note) })

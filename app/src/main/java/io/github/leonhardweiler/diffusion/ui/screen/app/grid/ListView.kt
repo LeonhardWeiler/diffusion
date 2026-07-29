@@ -12,7 +12,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.leonhardweiler.diffusion.data.index.Note
 import io.github.leonhardweiler.diffusion.data.index.NoteFolder
-import io.github.leonhardweiler.diffusion.ui.model.EditType
 import io.github.leonhardweiler.diffusion.ui.model.GridItem
 import io.github.leonhardweiler.diffusion.ui.model.NoteHeader
 import io.github.leonhardweiler.diffusion.ui.viewmodel.GridViewModel
@@ -30,7 +29,7 @@ internal fun NoteListView(
     modifier: Modifier = Modifier,
     selectedNotes: List<NoteHeader>,
     selectedFolders: List<NoteFolder>,
-    onEditClick: (Note, EditType) -> Unit,
+    onEditClick: (Note) -> Unit,
     onFolderClick: (String) -> Unit,
     onFolderDelete: (NoteFolder) -> Unit,
     isSearching: Boolean,

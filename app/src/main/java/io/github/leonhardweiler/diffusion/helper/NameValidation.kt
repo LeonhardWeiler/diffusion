@@ -5,10 +5,6 @@ class NameValidation {
 
     companion object {
 
-        fun removeEndingWhiteSpace(name: String): String {
-            return name.trimEnd()
-        }
-
         /**
          * Best effort
          */

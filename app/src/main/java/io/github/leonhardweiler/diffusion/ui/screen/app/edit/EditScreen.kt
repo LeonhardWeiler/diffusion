@@ -28,7 +28,6 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -38,7 +37,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
@@ -46,22 +44,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import io.github.leonhardweiler.diffusion.R
+import io.github.leonhardweiler.diffusion.data.index.Note
 import io.github.leonhardweiler.diffusion.manager.ExtensionType
 import io.github.leonhardweiler.diffusion.manager.extensionType
 import io.github.leonhardweiler.diffusion.ui.component.SimpleIcon
-import io.github.leonhardweiler.diffusion.ui.destination.EditParams
-import io.github.leonhardweiler.diffusion.ui.model.EditType
-import io.github.leonhardweiler.diffusion.ui.viewmodel.edit.Draft
 import io.github.leonhardweiler.diffusion.ui.viewmodel.edit.MarkDownVM
 import io.github.leonhardweiler.diffusion.ui.viewmodel.edit.TextVM
 import io.github.leonhardweiler.diffusion.ui.viewmodel.edit.newEditViewModel
@@ -70,45 +66,25 @@ import io.github.leonhardweiler.diffusion.ui.viewmodel.edit.newMarkDownVM
 
 private const val TAG = "EditScreen"
 
-/** Two strings, which is all a [Draft] is. */
-private val DraftSaver = listSaver<Draft?, String>(
-    save = { draft -> draft?.let { listOf(it.name, it.content) } ?: emptyList() },
-    restore = { list -> if (list.size == 2) Draft(list[0], list[1]) else null }
-)
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditScreen(
-    editParams: EditParams,
+    note: Note,
     onFinished: () -> Unit,
 ) {
 
-
-    val extension = editParams.fileExtension()
-
-    // What the editor held when the process was last stopped, if the disk could
-    // not be given it — a name no file can carry is the only way that happens.
-    // Kept here rather than in a file of its own: this is saved state of the
-    // screen, so Android writes it out with everything else and hands it back
-    // when the process comes up again.
-    //
-    // Before the view model, because the view model is built from it.
-    var draft by rememberSaveable(stateSaver = DraftSaver) { mutableStateOf<Draft?>(null) }
-
     // Markdown gets the editor that knows about lists and headings; everything
     // else gets a text field. Not a failure for an extension nobody knows: the
-    // list refuses to open those, but a draft restored after a crash can still
-    // name one, and a note is better shown as plain text than not at all.
-    val vm = when (extensionType(extension.text)) {
-        ExtensionType.Markdown -> newMarkDownVM(editParams, draft)
-        else -> newEditViewModel(editParams, draft)
+    // list opens those with another app rather than here, but a note is better
+    // shown as plain text than not at all.
+    val vm = when (extensionType(note.fileExtension().text)) {
+        ExtensionType.Markdown -> newMarkDownVM(note)
+        else -> newEditViewModel(note)
     }
 
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
         vm.saveNow()
-        // after the write, so that this is only what the write could not take
-        draft = vm.draft()
     }
 
     // there is no save button: leaving the editor is what ends an edit
@@ -126,25 +102,7 @@ fun EditScreen(
     val readScrollState = rememberLazyListState()
     val writeScrollState = rememberScrollState()
 
-    val nameFocusRequester = remember { FocusRequester() }
     val textFocusRequester = remember { FocusRequester() }
-
-    // Whether this screen was opened to write a note that does not exist yet.
-    // Asked once and kept, because vm.editType turns into Update the moment the
-    // first save lands — and a field that goes read-only under the finger
-    // typing in it is worse than one that never was.
-    val isNewNote = rememberSaveable { vm.editType == EditType.Create }
-
-    // tricks to request focus only one time
-    var lastId: Boolean by rememberSaveable { mutableStateOf(false) }
-    if (!lastId) {
-        lastId = true
-        LaunchedEffect(null) {
-            if (vm.editType == EditType.Create) {
-                nameFocusRequester.requestFocus()
-            }
-        }
-    }
 
     // Reading mode is markdown being rendered. A plain text file has nothing to
     // render — it was shown in a field that refused to be typed in, and the only
@@ -152,7 +110,6 @@ fun EditScreen(
     val hasReadingMode = vm is MarkDownVM
 
     val isReadOnlyModeActive = hasReadingMode &&
-            !vm.shouldForceNotReadOnlyMode.value &&
             vm.prefs.isReadOnlyModeActive.getAsState().value
 
     Scaffold(
@@ -176,39 +133,19 @@ fun EditScreen(
                 },
                 title = {
 
-                    // The name of a note that exists is what it is called, not
-                    // a field: renaming it is one act, done from its row in the
-                    // list, and not something that happened halfway through
-                    // whichever save came next. A note being written for the
-                    // first time has no name yet, and typing one here is how it
-                    // gets one.
-                    TextField(
-                        textStyle = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .focusRequester(nameFocusRequester),
-                        value = vm.name.value,
-                        onValueChange = {
-                            vm.onNameChange(it)
-                        },
-                        readOnly = isReadOnlyModeActive || !isNewNote,
-                        singleLine = true,
-                        placeholder = {
-                            Text(text = stringResource(R.string.note_name))
-                        },
-                        colors = TextFieldDefaults.colors(
-                            focusedTextColor = MaterialTheme.colorScheme.tertiary,
-                            unfocusedTextColor = MaterialTheme.colorScheme.tertiary,
-                            focusedContainerColor = backgroundColor,
-                            unfocusedContainerColor = backgroundColor,
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent,
-                        ),
-                        keyboardActions = KeyboardActions(
-                            onDone = {
-                                textFocusRequester.requestFocus()
-                            }
-                        )
+                    // What the note is called, and nothing to type in. Renaming
+                    // is one act, done from the note's row in the list — as a
+                    // field here it was a rename that happened halfway through
+                    // whichever save came next, and it was also the one way to
+                    // give a note a name no file can carry. A note is written
+                    // and named before it is opened now.
+                    Text(
+                        modifier = Modifier.fillMaxWidth(),
+                        text = vm.fileName,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.tertiary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 },
                 actions = {
