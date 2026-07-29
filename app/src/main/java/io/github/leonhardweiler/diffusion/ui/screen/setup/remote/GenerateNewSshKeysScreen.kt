@@ -20,7 +20,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
@@ -182,15 +181,13 @@ fun GenerateNewSshKeysScreen(
                 text = "3. " + stringResource(R.string.try_cloning)
             ) {
 
-                // Faded rather than taken out of the layout. Copying the key is
-                // the one thing that makes this sentence go away, and a button
-                // that jumps up under the finger that just pressed something
-                // else is the finger's next tap landing somewhere it did not
-                // mean to.
+                // Always here, whether the key has been copied or not: copying
+                // it is one of the two steps this sentence is about, and the
+                // other one happens on a different device entirely. A clone that
+                // fails after the key was copied but never pasted is exactly the
+                // case that needs the sentence still standing.
                 Text(
-                    modifier = Modifier
-                        .padding(bottom = 8.dp)
-                        .alpha(if (keyCopied.value) 0f else 1f),
+                    modifier = Modifier.padding(bottom = 8.dp),
                     text = stringResource(R.string.copy_key_first),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
