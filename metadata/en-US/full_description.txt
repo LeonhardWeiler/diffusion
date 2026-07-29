@@ -1,10 +1,12 @@
-Android note app with real file. Can be sync with git providers such as Github
+Android note app with real files. Notes are plain files in a real Git repository, so you can use this app together with any desktop editor.
 
-* create/open/clone repositories
-* notes search (global and from specific folder)
-* grid view
-* tree view
-* edit view
-* private repo (SSH and HTTPS)
+* open or clone repositories
+* every file in the repository is listed, not only the notes
+* notes search across the whole repository
+* folder navigation
+* rename and move, for notes and folders
+* edit view with markdown rendering
+* private repo, over SSH
 * remote sync
 * time based sort
+* pure black theme for OLED screens
