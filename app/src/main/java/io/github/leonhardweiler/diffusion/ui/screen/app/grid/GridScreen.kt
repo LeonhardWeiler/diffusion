@@ -199,6 +199,8 @@ internal fun NoteActionsDropdown(
     dropDownExpanded: MutableState<Boolean>,
     /** Asks, rather than deletes: the dialog belongs to the row, which outlives this menu. */
     onDeleteRequest: () -> Unit,
+    /** Same again for the rename dialog, which is the row's as well. */
+    onRenameRequest: () -> Unit,
     clickPosition: MutableState<Offset>,
 ) {
 
@@ -214,6 +216,11 @@ internal fun NoteActionsDropdown(
             expanded = dropDownExpanded,
             shape = MaterialTheme.shapes.medium,
             options = listOf(
+                // Not while a selection is on: a rename is about one note, and
+                // the marked rows are the ones every other entry here is about.
+                if (!isSelecting) CustomDropDownModel(
+                    text = stringResource(R.string.rename_or_move),
+                    onClick = onRenameRequest) else null,
                 CustomDropDownModel(
                     text = stringResource(R.string.delete_this_file),
                     onClick = onDeleteRequest),

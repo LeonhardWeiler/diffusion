@@ -397,6 +397,59 @@ class StorageManager {
         }
     }
 
+    /**
+     * Moves a note to where [newRelativePath] says.
+     *
+     * Renaming and moving are one act here, the way they are for a folder, and
+     * the file is moved rather than written somewhere else and deleted: the
+     * bytes are never read, so a note that is only renamed keeps its date and a
+     * file too large to be indexed is moved like any other.
+     *
+     * The row is rewritten with the id, the content and the date it already
+     * held. Reading the file back would give an indexed note nothing new and an
+     * unindexed one an empty content where the row correctly holds none.
+     */
+    suspend fun renameNote(note: Note, newRelativePath: String): Result<Unit> = locker.withLock {
+        Log.d(TAG, "renameNote: ${note.relativePath} -> $newRelativePath")
+
+        if (note.relativePath == newRelativePath) return@withLock success(Unit)
+
+        val repoPath = prefs.repoPath()
+
+        val target = NodeFs.File.fromPath(repoPath, newRelativePath)
+        if (target.exist()) {
+            return@withLock complain(R.string.error_file_already_exist)
+        }
+
+        // the way mv wants it: the folder is moved into has to be there already
+        val parentPath = getParentPath(newRelativePath)
+        if (parentPath.isNotEmpty() &&
+            !NodeFs.Folder.fromPath(repoPath, parentPath).exist()
+        ) {
+            return@withLock complain(R.string.error_folder_not_found, parentPath)
+        }
+
+        update {
+            NodeFs.File.fromPath(repoPath, note.relativePath).moveTo(target.path)
+                .onFailure { return@update failure(it) }
+
+            dao.removeNoteAt(note.relativePath)
+
+            // through the constructor, so parentPath and fileName are derived
+            // from the new path rather than kept from the old one
+            dao.insertNoteRow(
+                Note(
+                    relativePath = newRelativePath,
+                    content = note.content,
+                    lastModifiedTimeMillis = note.lastModifiedTimeMillis,
+                    id = note.id,
+                )
+            )
+
+            success(Unit)
+        }
+    }
+
     suspend fun createNoteFolder(noteFolder: NoteFolder): Result<Unit> = locker.withLock {
         Log.d(TAG, "createNoteFolder: $noteFolder")
 

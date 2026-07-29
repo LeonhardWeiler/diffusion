@@ -124,6 +124,12 @@ fun EditScreen(
     val nameFocusRequester = remember { FocusRequester() }
     val textFocusRequester = remember { FocusRequester() }
 
+    // Whether this screen was opened to write a note that does not exist yet.
+    // Asked once and kept, because vm.editType turns into Update the moment the
+    // first save lands — and a field that goes read-only under the finger
+    // typing in it is worse than one that never was.
+    val isNewNote = rememberSaveable { vm.editType == EditType.Create }
+
     // tricks to request focus only one time
     var lastId: Boolean by rememberSaveable { mutableStateOf(false) }
     if (!lastId) {
@@ -165,6 +171,12 @@ fun EditScreen(
                 },
                 title = {
 
+                    // The name of a note that exists is what it is called, not
+                    // a field: renaming it is one act, done from its row in the
+                    // list, and not something that happened halfway through
+                    // whichever save came next. A note being written for the
+                    // first time has no name yet, and typing one here is how it
+                    // gets one.
                     TextField(
                         textStyle = MaterialTheme.typography.titleMedium,
                         modifier = Modifier
@@ -174,7 +186,7 @@ fun EditScreen(
                         onValueChange = {
                             vm.onNameChange(it)
                         },
-                        readOnly = isReadOnlyModeActive,
+                        readOnly = isReadOnlyModeActive || !isNewNote,
                         singleLine = true,
                         placeholder = {
                             Text(text = stringResource(R.string.note_name))

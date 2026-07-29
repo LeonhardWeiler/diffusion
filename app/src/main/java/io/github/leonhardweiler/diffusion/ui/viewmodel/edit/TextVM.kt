@@ -18,6 +18,7 @@ import io.github.leonhardweiler.diffusion.helper.EditHistory
 import io.github.leonhardweiler.diffusion.helper.NameValidation
 import io.github.leonhardweiler.diffusion.helper.PathProblem
 import io.github.leonhardweiler.diffusion.helper.ResolvedPath
+import io.github.leonhardweiler.diffusion.helper.keepExtension
 import io.github.leonhardweiler.diffusion.helper.resolveRepoPath
 import io.github.leonhardweiler.diffusion.helper.UiHelper
 import io.github.leonhardweiler.diffusion.manager.StorageManager
@@ -310,11 +311,7 @@ open class TextVM() : ViewModel() {
     private fun editedPath(): ResolvedPath {
         val typed = NameValidation.removeEndingWhiteSpace(name.value.text)
 
-        val withExtension = if (typed.substringAfterLast('/').contains('.')) {
-            typed
-        } else {
-            "$typed.${previousNote.fileExtension().text}"
-        }
+        val withExtension = keepExtension(typed, previousNote.fileExtension().text)
 
         return resolveRepoPath(previousNote.parentPath, withExtension)
     }

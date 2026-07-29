@@ -1,6 +1,7 @@
 package io.github.leonhardweiler.diffusion
 
 import io.github.leonhardweiler.diffusion.helper.PathProblem
+import io.github.leonhardweiler.diffusion.helper.keepExtension
 import io.github.leonhardweiler.diffusion.helper.ResolvedPath
 import io.github.leonhardweiler.diffusion.helper.resolveRepoPath
 import kotlin.test.Test
@@ -82,5 +83,23 @@ class RepoPathTest {
     @Test
     fun surrounding_whitespace_does_not_count() {
         assertEquals("work/notes.md", ok("work", "  notes.md  "))
+    }
+
+    @Test
+    fun a_name_without_a_dot_keeps_the_extension_it_had() {
+        assertEquals("notes.md", keepExtension("notes", "md"))
+        assertEquals("../archive/notes.md", keepExtension("../archive/notes", "md"))
+    }
+
+    @Test
+    fun a_name_with_a_dot_says_what_the_file_is() {
+        assertEquals("notes.txt", keepExtension("notes.txt", "md"))
+        // the dot is the last segment's, so a folder with one changes nothing
+        assertEquals("archive.old/notes.md", keepExtension("archive.old/notes", "md"))
+    }
+
+    @Test
+    fun a_file_with_no_extension_gets_no_dot() {
+        assertEquals("LICENSE", keepExtension("LICENSE", ""))
     }
 }

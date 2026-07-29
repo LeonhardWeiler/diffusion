@@ -75,6 +75,24 @@ fun resolveRepoPath(parentPath: String, typed: String): ResolvedPath {
 }
 
 /**
+ * What was typed, with the extension the note already has if none was typed.
+ *
+ * The extension is part of the name here — typing `notes.txt` over a markdown
+ * note is how a note changes type — so a last segment that carries a dot is
+ * taken as it stands. One without a dot is a plain name, which is what most
+ * renames are, and it keeps what the note is.
+ *
+ * The dot is looked for in the last segment only: `archive.old/notes` names a
+ * note in a folder with a dot in its name, not a note called `old/notes`.
+ */
+fun keepExtension(typed: String, currentExtension: String): String =
+    if (typed.substringAfterLast('/').contains('.') || currentExtension.isEmpty()) {
+        typed
+    } else {
+        "$typed.$currentExtension"
+    }
+
+/**
  * The folder a path is in, and the empty string for one that is at the root.
  */
 fun getParentPath(path: String) = path.substringBeforeLast(

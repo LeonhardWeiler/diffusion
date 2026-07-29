@@ -118,7 +118,7 @@ internal fun FolderRow(
     if (renameExpanded.value) {
         GetStringDialog(
             expanded = renameExpanded,
-            label = stringResource(R.string.folder_new_path_label),
+            label = stringResource(R.string.new_path_label),
             actionText = stringResource(R.string.save),
             defaultString = folder.noteFolder.fullName(),
             onValidation = onRename,
@@ -152,10 +152,12 @@ internal fun FolderRow(
                     expanded = dropDownExpanded,
                     shape = MaterialTheme.shapes.medium,
                     options = listOfNotNull(
-                        CustomDropDownModel(
-                            text = stringResource(R.string.rename_this_folder),
+                        // gone while a selection is on, for the same reason it
+                        // is gone from a note's menu: it is about this one row
+                        if (!isSelecting) CustomDropDownModel(
+                            text = stringResource(R.string.rename_or_move),
                             onClick = { renameExpanded.value = true }
-                        ),
+                        ) else null,
                         CustomDropDownModel(
                             text = stringResource(R.string.delete_this_folder),
                             onClick = { deleteExpanded.value = true }
@@ -216,6 +218,7 @@ internal fun NoteListRow(
 ) {
     val dropDownExpanded = remember { mutableStateOf(false) }
     val deleteExpanded = remember { mutableStateOf(false) }
+    val renameExpanded = remember { mutableStateOf(false) }
     val clickPosition = remember { mutableStateOf(Offset.Zero) }
     val context = LocalContext.current
 
@@ -225,6 +228,19 @@ internal fun NoteListRow(
             expanded = deleteExpanded,
             text = stringResource(R.string.confirm_delete_note, gridNote.note.fileName),
             onConfirmation = { vm.deleteNote(gridNote.note) },
+        )
+    }
+
+    // Renaming is here rather than above the open note, and it is the same
+    // dialog a folder gets: what is typed is a path, so this is also how a note
+    // is moved. Its state belongs to the row, which outlives the menu.
+    if (renameExpanded.value) {
+        GetStringDialog(
+            expanded = renameExpanded,
+            label = stringResource(R.string.new_path_label),
+            actionText = stringResource(R.string.save),
+            defaultString = gridNote.note.fileName,
+            onValidation = { vm.renameNote(gridNote.note, it) },
         )
     }
 
@@ -282,6 +298,7 @@ internal fun NoteListRow(
                 isSelecting = isSelecting,
                 dropDownExpanded = dropDownExpanded,
                 onDeleteRequest = { deleteExpanded.value = true },
+                onRenameRequest = { renameExpanded.value = true },
                 clickPosition = clickPosition
             )
 

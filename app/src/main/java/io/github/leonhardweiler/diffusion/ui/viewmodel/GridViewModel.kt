@@ -19,6 +19,7 @@ import io.github.leonhardweiler.diffusion.data.room.LIMIT_FILE_SIZE_DB
 import io.github.leonhardweiler.diffusion.data.room.RepoDatabase
 import io.github.leonhardweiler.diffusion.helper.NameValidation
 import io.github.leonhardweiler.diffusion.helper.ResolvedPath
+import io.github.leonhardweiler.diffusion.helper.keepExtension
 import io.github.leonhardweiler.diffusion.helper.resolveRepoPath
 import io.github.leonhardweiler.diffusion.manager.StorageManager
 import io.github.leonhardweiler.diffusion.ui.model.FileExtension
@@ -291,6 +292,42 @@ class GridViewModel : ViewModel() {
      */
     fun openExternally(note: NoteHeader, onResolved: (String) -> Unit) = viewModelScope.launch {
         onResolved("${prefs.repoPath()}/${note.relativePath}")
+    }
+
+    /**
+     * Renames a note, or moves it — the typed text is a path, read exactly the
+     * way a folder's is: `notes.md` renames it in place, `../notes.md` puts it a
+     * folder up, `/notes.md` at the root. A last segment with no dot in it keeps
+     * the extension the note has, so only somebody who types one changes what
+     * the file is.
+     *
+     * This is where a note is renamed. The name above an open note is what the
+     * note is called and not a field to type in — a rename is one act, and the
+     * editor's field was one that happened somewhere in the middle of the next
+     * save.
+     */
+    fun renameNote(note: NoteHeader, typed: String) {
+        val resolved = resolveRepoPath(
+            getParentPath(note.relativePath),
+            keepExtension(typed.trim(), note.extension())
+        )
+
+        if (resolved !is ResolvedPath.Ok) {
+            uiHelper.makeToast(uiHelper.getString(R.string.error_invalid_name))
+            return
+        }
+
+        appScope.launch {
+            // the row of the list carries no content, and the move needs the
+            // whole note to write the row again on the other side
+            val loaded = dao.note(note.relativePath)
+            if (loaded == null) {
+                uiHelper.makeToast(uiHelper.getString(R.string.error_note_not_found))
+                return@launch
+            }
+
+            storageManager.renameNote(loaded, resolved.relativePath)
+        }
     }
 
     fun deleteFolder(noteFolder: NoteFolder) {

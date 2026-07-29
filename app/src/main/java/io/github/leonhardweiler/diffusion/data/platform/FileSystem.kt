@@ -113,6 +113,24 @@ sealed class NodeFs(
             return pathFs.readText()
         }
 
+        /**
+         * Renames the file, which is what moving one is.
+         *
+         * The bytes are not read and not written again, so the file keeps the
+         * date it had — a note that was only renamed was not written today.
+         *
+         * ATOMIC_MOVE is not asked for, for the same reason the folder does not
+         * ask for it: a target on what the filesystem considers another store
+         * would fail outright instead of falling back to a copy.
+         */
+        fun moveTo(target: String): Result<Unit> {
+            return toResult {
+                Paths.get(target).createParentDirectories()
+                Files.move(pathFs, Paths.get(target))
+                Unit
+            }
+        }
+
     }
 
 

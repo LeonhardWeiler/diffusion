@@ -81,8 +81,8 @@
     <string name="error_folder_not_found">There is no folder named %1$s</string>
     <string name="error_folder_already_exist">Folder already exist</string>
     <string name="error_folder_into_itself">A folder cannot be moved into itself</string>
-    <string name="rename_this_folder">Rename or move</string>
-    <string name="folder_new_path_label">New name or path</string>
+    <string name="rename_or_move">Rename or move</string>
+    <string name="new_path_label">New name or path</string>
     <string name="about">About</string>
     <string name="open_repo">Open local repository</string>
     <string name="clone_remote_repo">Clone remote repository</string>
