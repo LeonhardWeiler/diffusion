@@ -65,10 +65,6 @@ author, so it is set up with what it already knows and only asks for the
 credentials it cannot read. A repository without a remote is asked about rather
 than left as it is, so notes written into it can still be synced later.
 
-<p  style="text-align: center;">
-  <img src="https://media.githubusercontent.com/media/LeonhardWeiler/diffusion/master/assets/edit.png" width="32%"  alt="edit screen"/>
-</p>
-
 _Supported Android versions: 11 to 16_
 
 _Supported Architecture: `arm64-v8a`, `x86_64`_
