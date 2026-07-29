@@ -161,6 +161,13 @@ class AppPreferences(
     suspend fun closeRepo() {
         isInit.update(false)
         knownRepoPath = null
+
+        // The rows go with the repository (StorageManager.closeRepo clears
+        // them), so the commit they were built from describes nothing from here
+        // on. Left standing it is a claim that the database already holds that
+        // commit — and the next repository to arrive at the same path with the
+        // same HEAD, a re-clone of the one just closed, was believed.
+        databaseCommit.update("")
     }
 
     val isReadOnlyModeActive = booleanPreference("isReadOnlyModeActive", false)

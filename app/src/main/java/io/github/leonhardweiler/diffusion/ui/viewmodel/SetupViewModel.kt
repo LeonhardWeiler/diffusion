@@ -305,7 +305,10 @@ class SetupViewModel : ViewModel(), SetupViewModelI {
         prefs.updateCred(cred)
         prefs.applyGitAuthorDefaults(gitManager.currentSignature())
 
-        storageManager.updateDatabase(progressCb = { announceProgress(it) })
+        // force, like the one in openRepo: what was just cloned or just given a
+        // remote is a working tree the database has never seen, whatever
+        // databaseCommit happens to say about it.
+        storageManager.updateDatabase(force = true, progressCb = { announceProgress(it) })
 
         finishSetup(onSuccess)
 
