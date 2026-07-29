@@ -1,6 +1,5 @@
 package io.github.leonhardweiler.diffusion.ui.screen.app
 
-import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.ContentTransform
 import androidx.compose.runtime.Composable
 import io.github.leonhardweiler.diffusion.ui.navigation.NavHost
@@ -23,11 +22,6 @@ fun AppScreen(
 ) {
 
     val backstack = rememberBackstack(appDestination)
-
-    // A note opened from another app is the only screen there is: nothing was
-    // navigated to get here, so leaving it leaves the app rather than falling
-    // through to a list that was never opened.
-    val activity = LocalActivity.current
 
     NavHost(
         backstack = backstack,
@@ -53,7 +47,7 @@ fun AppScreen(
             is AppDestination.Edit -> EditScreen(
                 editParams = it.params,
                 onFinished = {
-                    if (!backstack.pop()) activity?.finish()
+                    backstack.pop()
                 }
             )
 

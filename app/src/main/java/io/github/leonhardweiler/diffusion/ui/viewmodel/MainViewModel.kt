@@ -2,17 +2,12 @@ package io.github.leonhardweiler.diffusion.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import io.github.leonhardweiler.diffusion.MyApp
-import io.github.leonhardweiler.diffusion.R
 import io.github.leonhardweiler.diffusion.data.AppPreferences
 import io.github.leonhardweiler.diffusion.data.platform.NodeFs
-import io.github.leonhardweiler.diffusion.data.room.LIMIT_FILE_SIZE_DB
-import io.github.leonhardweiler.diffusion.data.room.Note
 import io.github.leonhardweiler.diffusion.helper.StoragePermissionHelper
 import io.github.leonhardweiler.diffusion.helper.UiHelper
 import io.github.leonhardweiler.diffusion.ui.model.StorageConfiguration
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class MainViewModel : ViewModel() {
 
@@ -21,53 +16,10 @@ class MainViewModel : ViewModel() {
     val uiHelper: UiHelper = MyApp.appModule.uiHelper
 
     private val storageManager = MyApp.appModule.storageManager
-    private val dao = MyApp.appModule.repoDatabase.repoDatabaseDao
 
     // The first sync must not die with the view model that kicked it off.
     private val appScope = MyApp.appModule.appScope
 
-
-    /**
-     * The note behind a file another app handed over, or null with a reason
-     * said out loud.
-     *
-     * Only files inside the repository: a note is a row and a file at once, and
-     * everything that writes one goes through the storage manager so the two
-     * stay in step. A file somewhere else has no row to keep, so opening it here
-     * would be a second way of writing notes that nothing else knows about.
-     *
-     * The size limit is the list's: what the index would not read is handed to
-     * the editor empty, and the first save would make the file agree with that.
-     */
-    suspend fun noteFromFile(path: String): Note? {
-        val repoPath = runCatching { prefs.repoPath() }.getOrNull()
-        if (repoPath.isNullOrEmpty()) return null
-
-        val relativePath = path.removeSuffix("/").let {
-            if (it.startsWith("$repoPath/")) it.removePrefix("$repoPath/") else null
-        }
-
-        if (relativePath == null) {
-            uiHelper.makeToast(uiHelper.getString(R.string.error_file_outside_repo))
-            return null
-        }
-
-        val note = dao.note(relativePath)
-        if (note == null) {
-            uiHelper.makeToast(uiHelper.getString(R.string.error_note_not_found))
-            return null
-        }
-
-        val size = withContext(Dispatchers.IO) {
-            runCatching { NodeFs.File.fromPath(repoPath, relativePath).fileSize() }.getOrDefault(0L)
-        }
-        if (size > LIMIT_FILE_SIZE_DB) {
-            uiHelper.makeToast(uiHelper.getString(R.string.error_note_too_large, note.fileName))
-            return null
-        }
-
-        return note
-    }
 
     suspend fun tryInit(): Boolean {
 
