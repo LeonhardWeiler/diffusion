@@ -53,6 +53,7 @@
     <string name="error_file_already_exist">File already exist</string>
     <string name="error_create_file">Can\'t create file: %1$s</string>
     <string name="error_note_not_found">This note is no longer there</string>
+    <string name="error_file_outside_repo">Only files inside the repository can be opened here</string>
     <string name="open_with_another_app">Open with</string>
     <string name="open_with_another_app_action">Open with another app</string>
     <string name="error_note_too_large">%1$s is too large to open here. Use another app for it.</string>
