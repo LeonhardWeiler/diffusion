@@ -126,7 +126,7 @@ private fun UrlTextField(url: MutableState<TextFieldValue>) {
             Text(text = stringResource(R.string.clone_step_url_label))
         },
         placeholder = {
-            Text(text = "git@github.com:LeonhardWeiler/diffusion.git")
+            Text(text = "git@github.com:LeonhardWeiler/diffusion")
         },
         singleLine = true,
         keyboardOptions = KeyboardOptions(
