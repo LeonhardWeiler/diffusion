@@ -18,6 +18,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.res.stringResource
@@ -164,14 +165,19 @@ fun GenerateNewSshKeysScreen(
                 text = "3. " + stringResource(R.string.try_cloning)
             ) {
 
-                if (!keyCopied.value) {
-                    Text(
-                        modifier = Modifier.padding(bottom = 8.dp),
-                        text = stringResource(R.string.copy_key_first),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                // Faded rather than taken out of the layout. Copying the key is
+                // the one thing that makes this sentence go away, and a button
+                // that jumps up under the finger that just pressed something
+                // else is the finger's next tap landing somewhere it did not
+                // mean to.
+                Text(
+                    modifier = Modifier
+                        .padding(bottom = 8.dp)
+                        .alpha(if (keyCopied.value) 0f else 1f),
+                    text = stringResource(R.string.copy_key_first),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
 
                 SetupButton(
                     text = stringResource(R.string.clone_repo),
