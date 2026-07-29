@@ -1,5 +1,6 @@
 package io.github.leonhardweiler.diffusion.manager
 
+import android.os.SystemClock
 import android.util.Log
 import androidx.annotation.StringRes
 import androidx.room.withTransaction
@@ -277,10 +278,21 @@ class StorageManager {
         val repoPath = prefs.repoPath()
         Log.d(TAG, "repoPath = $repoPath")
 
+        // The other half of the measurement in clearAndInit: that one is the
+        // walk, this is the walk plus the transaction it is written in, which
+        // is what a start would have to pay if the index were given up and the
+        // repository read at every launch instead.
+        val startedAt = SystemClock.elapsedRealtime()
+
         db.withTransaction {
             dao.clearAndInit(repoPath, progressCb)
         }
         prefs.databaseCommit.update(fsCommit)
+
+        Log.i(
+            TAG,
+            "database rebuilt in ${SystemClock.elapsedRealtime() - startedAt} ms"
+        )
 
         return success(Unit)
     }

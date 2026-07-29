@@ -1,5 +1,6 @@
 package io.github.leonhardweiler.diffusion.data.room
 
+import android.os.SystemClock
 import android.util.Log
 import androidx.paging.PagingSource
 import androidx.room.Dao
@@ -100,6 +101,16 @@ interface RepoDatabaseDao {
         rootPath: String,
         progressCb: ((Progress) -> Unit)? = null
     ) {
+        // What this costs is the question behind every idea of doing without
+        // the index and reading the repository at each start instead: the walk
+        // is the same one, it would just have to happen every time rather than
+        // when HEAD has moved. So it says how long it took and over how much —
+        // `adb logcat -s StorageManager Dao` on a real repository
+        // on a real phone answers it.
+        val startedAt = SystemClock.elapsedRealtime()
+        var files = 0
+        var folders = 0
+
         Log.d(TAG, "clearAndInit")
         clearDatabase()
 
@@ -137,6 +148,7 @@ interface RepoDatabaseDao {
                         // straight in: the table was cleared a moment ago, so
                         // there is nothing here that could already be there
                         insertNoteRow(note)
+                        files++
                     }
 
                     is NodeFs.Folder -> {
@@ -147,6 +159,7 @@ interface RepoDatabaseDao {
                             relativePath = nodeFs.path.substring(startIndex = rootLength),
                         )
                         insertNoteFolderRow(noteFolder)
+                        folders++
                         progressCb?.invoke(Progress.GeneratingDatabase(noteFolder.relativePath))
                         initRec(nodeFs)
                     }
@@ -155,6 +168,12 @@ interface RepoDatabaseDao {
         }
 
         initRec(rootFs)
+
+        Log.i(
+            TAG,
+            "clearAndInit: $files files in $folders folders, " +
+                    "${SystemClock.elapsedRealtime() - startedAt} ms"
+        )
     }
 
 
