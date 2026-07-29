@@ -1,19 +1,49 @@
 package io.github.leonhardweiler.diffusion.helper
 
 import android.util.Log
+import io.github.leonhardweiler.diffusion.R
 
 private const val TAG = "RepoPath"
 
-/** Why a typed name does not name a place in the repository. */
-enum class PathProblem {
-    /** Nothing was typed, or what was typed names a folder rather than a thing in it. */
-    Empty,
+/**
+ * Why a typed name does not name a place in the repository.
+ *
+ * Each of these is a different thing to do about it, so each of them says which
+ * one it is. "Name is invalid" was one sentence for all four, and the one it
+ * fitted worst is the one that happens most: a colon in a name, which reads as
+ * perfectly ordinary until somebody points at it.
+ */
+sealed interface PathProblem {
+
+    /** Nothing was typed. */
+    data object Empty : PathProblem
+
+    /** What was typed names a folder rather than something in it. */
+    data object NamesFolder : PathProblem
 
     /** A segment holds something a file name cannot hold. */
-    InvalidName,
+    data class InvalidCharacter(val character: Char) : PathProblem
 
     /** More `..` than there is repository above it. */
-    AboveRoot,
+    data object AboveRoot : PathProblem
+}
+
+/** What to say about a path that cannot be given, in words about this one. */
+fun PathProblem.describe(uiHelper: UiHelper): String = when (this) {
+    PathProblem.Empty -> uiHelper.getString(R.string.error_empty_name)
+    PathProblem.NamesFolder -> uiHelper.getString(R.string.error_names_folder)
+    PathProblem.AboveRoot -> uiHelper.getString(R.string.error_path_above_root)
+    is PathProblem.InvalidCharacter ->
+        uiHelper.getString(R.string.error_invalid_character, character.readable())
+}
+
+/** A character one can be shown: a tab or a newline has nothing to look at. */
+private fun Char.readable(): String = when (this) {
+    '\n' -> "\\n"
+    '\r' -> "\\r"
+    '\t' -> "\\t"
+    '\u0000', '\u000c' -> code.toString(16).let { "\\u$it" }
+    else -> toString()
 }
 
 sealed interface ResolvedPath {
@@ -42,7 +72,7 @@ fun resolveRepoPath(parentPath: String, typed: String): ResolvedPath {
     if (trimmed.isEmpty()) return ResolvedPath.Bad(PathProblem.Empty)
 
     // a trailing slash names the folder, not a thing in it
-    if (trimmed.endsWith("/")) return ResolvedPath.Bad(PathProblem.Empty)
+    if (trimmed.endsWith("/")) return ResolvedPath.Bad(PathProblem.NamesFolder)
 
     val segments = mutableListOf<String>()
 
@@ -61,15 +91,16 @@ fun resolveRepoPath(parentPath: String, typed: String): ResolvedPath {
             }
 
             else -> {
-                if (!NameValidation.check(segment)) {
-                    return ResolvedPath.Bad(PathProblem.InvalidName)
+                NameValidation.illegalCharacter(segment)?.let {
+                    return ResolvedPath.Bad(PathProblem.InvalidCharacter(it))
                 }
                 segments += segment
             }
         }
     }
 
-    if (segments.isEmpty()) return ResolvedPath.Bad(PathProblem.Empty)
+    // everything typed resolved away — "." and "work/.." name a folder
+    if (segments.isEmpty()) return ResolvedPath.Bad(PathProblem.NamesFolder)
 
     return ResolvedPath.Ok(segments.joinToString("/"))
 }

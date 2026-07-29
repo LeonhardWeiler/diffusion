@@ -14,7 +14,9 @@ import io.github.leonhardweiler.diffusion.data.index.foldersIn
 import io.github.leonhardweiler.diffusion.data.index.notesIn
 import io.github.leonhardweiler.diffusion.data.index.search
 import io.github.leonhardweiler.diffusion.helper.NameValidation
+import io.github.leonhardweiler.diffusion.helper.PathProblem
 import io.github.leonhardweiler.diffusion.helper.ResolvedPath
+import io.github.leonhardweiler.diffusion.helper.describe
 import io.github.leonhardweiler.diffusion.helper.keepExtension
 import io.github.leonhardweiler.diffusion.helper.resolveRepoPath
 import io.github.leonhardweiler.diffusion.manager.StorageManager
@@ -139,8 +141,16 @@ class GridViewModel : ViewModel() {
     }
 
     fun createNoteFolder(relativeParentPath: String, name: String): Boolean {
-        if (!NameValidation.check(name)) {
-            uiHelper.makeToast(uiHelper.getString(R.string.error_invalid_name))
+        // the same words a rename is refused in, for the same reasons
+        val problem = when {
+            name.isBlank() -> PathProblem.Empty
+            else -> NameValidation.illegalCharacter(name)?.let {
+                PathProblem.InvalidCharacter(it)
+            }
+        }
+
+        if (problem != null) {
+            uiHelper.makeToast(problem.describe(uiHelper))
             return false
         }
 
@@ -151,7 +161,7 @@ class GridViewModel : ViewModel() {
         )
 
         if (noteFolder.toFolderFs(prefs.repoPathBlocking()).exist()) {
-            uiHelper.makeToast(uiHelper.getString(R.string.error_folder_already_exist))
+            uiHelper.makeToast(uiHelper.getString(R.string.error_folder_already_exist, name))
             return false
         }
 
@@ -304,7 +314,7 @@ class GridViewModel : ViewModel() {
         )
 
         if (resolved !is ResolvedPath.Ok) {
-            uiHelper.makeToast(uiHelper.getString(R.string.error_invalid_name))
+            uiHelper.makeToast((resolved as ResolvedPath.Bad).problem.describe(uiHelper))
             return
         }
 
@@ -338,7 +348,7 @@ class GridViewModel : ViewModel() {
 
         val resolved = resolveRepoPath(parentPath, typed)
         if (resolved !is ResolvedPath.Ok) {
-            uiHelper.makeToast(uiHelper.getString(R.string.error_invalid_name))
+            uiHelper.makeToast((resolved as ResolvedPath.Bad).problem.describe(uiHelper))
             return
         }
 

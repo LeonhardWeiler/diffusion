@@ -350,7 +350,7 @@ class StorageManager {
 
         val target = NodeFs.File.fromPath(repoPath, newRelativePath)
         if (target.exist()) {
-            return@withLock complain(R.string.error_file_already_exist)
+            return@withLock complain(R.string.error_file_already_exist, newRelativePath)
         }
 
         // the way mv wants it: the folder is moved into has to be there already
@@ -433,7 +433,7 @@ class StorageManager {
 
         val target = NodeFs.Folder.fromPath(repoPath, newRelativePath)
         if (target.exist()) {
-            return@withLock complain(R.string.error_folder_already_exist)
+            return@withLock complain(R.string.error_folder_already_exist, newRelativePath)
         }
 
         val parentPath = getParentPath(newRelativePath)

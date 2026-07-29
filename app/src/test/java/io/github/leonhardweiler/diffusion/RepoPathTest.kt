@@ -64,20 +64,29 @@ class RepoPathTest {
     }
 
     @Test
-    fun a_path_naming_no_file_is_refused() {
+    fun nothing_typed_is_refused_as_nothing_typed() {
         assertEquals(PathProblem.Empty, bad("work", ""))
         assertEquals(PathProblem.Empty, bad("work", "   "))
-        // a trailing slash names the folder, not a thing in it
-        assertEquals(PathProblem.Empty, bad("work", "archive/"))
-        // and this walks back to exactly where it started
-        assertEquals(PathProblem.Empty, bad("", "."))
     }
 
     @Test
-    fun a_segment_a_file_cannot_be_called_is_refused() {
-        assertEquals(PathProblem.InvalidName, bad("", "no:colons.md"))
-        assertEquals(PathProblem.InvalidName, bad("", "star*.md"))
-        assertEquals(PathProblem.InvalidName, bad("", "arch?ive/notes.md"))
+    fun a_path_naming_a_folder_says_that_is_what_it_names() {
+        // a trailing slash names the folder, not a thing in it
+        assertEquals(PathProblem.NamesFolder, bad("work", "archive/"))
+        // and this walks back to exactly where it started
+        assertEquals(PathProblem.NamesFolder, bad("", "."))
+        assertEquals(PathProblem.NamesFolder, bad("work", ".."))
+    }
+
+    @Test
+    fun a_segment_a_file_cannot_be_called_names_the_character() {
+        // which character it was, because a colon in a name reads as ordinary
+        // until somebody points at it
+        assertEquals(PathProblem.InvalidCharacter(':'), bad("", "no:colons.md"))
+        assertEquals(PathProblem.InvalidCharacter('*'), bad("", "star*.md"))
+        assertEquals(PathProblem.InvalidCharacter('?'), bad("", "arch?ive/notes.md"))
+        // the first one, of several
+        assertEquals(PathProblem.InvalidCharacter('*'), bad("", "star*and:colon.md"))
     }
 
     @Test

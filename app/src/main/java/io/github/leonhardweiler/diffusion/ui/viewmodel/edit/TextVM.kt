@@ -16,7 +16,7 @@ import io.github.leonhardweiler.diffusion.data.platform.NodeFs
 import io.github.leonhardweiler.diffusion.data.index.Note
 import io.github.leonhardweiler.diffusion.helper.EditHistory
 import io.github.leonhardweiler.diffusion.helper.NameValidation
-import io.github.leonhardweiler.diffusion.helper.PathProblem
+import io.github.leonhardweiler.diffusion.helper.describe
 import io.github.leonhardweiler.diffusion.helper.ResolvedPath
 import io.github.leonhardweiler.diffusion.helper.keepExtension
 import io.github.leonhardweiler.diffusion.helper.resolveRepoPath
@@ -328,7 +328,7 @@ open class TextVM() : ViewModel() {
             is ResolvedPath.Ok -> resolved.relativePath
 
             is ResolvedPath.Bad -> {
-                uiHelper.makeToast(uiHelper.getString(resolved.problem.message()))
+                uiHelper.makeToast(resolved.problem.describe(uiHelper))
                 return failure(DataFormatException("path invalid: ${name.value.text}"))
             }
         }
@@ -384,7 +384,9 @@ open class TextVM() : ViewModel() {
         }
 
         if (note.toFileFs(repoPath).exist()) {
-            uiHelper.makeToast(uiHelper.getString(R.string.error_file_already_exist))
+            uiHelper.makeToast(
+                uiHelper.getString(R.string.error_file_already_exist, note.fileName)
+            )
             return failure(EditException(EditExceptionType.NoteAlreadyExist))
         }
 
@@ -408,13 +410,6 @@ open class TextVM() : ViewModel() {
     /** The name that was last complained about, so the toast is shown once. */
     private var rejectedName: String? = null
 
-    /** What to say about a path the user cannot be given. */
-    private fun PathProblem.message(): Int = when (this) {
-        PathProblem.Empty -> R.string.error_invalid_name
-        PathProblem.InvalidName -> R.string.error_invalid_name
-        PathProblem.AboveRoot -> R.string.error_path_above_root
-    }
-
     /**
      * Writes the note to disk. There is no save button anymore, so this runs
      * while typing, when the editor is left and when the app is stopped.
@@ -430,7 +425,7 @@ open class TextVM() : ViewModel() {
             // holds the text until the name is one a file can carry
             if (typed.isNotEmpty() && typed != rejectedName) {
                 rejectedName = typed
-                uiHelper.makeToast(uiHelper.getString(resolved.problem.message()))
+                uiHelper.makeToast(resolved.problem.describe(uiHelper))
             }
             return
         }

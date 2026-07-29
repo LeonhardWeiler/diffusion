@@ -50,7 +50,7 @@
     <string name="select_multiple_notes">Select multiple</string>
     <string name="select_all">Select all</string>
     <string name="error_invalid_link">Invalid link, can\'t open it</string>
-    <string name="error_file_already_exist">File already exist</string>
+    <string name="error_file_already_exist">There is already a file called %1$s</string>
     <string name="error_create_file">Can\'t create file: %1$s</string>
     <string name="error_note_not_found">This note is no longer there</string>
     <string name="open_with_another_app">Open with</string>
@@ -73,10 +73,12 @@
     <string name="set_up_remote_question">This repository has no remote yet. Set one up now, so notes can be synced?</string>
     <string name="error_open_repo">can\'t open repository: %1$s</string>
     <string name="error_write_file">Can\'t write file: %1$s</string>
-    <string name="error_invalid_name">Name is invalid</string>
-    <string name="error_path_above_root">That is outside the repository</string>
+    <string name="error_empty_name">A name is needed</string>
+    <string name="error_names_folder">That names a folder, not a file in it</string>
+    <string name="error_invalid_character">A name cannot hold \"%1$s\"</string>
+    <string name="error_path_above_root">A note has to stay inside the repository</string>
     <string name="error_folder_not_found">There is no folder named %1$s</string>
-    <string name="error_folder_already_exist">Folder already exist</string>
+    <string name="error_folder_already_exist">There is already a folder called %1$s</string>
     <string name="error_folder_into_itself">A folder cannot be moved into itself</string>
     <string name="rename_or_move">Rename or move</string>
     <string name="new_path_label">New name or path</string>
