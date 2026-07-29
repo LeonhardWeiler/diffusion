@@ -68,7 +68,6 @@ fun EnterUrlScreen(
     }
 
     AppPage(
-        title = "URL",
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
         onBackClick = onBackClick,

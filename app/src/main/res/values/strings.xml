@@ -84,7 +84,6 @@
     <string name="rename_this_folder">Rename or move</string>
     <string name="folder_new_path_label">New name or path</string>
     <string name="about">About</string>
-    <string name="app_page_choose_method">Choose method</string>
     <string name="open_repo">Open local repository</string>
     <string name="clone_remote_repo">Clone remote repository</string>
     <string name="error_folder_not_on_device">Choose a folder on the device storage. A memory card or a usb stick cannot be used.</string>
@@ -110,7 +109,6 @@
     <string name="read_only_mode_deactive">Deactivate read only mode</string>
     <string name="url_explain_enter_url">Enter the Git clone URL</string>
     <string name="next">Next</string>
-    <string name="ssh_keys_title">SSH keys</string>
     <string name="ssh_keys_setup_title">In order to access this repository, this public key must be copied as a deploy key</string>
     <string name="copy_the_key">Copy the key</string>
     <string name="copy_key">Copy Key</string>

@@ -58,7 +58,6 @@ fun GenerateNewSshKeysScreen(
 ) {
 
     AppPage(
-        title = stringResource(R.string.ssh_keys_title),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
         onBackClick = onBackClick,

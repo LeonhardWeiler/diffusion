@@ -115,7 +115,6 @@ fun NewRepoMethodScreen(
     }
 
     AppPage(
-        title = stringResource(R.string.app_page_choose_method),
         verticalArrangement = Arrangement.spacedBy(80.dp, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {

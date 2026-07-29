@@ -43,7 +43,6 @@ fun LoadKeysFromDeviceScreen(
 
     ) {
     AppPage(
-        title = stringResource(R.string.custom_ssh_keys),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
         onBackClick = onBackClick,

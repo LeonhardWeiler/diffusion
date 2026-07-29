@@ -42,7 +42,6 @@ fun CloningScreen(
     onShowLogs: () -> Unit,
 ) {
     AppPage(
-        title = "Clone",
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
         onBackClickEnabled = !cloneState.isLoading()
