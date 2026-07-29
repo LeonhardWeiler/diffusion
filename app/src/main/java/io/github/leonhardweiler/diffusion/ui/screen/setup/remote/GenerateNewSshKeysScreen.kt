@@ -47,6 +47,13 @@ fun GenerateNewSshKeysScreen(
     generateSshKeys: () -> Pair<String, String>,
     onClone: () -> Unit,
     onSuccess: () -> Unit,
+    /**
+     * The pair the app already holds, when the user chose to reuse it. Nothing
+     * is generated then, and the clone is not made to wait for a copy: a key
+     * that has been here before is one the repository has most likely been told
+     * about already.
+     */
+    storedKey: Cred.Ssh? = null,
 ) {
 
     AppPage(
@@ -57,24 +64,36 @@ fun GenerateNewSshKeysScreen(
         onBackClickEnabled = !cloneState.isLoading()
     ) {
 
-        val publicKey = rememberSaveable { mutableStateOf("") }
-        val privateKey = rememberSaveable { mutableStateOf("") }
+        val publicKey = rememberSaveable { mutableStateOf(storedKey?.publicKey.orEmpty()) }
+        val privateKey = rememberSaveable { mutableStateOf(storedKey?.privateKey.orEmpty()) }
+
+        // Only ever the stored one's: a pair generated here has none, and
+        // regenerating drops it along with the key it belonged to.
+        val passphrase = rememberSaveable { mutableStateOf(storedKey?.passphrase) }
 
         // A clone with a key the far end has never seen fails with an
         // authentication error that says nothing about the one step that was
         // skipped, so the clone waits until the key has at least been taken
-        // away from here.
-        val keyCopied = rememberSaveable { mutableStateOf(false) }
+        // away from here. A stored key has been through that once already.
+        val keyCopied = rememberSaveable { mutableStateOf(storedKey != null) }
 
-        LaunchedEffect(true) {
-            val (public, private) = generateSshKeys()
-            Log.d(TAG, public)
-            publicKey.value = public
-            privateKey.value = private
+        if (storedKey == null) {
+            LaunchedEffect(true) {
+                val (public, private) = generateSshKeys()
+                Log.d(TAG, public)
+                publicKey.value = public
+                privateKey.value = private
+            }
         }
 
         SetupPage(
-            title = stringResource(R.string.ssh_keys_setup_title)
+            title = stringResource(
+                if (storedKey == null) {
+                    R.string.ssh_keys_setup_title
+                } else {
+                    R.string.ssh_keys_stored_title
+                }
+            )
         ) {
 
             SetupLine(
@@ -126,6 +145,7 @@ fun GenerateNewSshKeysScreen(
                         val (public, private) = generateSshKeys()
                         publicKey.value = public
                         privateKey.value = private
+                        passphrase.value = null
                         // the key that was copied is not this one anymore
                         keyCopied.value = false
                     }
@@ -167,7 +187,7 @@ fun GenerateNewSshKeysScreen(
                             cred = Cred.Ssh(
                                 publicKey = publicKey.value,
                                 privateKey = privateKey.value,
-                                passphrase = null
+                                passphrase = passphrase.value
                             ),
                             onSuccess = onSuccess
                         )

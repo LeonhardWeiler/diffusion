@@ -8,6 +8,7 @@ import io.github.leonhardweiler.diffusion.MyApp
 import io.github.leonhardweiler.diffusion.R
 import io.github.leonhardweiler.diffusion.data.AppPreferences
 import io.github.leonhardweiler.diffusion.data.platform.NodeFs
+import io.github.leonhardweiler.diffusion.helper.SshKeyValidation
 import io.github.leonhardweiler.diffusion.helper.UiHelper
 import io.github.leonhardweiler.diffusion.manager.Progress
 import io.github.leonhardweiler.diffusion.ui.model.Cred
@@ -37,6 +38,27 @@ class SetupViewModel : ViewModel(), SetupViewModelI {
 
     private val _initState: MutableStateFlow<InitState> = MutableStateFlow(InitState.Idle)
     val initState: StateFlow<InitState> = _initState.asStateFlow()
+
+    private val _storedSshKey: MutableStateFlow<Cred.Ssh?> = MutableStateFlow(null)
+
+    /**
+     * The key pair the app already holds, if it holds a usable one.
+     *
+     * closeRepo() only forgets that a repository was set up; the credentials
+     * stay in the store and a repository opened without new ones uses them. But
+     * nothing led back to them: setting up again meant either generating a
+     * fresh pair or fetching one off the disk, so every attempt cost the
+     * repository another deploy key and the old ones piled up there.
+     */
+    val storedSshKey: StateFlow<Cred.Ssh?> = _storedSshKey.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            val cred = prefs.cred()
+            _storedSshKey.value = (cred as? Cred.Ssh)
+                ?.takeIf { SshKeyValidation.isKeyPair(it.publicKey, it.privateKey) }
+        }
+    }
 
     /**
      * Set when a repository that was opened turns out to have a remote. The

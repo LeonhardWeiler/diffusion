@@ -13,6 +13,7 @@ import dev.olshevski.navigation.reimagined.NavTransitionSpec
 import dev.olshevski.navigation.reimagined.navigate
 import dev.olshevski.navigation.reimagined.pop
 import dev.olshevski.navigation.reimagined.rememberNavController
+import io.github.leonhardweiler.diffusion.helper.sshFingerprint
 import io.github.leonhardweiler.diffusion.manager.generateSshKeysLib
 import io.github.leonhardweiler.diffusion.ui.destination.RemoteDestination
 import io.github.leonhardweiler.diffusion.ui.destination.RemoteDestination.EnterUrl
@@ -60,6 +61,7 @@ fun RemoteScreen(
     }
 
     val initState = vm.initState.collectAsState().value
+    val storedSshKey = vm.storedSshKey.collectAsState().value
 
     BackHandler(
         enabled = initState.isLoading()
@@ -81,6 +83,15 @@ fun RemoteScreen(
 
             is SelectGenerateNewSshKeys -> SelectGenerateNewSshKeysScreen(
                 onBackClick = { back() },
+                storedKeyFingerprint = storedSshKey?.let { sshFingerprint(it.publicKey) },
+                onUseStored = {
+                    navController.navigate(
+                        GenerateNewKeys(
+                            url = remoteDestination.url,
+                            useStored = true
+                        )
+                    )
+                },
                 onGenerate = {
                     navController.navigate(
                         GenerateNewKeys(
@@ -105,7 +116,8 @@ fun RemoteScreen(
                 vm = vm,
                 generateSshKeys = ::generateSshKeysLib,
                 onSuccess = onInitSuccess,
-                onClone = { navController.navigate(RemoteDestination.Cloning) }
+                onClone = { navController.navigate(RemoteDestination.Cloning) },
+                storedKey = storedSshKey.takeIf { remoteDestination.useStored },
             )
 
             is RemoteDestination.LoadKeysFromDevice -> LoadKeysFromDeviceScreen(
