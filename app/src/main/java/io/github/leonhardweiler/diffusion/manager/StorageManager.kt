@@ -189,6 +189,25 @@ class StorageManager {
     @Volatile
     private var lastWrite: Job? = null
 
+    /**
+     * What HEAD said the last time it was asked, or null when it has to be
+     * asked again.
+     *
+     * Every mutation begins by comparing HEAD against the commit the database
+     * was built from, and that comparison used to be a JNI transition and a
+     * git_revparse behind two mutexes — the second of which belongs to the sync,
+     * so a note being saved could end up waiting on a pull over the network.
+     * Answered with "unchanged" every time, because HEAD does not move while
+     * notes are written: that is the whole reason the index can stay in step
+     * incrementally.
+     *
+     * So it is asked once and remembered, and forgotten again by exactly the
+     * things that can move HEAD — committing, pulling, and whatever happened
+     * outside this class before updateDatabase was called. Read and written
+     * only under [locker], or the cheap answer would be a race instead.
+     */
+    private var knownFsCommit: String? = null
+
     private suspend fun syncWithRemoteLocked(announceErrors: Boolean): Result<Unit> = locker.withLock {
         Log.d(TAG, "syncWithRemote")
 
@@ -206,6 +225,9 @@ class StorageManager {
         }
 
         announceSyncErrors = announceErrors
+
+        // a commit is one of the two things that move HEAD
+        knownFsCommit = null
 
         // Only a fallback: the message a commit really carries is the notes it
         // is about, and only the rust side, which stages them, knows those.
@@ -238,7 +260,11 @@ class StorageManager {
         // A repository that cannot be read is not one that has nothing new: the
         // failure has to travel, or the rebuild is skipped for a reason nobody
         // ever sees.
-        val fsCommit = gitManager.lastCommit().getOrElse { return failure(it) } ?: NO_COMMIT
+        val fsCommit = knownFsCommit
+            ?: gitManager.lastCommit().getOrElse { return failure(it) } ?: NO_COMMIT
+
+        knownFsCommit = fsCommit
+
         val databaseCommit = prefs.databaseCommit.get()
 
         Log.d(TAG, "fsCommit: $fsCommit, databaseCommit: $databaseCommit")
@@ -268,6 +294,7 @@ class StorageManager {
         // The three places this is called from — start up, the reload and the
         // end of a setup — are exactly the ones where the repository may have
         // been written to by something that is not this app.
+        knownFsCommit = null
         refreshLocalChanges()
 
         updateDatabaseWithoutLocker(force, progressCb)
@@ -505,6 +532,7 @@ class StorageManager {
     }
 
     suspend fun closeRepo() = locker.withLock {
+        knownFsCommit = null
         prefs.closeRepo()
         gitManager.closeRepo()
         dao.clearDatabase()
@@ -609,6 +637,9 @@ class StorageManager {
                 delay(RETRY_AFTER_NETWORK_FAILURE_MS)
                 pulled = gitManager.pull(cred, prefs.gitAuthor())
             }
+
+            // and the pull is the other one
+            knownFsCommit = null
 
             pulled.onFailure { err ->
                 isError = true
