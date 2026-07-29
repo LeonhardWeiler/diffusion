@@ -22,8 +22,8 @@ import org.eclipse.jgit.lib.RepositoryState
 import org.eclipse.jgit.revwalk.RevWalk
 import java.io.File
 import java.nio.file.Files
-import java.util.Date
-import java.util.TimeZone
+import java.time.Instant
+import java.time.ZoneId
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -46,6 +46,7 @@ import kotlin.test.assertTrue
 class GitLayerTest {
 
     private val author = GitAuthor(name = "Tester", email = "tester@example.com")
+    private val zone: ZoneId = ZoneId.systemDefault()
 
     private lateinit var root: File
     private lateinit var remote: Git
@@ -382,7 +383,7 @@ class GitLayerTest {
         other.write("theirs.md", "theirs")
         other.add().addFilepattern(".").call()
         val old = (System.currentTimeMillis() / 1000) - 60 * 60 * 24 * 7
-        val ident = PersonIdent(author.name, author.email, Date(old * 1000), TimeZone.getDefault())
+        val ident = PersonIdent(author.name, author.email, Instant.ofEpochSecond(old), zone)
         other.commit().setAuthor(ident).setCommitter(ident).setMessage("theirs").call()
         push(other, null)
 
@@ -439,7 +440,7 @@ class GitLayerTest {
         git.add().addFilepattern(".").call()
 
         val at = (System.currentTimeMillis() / 1000) - secondsAgo
-        val ident = PersonIdent(author.name, author.email, Date(at * 1000), TimeZone.getDefault())
+        val ident = PersonIdent(author.name, author.email, Instant.ofEpochSecond(at), zone)
 
         git.commit().setAuthor(ident).setCommitter(ident).setMessage("old").call()
 
