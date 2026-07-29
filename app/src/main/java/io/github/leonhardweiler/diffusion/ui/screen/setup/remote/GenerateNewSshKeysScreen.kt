@@ -14,6 +14,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.mutableStateOf
@@ -36,9 +37,17 @@ import io.github.leonhardweiler.diffusion.ui.component.SetupLine
 import io.github.leonhardweiler.diffusion.ui.component.SetupPage
 import io.github.leonhardweiler.diffusion.ui.model.Cred
 import io.github.leonhardweiler.diffusion.ui.viewmodel.InitState
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private const val TAG = "GenerateNewSshKeysScreen"
+
+/**
+ * How long the copy button says that it copied something. Long enough to be
+ * read, short enough that the button is a button again by the time the key has
+ * been pasted somewhere.
+ */
+private const val KEY_COPIED_LABEL_MS = 2_000L
 
 @Composable
 fun GenerateNewSshKeysScreen(
@@ -79,6 +88,25 @@ fun GenerateNewSshKeysScreen(
         // skipped, so the clone waits until the key has at least been taken
         // away from here. A stored key has been through that once already.
         val keyCopied = rememberSaveable { mutableStateOf(storedKey != null) }
+
+        // What the button says is not what the clone goes by: the key is copied
+        // again and again while a deploy key is being set up, and a button that
+        // reads "Key copied" for good reads as something that has happened
+        // rather than something to press. It says so for a moment and is a copy
+        // button again after that, while the clone stays unlocked.
+        val justCopied = remember { mutableStateOf(false) }
+
+        // Every press starts the two seconds over rather than adding a second
+        // timer next to the one already running, which would end the label
+        // early.
+        val copyCount = remember { mutableIntStateOf(0) }
+
+        LaunchedEffect(copyCount.intValue) {
+            if (copyCount.intValue == 0) return@LaunchedEffect
+            justCopied.value = true
+            delay(KEY_COPIED_LABEL_MS)
+            justCopied.value = false
+        }
 
         if (storedKey == null) {
             LaunchedEffect(true) {
@@ -121,7 +149,7 @@ fun GenerateNewSshKeysScreen(
                 val clipboardManager = LocalClipboard.current
 
                 SetupButton(
-                    text = if (keyCopied.value) {
+                    text = if (justCopied.value) {
                         stringResource(R.string.key_copied)
                     } else {
                         stringResource(R.string.copy_key)
@@ -138,6 +166,7 @@ fun GenerateNewSshKeysScreen(
                         scope.launch {
                             clipboardManager.setClipEntry(ClipEntry(data))
                             keyCopied.value = true
+                            copyCount.intValue++
                         }
                     }
                 )
@@ -149,8 +178,11 @@ fun GenerateNewSshKeysScreen(
                         publicKey.value = public
                         privateKey.value = private
                         passphrase.value = null
-                        // the key that was copied is not this one anymore
+                        // the key that was copied is not this one anymore, and
+                        // a label still saying so would be about the old pair
                         keyCopied.value = false
+                        justCopied.value = false
+                        copyCount.intValue = 0
                     }
                 )
             }
