@@ -12,10 +12,14 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.leonhardweiler.diffusion.MyApp
 import io.github.leonhardweiler.diffusion.R
+import io.github.leonhardweiler.diffusion.data.platform.NodeFs
 import io.github.leonhardweiler.diffusion.data.room.Note
 import io.github.leonhardweiler.diffusion.helper.EditHistory
 import io.github.leonhardweiler.diffusion.helper.NameValidation
 import io.github.leonhardweiler.diffusion.helper.NoteSaver
+import io.github.leonhardweiler.diffusion.helper.PathProblem
+import io.github.leonhardweiler.diffusion.helper.ResolvedPath
+import io.github.leonhardweiler.diffusion.helper.resolveRepoPath
 import io.github.leonhardweiler.diffusion.helper.UiHelper
 import io.github.leonhardweiler.diffusion.manager.StorageManager
 import io.github.leonhardweiler.diffusion.ui.destination.EditParams
@@ -39,6 +43,7 @@ data class History(
 
 enum class EditExceptionType {
     NoteAlreadyExist,
+    FolderNotFound,
 }
 
 class EditException(
@@ -114,7 +119,7 @@ open class TextVM() : ViewModel() {
         this.previousNote = previousNote
         this.openedNote = previousNote
 
-        _name.value = previousNote.nameWithoutExtension().let {
+        _name.value = previousNote.fileName.let {
             TextFieldValue(it, selection = TextRange(it.length))
         }
 
@@ -254,7 +259,40 @@ open class TextVM() : ViewModel() {
         // that is gone
         editType = EditType.Update
         previousNote = note
+
+        // A move is read against where the note is, so once it has moved the
+        // field has to say where it now is — "../notes.md" left standing would
+        // take it a folder further up on the next save, and keep going.
+        if (note.parentPath != previous.parentPath) {
+            _name.value = TextFieldValue(note.fileName, selection = TextRange(note.fileName.length))
+        }
+
         onSuccess()
+    }
+
+    /**
+     * Where the typed name says the note belongs.
+     *
+     * The field is a path, not only a name: `../notes.md` moves the note a
+     * folder up, `archive/notes.md` into one beside it. What is typed is read
+     * against the folder the note is in *now*, which is why a save that moved it
+     * writes the plain file name back into the field — otherwise the next save
+     * would move it the same way again.
+     *
+     * A last segment without a dot keeps the extension the note already has, so
+     * that typing a plain name still means what it always did and only somebody
+     * who writes one changes the type.
+     */
+    private fun editedPath(): ResolvedPath {
+        val typed = NameValidation.removeEndingWhiteSpace(name.value.text)
+
+        val withExtension = if (typed.substringAfterLast('/').contains('.')) {
+            typed
+        } else {
+            "$typed.${previousNote.fileExtension().text}"
+        }
+
+        return resolveRepoPath(previousNote.parentPath, withExtension)
     }
 
     /**
@@ -265,22 +303,18 @@ open class TextVM() : ViewModel() {
      * keystroke meant moving both along every time.
      */
     private fun noteAsEdited(): Result<Note> {
-        val name = NameValidation.removeEndingWhiteSpace(name.value.text)
-        val extension = previousNote.fileExtension()
+        val relativePath = when (val resolved = editedPath()) {
+            is ResolvedPath.Ok -> resolved.relativePath
 
-        if (!NameValidation.check(name)) {
-            uiHelper.makeToast(uiHelper.getString(R.string.error_invalid_name))
-            return failure(DataFormatException("name invalid: $name"))
-        }
-
-        if (!NameValidation.check(extension.text)) {
-            uiHelper.makeToast(uiHelper.getString(R.string.error_invalid_extension))
-            return failure(DataFormatException("extension invalid: $name"))
+            is ResolvedPath.Bad -> {
+                uiHelper.makeToast(uiHelper.getString(resolved.problem.message()))
+                return failure(DataFormatException("path invalid: ${name.value.text}"))
+            }
         }
 
         return success(
             Note.new(
-                relativePath = "${previousNote.parentPath}/$name.${extension.text}",
+                relativePath = relativePath,
                 content = content.value.text,
                 lastModifiedTimeMillis = if (isOpenedNoteTheSame()) {
                     openedNote.lastModifiedTimeMillis
@@ -298,21 +332,37 @@ open class TextVM() : ViewModel() {
      * one it already was, and it keeps its date.
      */
     private fun isOpenedNoteTheSame(): Boolean =
-        openedNote.nameWithoutExtension() == NameValidation.removeEndingWhiteSpace(name.value.text)
+        editedPath().let { it is ResolvedPath.Ok && it.relativePath == openedNote.relativePath }
                 && openedNote.content == content.value.text
 
     /**
-     * Refuses a note whose file is already somebody else's.
+     * Refuses a note whose file is already somebody else's, or whose folder does
+     * not exist.
      *
      * Writing over the note it already is, is not that — which is the usual
      * case, since this runs on every typing pause.
+     *
+     * The folder has to be there already, the way `mv` wants it to be: a typo in
+     * a path would otherwise leave a folder behind that nobody asked for, and
+     * the note in it would be somewhere the user did not mean.
      */
     private fun refuseToOverwrite(note: Note): Result<Unit> {
         if (editType == EditType.Update && note.relativePath == previousNote.relativePath) {
             return success(Unit)
         }
 
-        if (note.toFileFs(prefs.repoPathBlocking()).exist()) {
+        val repoPath = prefs.repoPathBlocking()
+
+        if (note.parentPath.isNotEmpty() &&
+            !NodeFs.Folder.fromPath(repoPath, note.parentPath).exist()
+        ) {
+            uiHelper.makeToast(
+                uiHelper.getString(R.string.error_folder_not_found, note.parentPath)
+            )
+            return failure(EditException(EditExceptionType.FolderNotFound))
+        }
+
+        if (note.toFileFs(repoPath).exist()) {
             uiHelper.makeToast(uiHelper.getString(R.string.error_file_already_exist))
             return failure(EditException(EditExceptionType.NoteAlreadyExist))
         }
@@ -321,7 +371,7 @@ open class TextVM() : ViewModel() {
     }
 
     fun isPreviousNoteTheSame(): Boolean =
-        previousNote.nameWithoutExtension() == NameValidation.removeEndingWhiteSpace(name.value.text)
+        editedPath().let { it is ResolvedPath.Ok && it.relativePath == previousNote.relativePath }
                 && previousNote.content == content.value.text
 
     private var saveJob: Job? = null
@@ -358,6 +408,13 @@ open class TextVM() : ViewModel() {
     /** The name that was last complained about, so the toast is shown once. */
     private var rejectedName: String? = null
 
+    /** What to say about a path the user cannot be given. */
+    private fun PathProblem.message(): Int = when (this) {
+        PathProblem.Empty -> R.string.error_invalid_name
+        PathProblem.InvalidName -> R.string.error_invalid_name
+        PathProblem.AboveRoot -> R.string.error_path_above_root
+    }
+
     /**
      * Writes the note to disk. There is no save button anymore, so this runs
      * while typing, when the editor is left and when the app is stopped.
@@ -366,13 +423,14 @@ open class TextVM() : ViewModel() {
     fun saveNow() {
         saveJob?.cancel()
 
-        val name = NameValidation.removeEndingWhiteSpace(name.value.text)
-        if (!NameValidation.check(name)) {
-            // a note without a usable name has nowhere to go on disk; the draft
+        val typed = NameValidation.removeEndingWhiteSpace(name.value.text)
+        val resolved = editedPath()
+        if (resolved is ResolvedPath.Bad) {
+            // a note without a usable path has nowhere to go on disk; the draft
             // holds the text until the name is one a file can carry
-            if (name.isNotEmpty() && name != rejectedName) {
-                rejectedName = name
-                uiHelper.makeToast(uiHelper.getString(R.string.error_invalid_name))
+            if (typed.isNotEmpty() && typed != rejectedName) {
+                rejectedName = typed
+                uiHelper.makeToast(uiHelper.getString(resolved.problem.message()))
             }
             writeDraft()
             return

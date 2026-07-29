@@ -35,6 +35,7 @@ import io.github.leonhardweiler.diffusion.R
 import io.github.leonhardweiler.diffusion.data.room.Note
 import io.github.leonhardweiler.diffusion.helper.openFileWithAnotherApp
 import io.github.leonhardweiler.diffusion.ui.component.CustomDropDown
+import io.github.leonhardweiler.diffusion.ui.component.GetStringDialog
 import io.github.leonhardweiler.diffusion.ui.component.CustomDropDownModel
 import io.github.leonhardweiler.diffusion.ui.model.EditType
 import io.github.leonhardweiler.diffusion.ui.model.FolderModel
@@ -93,9 +94,21 @@ internal fun FolderRow(
     onClick: () -> Unit,
     onSelect: (Boolean) -> Unit,
     onDelete: () -> Unit,
+    onRename: (String) -> Unit,
 ) {
     val dropDownExpanded = remember { mutableStateOf(false) }
+    val renameExpanded = remember { mutableStateOf(false) }
     val clickPosition = remember { mutableStateOf(Offset.Zero) }
+
+    if (renameExpanded.value) {
+        GetStringDialog(
+            expanded = renameExpanded,
+            label = stringResource(R.string.folder_new_path_label),
+            actionText = stringResource(R.string.save),
+            defaultString = folder.noteFolder.fullName(),
+            onValidation = onRename,
+        )
+    }
 
     val rowBackground =
         if (selected) MaterialTheme.colorScheme.surfaceColorAtElevation(6.dp)
@@ -124,6 +137,10 @@ internal fun FolderRow(
                     expanded = dropDownExpanded,
                     shape = MaterialTheme.shapes.medium,
                     options = listOfNotNull(
+                        CustomDropDownModel(
+                            text = stringResource(R.string.rename_this_folder),
+                            onClick = { renameExpanded.value = true }
+                        ),
                         CustomDropDownModel(
                             text = stringResource(R.string.delete_this_folder),
                             onClick = onDelete

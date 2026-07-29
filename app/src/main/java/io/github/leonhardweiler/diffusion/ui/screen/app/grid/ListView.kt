@@ -72,6 +72,7 @@ internal fun NoteListView(
                     onClick = { onFolderClick(gridItem.folder.noteFolder.relativePath) },
                     onSelect = { add -> vm.selectFolder(gridItem.folder.noteFolder, add) },
                     onDelete = { onFolderDelete(gridItem.folder.noteFolder) },
+                    onRename = { typed -> vm.renameFolder(gridItem.folder.noteFolder, typed) },
                 )
 
                 is GridItem.Note -> NoteListRow(

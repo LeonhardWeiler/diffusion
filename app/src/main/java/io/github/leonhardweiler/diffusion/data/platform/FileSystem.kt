@@ -6,6 +6,7 @@ import io.github.leonhardweiler.diffusion.R
 import io.github.leonhardweiler.diffusion.data.removeFirstAndLastSlash
 import io.github.leonhardweiler.diffusion.ui.model.FileExtension
 import io.github.leonhardweiler.diffusion.utils.toResult
+import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.attribute.FileTime
@@ -165,6 +166,22 @@ sealed class NodeFs(
         fun createFile(name: String): Result<Unit> {
             return toResult {
                 pathFs.resolve(name).createFile()
+            }
+        }
+
+        /**
+         * Renames the directory, which is what moving one is: everything under
+         * it comes along without being read, let alone rewritten.
+         *
+         * ATOMIC_MOVE would be the stronger promise, but a folder can be moved
+         * to a place the filesystem does not consider the same store, and there
+         * it fails outright rather than falling back.
+         */
+        fun moveTo(target: String): Result<Unit> {
+            return toResult {
+                Paths.get(target).createParentDirectories()
+                Files.move(pathFs, Paths.get(target))
+                Unit
             }
         }
 

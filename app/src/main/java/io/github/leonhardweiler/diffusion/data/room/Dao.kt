@@ -321,6 +321,19 @@ interface RepoDatabaseDao {
     }
 
     /**
+     * The notes standing anywhere under a folder, that folder's own path with a
+     * slash after it. For moving one: the rows have to be written again under
+     * the new path, and they carry everything that a rebuild would otherwise
+     * have to read off the disk again.
+     */
+    @Query("SELECT * FROM Notes WHERE relativePath LIKE :relativePath || '%'")
+    suspend fun notesIn(relativePath: String): List<Note>
+
+    /** The folder itself and everything under it, for the same reason. */
+    @Query("SELECT * FROM NoteFolders WHERE relativePath = :relativePath OR relativePath LIKE :relativePath || '/%'")
+    suspend fun foldersUnder(relativePath: String): List<NoteFolder>
+
+    /**
      * Private
      * Note: always add a '/' at the end of relativePath param
      */

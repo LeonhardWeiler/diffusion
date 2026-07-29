@@ -74,10 +74,13 @@ fun EditScreen(
 
     val extension = editParams.fileExtension()
 
+    // Markdown gets the editor that knows about lists and headings; everything
+    // else gets a text field. Not a failure for an extension nobody knows: the
+    // list refuses to open those, but a draft restored after a crash can still
+    // name one, and a note is better shown as plain text than not at all.
     val vm = when (extensionType(extension.text)) {
-        ExtensionType.Text -> newEditViewModel(editParams)
         ExtensionType.Markdown -> newMarkDownVM(editParams)
-        null -> throw Exception("file extension not supported, but present in the database?? $extension")
+        else -> newEditViewModel(editParams)
     }
 
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
@@ -113,8 +116,14 @@ fun EditScreen(
         }
     }
 
-    val isReadOnlyModeActive =
-        !vm.shouldForceNotReadOnlyMode.value && vm.prefs.isReadOnlyModeActive.getAsState().value
+    // Reading mode is markdown being rendered. A plain text file has nothing to
+    // render — it was shown in a field that refused to be typed in, and the only
+    // way back was the very button that put it there.
+    val hasReadingMode = vm is MarkDownVM
+
+    val isReadOnlyModeActive = hasReadingMode &&
+            !vm.shouldForceNotReadOnlyMode.value &&
+            vm.prefs.isReadOnlyModeActive.getAsState().value
 
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
@@ -167,6 +176,8 @@ fun EditScreen(
                     )
                 },
                 actions = {
+                    if (!hasReadingMode) return@TopAppBar
+
                     IconButton(
                         colors = IconButtonDefaults.iconButtonColors(
                             containerColor = MaterialTheme.colorScheme.primary,

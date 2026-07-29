@@ -18,6 +18,8 @@ import io.github.leonhardweiler.diffusion.data.room.NoteFolder
 import io.github.leonhardweiler.diffusion.data.room.LIMIT_FILE_SIZE_DB
 import io.github.leonhardweiler.diffusion.data.room.RepoDatabase
 import io.github.leonhardweiler.diffusion.helper.NameValidation
+import io.github.leonhardweiler.diffusion.helper.ResolvedPath
+import io.github.leonhardweiler.diffusion.helper.resolveRepoPath
 import io.github.leonhardweiler.diffusion.manager.StorageManager
 import io.github.leonhardweiler.diffusion.ui.model.FileExtension
 import io.github.leonhardweiler.diffusion.ui.model.GridItem
@@ -294,6 +296,26 @@ class GridViewModel : ViewModel() {
     fun deleteFolder(noteFolder: NoteFolder) {
         appScope.launch {
             storageManager.deleteNoteFolder(noteFolder)
+        }
+    }
+
+    /**
+     * Renames a folder, or moves it — the typed text is a path, read the same
+     * way the editor reads the one above a note: `archive` renames it in place,
+     * `../archive` puts it a folder up, `/archive` at the root. Everything under
+     * it comes along.
+     */
+    fun renameFolder(noteFolder: NoteFolder, typed: String) {
+        val parentPath = getParentPath(noteFolder.relativePath)
+
+        val resolved = resolveRepoPath(parentPath, typed)
+        if (resolved !is ResolvedPath.Ok) {
+            uiHelper.makeToast(uiHelper.getString(R.string.error_invalid_name))
+            return
+        }
+
+        appScope.launch {
+            storageManager.renameNoteFolder(noteFolder, resolved.relativePath)
         }
     }
 

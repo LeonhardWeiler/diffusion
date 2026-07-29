@@ -10,6 +10,7 @@ import io.github.leonhardweiler.diffusion.data.platform.NodeFs
 import io.github.leonhardweiler.diffusion.data.room.Note
 import io.github.leonhardweiler.diffusion.data.room.NoteFolder
 import io.github.leonhardweiler.diffusion.data.room.RepoDatabase
+import io.github.leonhardweiler.diffusion.utils.getParentPath
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -342,6 +343,97 @@ class StorageManager {
 
             success(Unit)
         }
+    }
+
+    /**
+     * Moves a folder, with everything under it, to where [newRelativePath] says.
+     *
+     * Renaming and moving are one act, as they are for a note: the new path can
+     * name a folder beside this one or one further up. On disk it is a single
+     * rename of the directory, so the subfolders and the notes come along
+     * without being touched.
+     *
+     * The rows are rewritten rather than rebuilt from the disk afterwards. A
+     * rebuild would read every file in the repository for a change that touched
+     * one subtree, and the rows already hold everything the new ones need — the
+     * ids among it, so the list keeps its place and an open undo history stays
+     * with its note.
+     */
+    suspend fun renameNoteFolder(
+        noteFolder: NoteFolder,
+        newRelativePath: String
+    ): Result<Unit> = locker.withLock {
+        Log.d(TAG, "renameNoteFolder: ${noteFolder.relativePath} -> $newRelativePath")
+
+        val oldPath = noteFolder.relativePath
+        if (oldPath == newRelativePath) return@withLock success(Unit)
+
+        // Moving a folder into itself leaves the whole subtree with nowhere to
+        // be. The filesystem refuses it too, but only after the rows are gone.
+        if (newRelativePath.startsWith("$oldPath/")) {
+            return@withLock complain(R.string.error_folder_into_itself)
+        }
+
+        val repoPath = prefs.repoPath()
+
+        val target = NodeFs.Folder.fromPath(repoPath, newRelativePath)
+        if (target.exist()) {
+            return@withLock complain(R.string.error_folder_already_exist)
+        }
+
+        val parentPath = getParentPath(newRelativePath)
+        if (parentPath.isNotEmpty() &&
+            !NodeFs.Folder.fromPath(repoPath, parentPath).exist()
+        ) {
+            return@withLock complain(R.string.error_folder_not_found, parentPath)
+        }
+
+        update {
+            NodeFs.Folder.fromPath(repoPath, oldPath).moveTo(target.path)
+                .onFailure { return@update failure(it) }
+
+            // read before anything is deleted: these rows are the only place the
+            // ids and the dates still are
+            val notes = dao.notesIn("$oldPath/")
+            val folders = dao.foldersUnder(oldPath)
+
+            dao.internalDeleteNotesIn("$oldPath/")
+            dao.internalDeleteFoldersIn("$oldPath/")
+            dao.internalDeleteNoteFolder(noteFolder)
+
+            folders.forEach { folder ->
+                dao.insertNoteFolderRow(
+                    folder.copy(relativePath = folder.relativePath.movedFrom(oldPath, newRelativePath))
+                )
+            }
+
+            notes.forEach { note ->
+                // through the constructor, so parentPath and fileName are
+                // derived again instead of keeping the ones they had
+                dao.insertNoteRow(
+                    Note(
+                        relativePath = note.relativePath.movedFrom(oldPath, newRelativePath),
+                        content = note.content,
+                        lastModifiedTimeMillis = note.lastModifiedTimeMillis,
+                        id = note.id,
+                    )
+                )
+            }
+
+            success(Unit)
+        }
+    }
+
+    /** The same path, read from [newPrefix] instead of from [oldPrefix]. */
+    private fun String.movedFrom(oldPrefix: String, newPrefix: String): String =
+        newPrefix + substring(oldPrefix.length)
+
+    /** Says why nothing happened, and answers as a failure. */
+    private fun complain(@StringRes text: Int, vararg args: Any?): Result<Unit> {
+        val message = uiHelper.getString(text, *args)
+        Log.e(TAG, message)
+        uiHelper.makeToast(message)
+        return failure(Exception(message))
     }
 
     suspend fun deleteNoteFolder(noteFolder: NoteFolder): Result<Unit> =
