@@ -34,7 +34,10 @@ google-services.json
 .project
 
 !app/nightly-signing-key.jks
-app/src/
+
+# What generateBaselineProfile records, per variant. The sources next to it are
+# the app: "app/src/" ignored those too, and a new file was one git never saw.
+app/src/*/generated/
 
 .kotlin/
 
