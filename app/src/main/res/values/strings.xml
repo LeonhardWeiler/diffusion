@@ -34,7 +34,6 @@
     <string name="remote_url">Remote url</string>
     <string name="git_author_name">Git author name</string>
     <string name="git_author_email">Git author email</string>
-    <string name="credentials_token_hint">Most providers want an access token here rather than the account password. Create one with read and write access to the repository, and enter it as the password.</string>
     <string name="sync_automatically">Sync when opening and closing</string>
     <string name="sync_automatically_subtitle">Commits, pulls and pushes on its own when the app is opened and when it is left. The cloud button does the same at any time.</string>
     <string name="close_repository">Close repository</string>
@@ -92,6 +91,7 @@
     <string name="error_need_storage_permission">The application needs this permission to access the storage</string>
     <string name="error_need_network_permission">The application needs this permission to access repositories on your local network</string>
     <string name="clone_step_url_label">url</string>
+    <string name="error_https_not_supported">That is an https address. This app clones over SSH only — take the git@\u2026 address from the same page and use that.</string>
     <string name="error_not_a_repository">This folder is not a git repository. Choose a folder that contains a .git directory, or clone one instead.</string>
     <string name="error_path_not_directory">The path is not a directory</string>
     <string name="error_path_not_empty">The folder is not empty</string>

@@ -38,11 +38,14 @@ fun RemoteScreen(
 ) {
 
     // A repository that is already on the device brings its remote with it, so
-    // the questions leading up to a url have nothing left to ask.
+    // the questions leading up to a url have nothing left to ask — unless that
+    // remote is an https one, which this app cannot use: then it goes through
+    // the url screen with the old address in the field, and setting the ssh one
+    // writes it into the repository.
     val startDestination = when {
-        openedRemoteUrl == null -> EnterUrl
-        isUrlSsh(openedRemoteUrl) -> SelectGenerateNewSshKeys(url = openedRemoteUrl)
-        else -> RemoteDestination.Credentials(url = openedRemoteUrl)
+        openedRemoteUrl == null -> EnterUrl()
+        isCloneUrlSupported(openedRemoteUrl) -> SelectGenerateNewSshKeys(url = openedRemoteUrl)
+        else -> EnterUrl(defaultUrl = openedRemoteUrl)
     }
 
     val navController: NavController<RemoteDestination> =
@@ -72,10 +75,8 @@ fun RemoteScreen(
         when (remoteDestination) {
             is EnterUrl -> EnterUrlScreen(
                 onBackClick = { back() },
-                onUrl = { url ->
-                    if (isUrlSsh(url)) navController.navigate(SelectGenerateNewSshKeys(url = url))
-                    else navController.navigate(RemoteDestination.Credentials(url = url))
-                }
+                defaultUrl = remoteDestination.defaultUrl,
+                onUrl = { url -> navController.navigate(SelectGenerateNewSshKeys(url = url)) }
             )
 
             is SelectGenerateNewSshKeys -> SelectGenerateNewSshKeysScreen(
@@ -110,15 +111,6 @@ fun RemoteScreen(
             is RemoteDestination.LoadKeysFromDevice -> LoadKeysFromDeviceScreen(
                 onBackClick = { navController.pop() },
                 cloneState = initState,
-                storageConfig = storageConfig,
-                url = remoteDestination.url,
-                vm = vm,
-                onSuccess = onInitSuccess,
-                onClone = { navController.navigate(RemoteDestination.Cloning) }
-            )
-
-            is RemoteDestination.Credentials -> CredentialsScreen(
-                onBackClick = { back() },
                 storageConfig = storageConfig,
                 url = remoteDestination.url,
                 vm = vm,

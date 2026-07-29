@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
@@ -31,17 +32,23 @@ import io.github.leonhardweiler.diffusion.ui.component.SetupLine
 import io.github.leonhardweiler.diffusion.ui.component.SetupPage
 
 
-fun isUrlSsh(url: String): Boolean {
-    return getUrlInfoLib(url) == true
-}
+/**
+ * Whether this app can clone from that address, which means: is it ssh.
+ *
+ * https is not offered anymore. It is the transport that wants a password or a
+ * token in the app's own storage, in the clear, so that every sync can replay
+ * it — an ssh key is at least a thing the remote can be told to stop trusting
+ * without changing anything else about the account.
+ */
+fun isCloneUrlSupported(url: String): Boolean = getUrlInfoLib(url) == true
 
-private fun isUrlCorrect(url: String): Boolean {
-    return getUrlInfoLib(url) != null
-}
+/** An address that is a clone url, but one over http or https. */
+private fun isUnsupportedTransport(url: String): Boolean = getUrlInfoLib(url) == false
 
 @Composable
 fun EnterUrlScreen(
     onBackClick: () -> Unit,
+    defaultUrl: String = "",
     onUrl: (String) -> Unit
 ) {
     val context = LocalContext.current
@@ -69,13 +76,22 @@ fun EnterUrlScreen(
 
         SetupPage {
             val url = rememberSaveable(stateSaver = TextFieldValue.Saver) {
-                mutableStateOf(TextFieldValue())
+                mutableStateOf(
+                    TextFieldValue(defaultUrl, selection = TextRange(defaultUrl.length))
+                )
             }
 
             SetupLine(
                 text = "1. " + stringResource(R.string.url_explain_enter_url)
             ) {
                 UrlTextField(url = url)
+            }
+
+            // A dead "Next" says nothing about why. An https address is the one
+            // wrong answer somebody arrives with on purpose — it is what the
+            // provider's page offers first — so it gets a sentence of its own.
+            if (isUnsupportedTransport(url.value.text)) {
+                SetupLine(text = stringResource(R.string.error_https_not_supported)) {}
             }
 
             SetupButton(
@@ -91,7 +107,7 @@ fun EnterUrlScreen(
                         }
                     }
                 },
-                enabled = isUrlCorrect(url.value.text)
+                enabled = isCloneUrlSupported(url.value.text)
             )
         }
     }

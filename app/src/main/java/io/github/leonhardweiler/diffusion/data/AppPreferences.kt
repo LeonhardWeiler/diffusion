@@ -92,9 +92,6 @@ class AppPreferences(
 
     private fun String?.isUsableAuthorField() = !isNullOrBlank() && this != "null"
 
-    val userPassUsername = stringPreference("userPassUsername", "")
-    val userPassPassword = stringPreference("userPassPassword", "")
-
     val sshUsername = stringPreference("sshUsername", "")
     val publicKey = stringPreference("publicKey", "")
     val privateKey = stringPreference("privateKey", "")
@@ -103,12 +100,6 @@ class AppPreferences(
     suspend fun cred(): Cred? {
         return when (credType.get()) {
             CredType.None -> null
-            CredType.UserPassPlainText -> {
-                Cred.UserPassPlainText(
-                    username = userPassUsername.get(),
-                    password = userPassPassword.get()
-                )
-            }
 
             CredType.Ssh -> Cred.Ssh(
                 username = this.sshUsername.get(),
@@ -127,12 +118,6 @@ class AppPreferences(
                 publicKey.update(cred.publicKey)
                 privateKey.update(cred.privateKey)
                 passphrase.update(cred.passphrase ?: "")
-            }
-
-            is Cred.UserPassPlainText -> {
-                credType.update(CredType.UserPassPlainText)
-                userPassUsername.update(cred.username)
-                userPassPassword.update(cred.password)
             }
 
             null -> credType.update(CredType.None)

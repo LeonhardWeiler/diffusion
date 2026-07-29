@@ -5,16 +5,12 @@ import io.github.leonhardweiler.diffusion.data.platform.NodeFs
 import kotlinx.parcelize.Parcelize
 
 
+/**
+ * How the remote is authenticated against, which is with an ssh key and nothing
+ * else. Username and password used to be the other way; it went with https.
+ */
 @Parcelize
 sealed class Cred : Parcelable {
-    data class UserPassPlainText(
-        val username: String,
-        val password: String
-    ) : Cred() {
-        override fun toString(): String {
-            return "UserPassPlainText(username=$username, password=${"*".repeat(password.length)})"
-        }
-    }
 
     data class Ssh(
         val username: String = "git",
@@ -30,7 +26,6 @@ sealed class Cred : Parcelable {
 
 enum class CredType {
     None,
-    UserPassPlainText,
     Ssh,
 }
 

@@ -10,11 +10,9 @@ use git2::Signature;
 use jni::objects::{JObject, JString};
 use jni::{Env, jni_sig, jni_str};
 
+/// How the remote is authenticated against. An ssh key, and nothing else — the
+/// username and password pair went with https.
 pub enum Cred {
-    UserPassPlainText {
-        username: String,
-        password: String,
-    },
     Ssh {
         username: String,
         public_key: String,
@@ -40,13 +38,6 @@ impl<'a> From<Signature<'a>> for GitAuthor {
 impl Debug for Cred {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::UserPassPlainText {
-                username,
-                password: _password,
-            } => f
-                .debug_struct("UserPassPlainText")
-                .field("username", username)
-                .finish(),
             Self::Ssh {
                 username,
                 public_key,
@@ -110,12 +101,6 @@ impl Cred {
         };
 
         match class_name.as_str() {
-            "io.github.leonhardweiler.diffusion.ui.model.Cred$UserPassPlainText" => {
-                let username = jstring_field!(env, cred_obj, "username");
-                let password = jstring_field!(env, cred_obj, "username");
-
-                Ok(Some(Cred::UserPassPlainText { username, password }))
-            }
             "io.github.leonhardweiler.diffusion.ui.model.Cred$Ssh" => {
                 let username = jstring_field!(env, cred_obj, "username");
                 let public_key = jstring_field!(env, cred_obj, "publicKey");

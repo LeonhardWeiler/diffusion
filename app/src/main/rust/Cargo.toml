@@ -7,11 +7,13 @@ edition = "2024"
 crate-type = ["cdylib"]
 
 [dependencies]
+# No "https": the app clones over ssh and nothing else, so libgit2 is built
+# without the tls transport. openssl still comes along — libssh2 uses libcrypto
+# for its ciphers, and that, not libssl, is the large half of it.
 git2 = { version = "0.21", features = [
     "vendored-libgit2",
     "vendored-openssl",
     "ssh",
-    "https",
 ] }
 jni = "0.22"
 android_logger = "0.15"
