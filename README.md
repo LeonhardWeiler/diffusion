@@ -12,45 +12,48 @@
 
 [![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/LeonhardWeiler/diffusion.svg?logo=github&label=GitHub&cacheSeconds=3600)](https://github.com/LeonhardWeiler/diffusion/releases/latest)
 
-Diffusion is an Android app that primarily thought for note taking and syncing them between different devices over a git repository.
+Diffusion is an Android app primarily designed for taking notes and syncing them between devices using a Git repository.
 
 ## Why
 
-Other similar apps like [gittasks](https://github.com/christianjann/gittasks) or [gitnote](https://github.com/wiiznokes/gitnote) (which this project is a fork of) exist, but they did not really fulfill my needs and especially the simplicity and performance I need. Instead of contributing to one of the projects I forked it, because I wanted my app to be done quick.
+Other similar apps, such as [gittasks](https://github.com/christianjann/gittasks) and [gitnote](https://github.com/wiiznokes/gitnote) (which this project is forked from), already exist. However, they did not fully meet my needs, especially when it came to simplicity and performance. Rather than contributing upstream, I decided to fork GitNote because I wanted to build the app I envisioned as quickly as possible.
 
 ## Goals & Non-goals
 
-The main goal for this project is syncing notes over a git repository via ssh keys, having a file browser and a basic markdown editor. The editor is by far the biggest part of the project, that may get kicked out at some point. The goal isn't to support as many filetypes as possible, but instead the functionality that is needed from a note syncing app. The reason why the editor might get pushed out, but the file browser won't is because I believe files and there git status should be at the same place.
+The primary goal of this project is to sync notes through a Git repository using SSH keys, while providing a file browser and a basic Markdown editor. The editor is by far the largest part of the project, and it may eventually become a separate component or even be removed. The goal is not to support as many file types as possible, but to provide the functionality that a note-syncing app actually needs.
+
+The editor might change in the future, but the file browser will remain. I believe that your files and their Git status belong in the same place.
 
 ## Functionality
 
-To add a repository to Diffusion you can either clone or open an existing one. You have to copy the ssh key as a deploy key to your repo hoster of your choice.
+To add a repository to Diffusion, you can either clone a repository or open an existing one. You will need to add the generated SSH key as a deploy key on your Git hosting service of choice.
 
-Notes are written to the repository while you type, so there is no save button.
-Nothing is committed until a sync: that commits what has changed, pulls and
-pushes in one step, and the commit is named after the notes it carries -
-`[fresh.md] added, [kept.md] changed, [gone.md] deleted`. The cloud button in
-the search bar is the way to ask for one at any time and a dot on it says when there is something the remote has not been
-told about yet. The app also syncs by itself when it is opened and when it is
-left; that can be turned off under Settings → Repository if you would rather it
-only happened when asked.
+Notes are written directly to the repository as you type, so there is no save button.
 
-## Current limitation
+Nothing is committed until a sync is performed. A sync commits all changes, pulls from the remote, and pushes local commits in a single step. Commit messages are automatically generated from the affected notes, for example:
 
-- A repository has to live on the shared internal storage. A memory card or a usb stick has no file path git can be pointed at, and the app's own private directory is not offered because nothing else could reach the repository there.
-- Android does not differentiate case for file name, so if you have a folder named `A` and another folder named `a`, `a` will not be displayed.
-- A note above 2 MB is listed but not opened here, and the search does not look inside it either - a file that large is not something to pull into memory for a substring. Use another app for those.
-- The note list is read from the repository at every start, so a very large repository is a moment of waiting before the notes are there. Nothing is cached between runs; the files are the only thing that says what exists.
-- Conflicts are resolved by hand, in the note. When the same note was changed here and on the remote, the sync stops and reports which notes it could not merge. Both versions are then in the note, between `<<<<<<<` and `>>>>>>>` markers: edit it down to what you want to keep and sync again, and that sync is what finishes the merge. Until then every sync refuses to commit, so the markers cannot end up in the history by themselves.
+```
+[fresh.md] added, [kept.md] changed, [gone.md] deleted
+```
+
+The cloud button in the search bar starts a sync at any time. A dot on the button indicates that there are local changes that have not yet been pushed to the remote.
+
+By default, the app also syncs automatically when it is opened and when it is closed. This behavior can be disabled under **Settings → Repository** if you prefer to sync only manually.
+
+## Current limitations
+
+- A repository must be stored on shared internal storage. Repositories on SD cards or USB drives cannot be used because Git cannot be pointed to them through Android's storage APIs. The app's private storage is also not supported because other apps would not be able to access the repository there.
+- Android uses a case-insensitive file system, so if your repository contains both a folder named `A` and another named `a`, only one of them will be visible.
+- Notes larger than 2 MB are listed but cannot be opened in the editor, and their contents are not included in search results. Files that large are intentionally not loaded into memory. You should use another editor for them.
+- The note list is rebuilt from the repository every time the app starts. For very large repositories, this may result in a short delay before all notes appear. Nothing is cached between launches; the repository itself is always treated as the source of truth.
+- Merge conflicts must be resolved manually. If the same note has been modified both locally and remotely, syncing stops and reports the affected files. Git conflict markers (`<<<<<<<`, `=======`, and `>>>>>>>`) are inserted into the note. Edit the file until only the version you want remains, then sync again to complete the merge. Until the conflict is resolved, syncing will not create any new commits, preventing conflict markers from accidentally being committed.
 
 ## Credits
 
-Diffusion is a fork of GitNote, created by
-[wiiznokes](https://github.com/wiiznokes) - see
-[wiiznokes/gitnote](https://github.com/wiiznokes/gitnote). Everything up to the
-fork is their work, and it stays under the same licence - see
-[LICENSE](./LICENSE).
+Diffusion is a fork of GitNote, originally created by [wiiznokes](https://github.com/wiiznokes). Everything up to the point of the fork is their work and remains under the same license. See [wiiznokes/gitnote](https://github.com/wiiznokes/gitnote) and the [LICENSE](./LICENSE) file for details.
 
 ## AI
 
-This project uses Claude Opus 5 for most of its work. It allows me to develop at a much faster speed and really get the app I want. I still very carefully review the code changes and which features are implemented. If you don't like the use of AI, a different project might be better suited for you <3
+This project uses Claude Opus 5 for most of its development. It allows me to work much faster and build the app I want. I still carefully review every code change and decide which features are implemented.
+
+If you prefer software that is developed without the use of AI, another project may be a better fit for you. <3

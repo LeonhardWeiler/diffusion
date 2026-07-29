@@ -1,3 +1,1 @@
-- make the gap even smaller between the input box (or the delete warning, etc.) and the button below
-- why is there a prettierconfig, remove if not necessary
-- the layout looks like its moving upwards when going into the settings
+- remove the complete rust code and write everything in kotlin/java. The functionality should be exactly the same, it should just not use rust but just kotlin
