@@ -10,7 +10,6 @@ import io.github.leonhardweiler.diffusion.helper.removeFirstAndLastSlash
 import io.github.leonhardweiler.diffusion.helper.requireNotEndOrStartWithSlash
 import io.github.leonhardweiler.diffusion.ui.model.FileExtension
 import kotlinx.parcelize.Parcelize
-import java.io.Serializable
 import java.time.Instant
 
 
@@ -80,7 +79,7 @@ data class Note(
      */
     val parentPath: String = relativePath.substringBeforeLast("/", missingDelimiterValue = ""),
     val fileName: String = relativePath.substringAfterLast("/"),
-) : Parcelable, Serializable {
+) : Parcelable {
 
     companion object {
         fun new(

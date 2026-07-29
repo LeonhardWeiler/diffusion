@@ -32,7 +32,6 @@ import io.github.leonhardweiler.diffusion.ui.component.SettingsSection
 import io.github.leonhardweiler.diffusion.ui.component.SimpleIcon
 import io.github.leonhardweiler.diffusion.ui.component.StringSettings
 import io.github.leonhardweiler.diffusion.ui.component.ToggleableSettings
-import io.github.leonhardweiler.diffusion.ui.destination.SettingsDestination
 import io.github.leonhardweiler.diffusion.ui.model.FileExtension
 import io.github.leonhardweiler.diffusion.ui.theme.Theme
 import io.github.leonhardweiler.diffusion.ui.viewmodel.SettingsViewModel

@@ -1,7 +1,6 @@
 package io.github.leonhardweiler.diffusion.ui.screen.app.grid
 
 import android.annotation.SuppressLint
-import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
@@ -22,7 +21,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
@@ -39,7 +37,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.paging.compose.collectAsLazyPagingItems
 import io.github.leonhardweiler.diffusion.R
@@ -55,7 +52,6 @@ import io.github.leonhardweiler.diffusion.ui.viewmodel.GridViewModel
 import io.github.leonhardweiler.diffusion.helper.getParentPath
 
 
-private const val TAG = "GridScreen"
 
 internal val topBarHeight = 80.dp
 

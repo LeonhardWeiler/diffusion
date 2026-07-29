@@ -2,11 +2,10 @@ package io.github.leonhardweiler.diffusion.ui.model
 
 import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
-import java.io.Serializable
 
 
 @Parcelize
-sealed class FileExtension(val text: String) : Parcelable, Serializable {
+sealed class FileExtension(val text: String) : Parcelable {
 
 
     class Md : FileExtension("md")

@@ -1,7 +1,6 @@
 package io.github.leonhardweiler.diffusion.data
 
 import android.content.Context
-import io.github.leonhardweiler.diffusion.MyApp
 import io.github.leonhardweiler.diffusion.manager.PreferencesManager
 import io.github.leonhardweiler.diffusion.manager.StringPreference
 import io.github.leonhardweiler.diffusion.ui.model.Cred
@@ -10,7 +9,6 @@ import io.github.leonhardweiler.diffusion.ui.model.GitAuthor
 import io.github.leonhardweiler.diffusion.ui.model.StorageConfiguration
 import io.github.leonhardweiler.diffusion.ui.theme.Theme
 import kotlinx.coroutines.runBlocking
-import kotlin.io.path.pathString
 
 class AppPreferences(
     context: Context
@@ -30,7 +28,13 @@ class AppPreferences(
     val pureBlack = booleanPreference("pureBlack", false)
 
     val isInit = booleanPreference("isInit", false)
-    val databaseCommit = stringPreference("")
+
+    /**
+     * The commit the note index was built from, empty when it was never built.
+     * StorageManager compares it against HEAD to decide whether the rows still
+     * describe the files.
+     */
+    val databaseCommit = stringPreference("databaseCommit")
 
     private val repoPath = stringPreference("repoPath")
 

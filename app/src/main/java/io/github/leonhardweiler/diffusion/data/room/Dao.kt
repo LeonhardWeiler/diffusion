@@ -137,7 +137,6 @@ interface RepoDatabaseDao {
                         // straight in: the table was cleared a moment ago, so
                         // there is nothing here that could already be there
                         insertNoteRow(note)
-                        //Log.d(TAG, "add note: $note")
                     }
 
                     is NodeFs.Folder -> {
@@ -147,7 +146,6 @@ interface RepoDatabaseDao {
                         val noteFolder = NoteFolder.new(
                             relativePath = nodeFs.path.substring(startIndex = rootLength),
                         )
-                        //Log.d(TAG, "add noteFolder: $noteFolder")
                         insertNoteFolderRow(noteFolder)
                         progressCb?.invoke(Progress.GeneratingDatabase(noteFolder.relativePath))
                         initRec(nodeFs)

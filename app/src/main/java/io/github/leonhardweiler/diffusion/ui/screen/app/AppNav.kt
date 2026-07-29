@@ -1,6 +1,5 @@
 package io.github.leonhardweiler.diffusion.ui.screen.app
 
-import android.util.Log
 import androidx.compose.animation.ContentTransform
 import androidx.compose.runtime.Composable
 import io.github.leonhardweiler.diffusion.ui.navigation.NavHost
@@ -15,7 +14,6 @@ import io.github.leonhardweiler.diffusion.ui.utils.crossFade
 import io.github.leonhardweiler.diffusion.ui.utils.slide
 
 
-private const val TAG = "AppScreen"
 
 @Composable
 fun AppScreen(

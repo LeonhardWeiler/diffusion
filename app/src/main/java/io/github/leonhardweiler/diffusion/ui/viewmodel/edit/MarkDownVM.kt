@@ -70,7 +70,6 @@ class MarkDownVM : TextVM {
 
     fun onQuote() {
         val newValue = onQuote(content.value)
-        //Log.d(TAG, "onQuote result: text=\"${v.text.replace("\n", "\\n")}\", start=${v.selection.start}, end=${v.selection.end}")
         super.onValueChange(newValue)
     }
 
