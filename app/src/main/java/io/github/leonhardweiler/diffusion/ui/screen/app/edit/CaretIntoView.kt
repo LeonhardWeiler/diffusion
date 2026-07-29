@@ -1,100 +1,75 @@
 package io.github.leonhardweiler.diffusion.ui.screen.app.edit
 
 import androidx.compose.foundation.ScrollState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.node.ModifierNodeElement
-import androidx.compose.ui.node.requireLayoutCoordinates
 import androidx.compose.ui.platform.InspectorInfo
 import androidx.compose.ui.relocation.BringIntoViewModifierNode
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextRange
 import kotlin.math.roundToInt
-
-/** How long the caret is left alone after the field takes focus. */
-private const val KEEP_SCROLL_FRAMES = 4
 
 /**
  * What "make the caret visible" does in the note editor.
  *
- * The field asks for it, and until now the scrolling column around it answered.
- * That answer was wrong exactly once, and it was the one that showed: a field
- * that is given focus asks straight away, and the caret it asks about is still
- * the one the note was opened with — the first line — because the tap that
- * moves it is applied a frame or two later. The column scrolled to the top for
- * that, and the place being read was put back afterwards, which is the jump
- * that was left over.
+ * It is not answered from the requests the field sends out. Those arrive
+ * whenever the field feels like it — one comes with the focus, before the tap
+ * that placed the caret has been applied — and each carries a rect one cannot
+ * ask what it is about. Three rounds of guessing which of them to believe ended
+ * in the same jump to the first line.
  *
- * Answered here instead, the wrong ask can simply be ignored: [hold] takes the
- * next few frames out, and nothing moves while the tap is still on its way.
+ * So the caret is not received here, it is worked out: the field's own
+ * [TextLayoutResult] says where a given offset stands, and the offset is the
+ * selection the view model holds. Every scroll below is therefore a function of
+ * where the caret is now, where the column stands and how much of it is left —
+ * and there is no frame at which a stale answer could arrive.
+ *
+ * The field's own requests are swallowed instead (see [caretIntoView]), because
+ * the column above must not answer them either.
  *
  * @param scrollState the column's, not the field's — see [GenericTextField].
  */
 internal class CaretScroller(private val scrollState: ScrollState) {
 
-    /** Counted down frame by frame; see [holdForOneFrame]. */
-    var heldFrames by mutableIntStateOf(0)
-        private set
+    /**
+     * The offset the last scroll was about, and the whole of what makes taking
+     * focus quiet.
+     *
+     * A field that is given focus has the caret the note was opened with — the
+     * first line — and the tap that moves it is applied a frame or two later.
+     * That offset is written in here by [focusGained] without anything being
+     * scrolled, so the first thing this ever acts on is the tap itself.
+     */
+    private var handledOffset: Int? = null
 
-    /** Leaves the caret alone until the tap that placed it has been applied. */
-    fun hold() {
-        heldFrames = KEEP_SCROLL_FRAMES
-        caretAtFocus = null
+    /** Takes the caret as it stands now, without moving to it. */
+    fun focusGained(offset: Int) {
+        handledOffset = offset
     }
 
-    fun holdForOneFrame() {
-        if (heldFrames > 0) heldFrames--
+    fun focusLost() {
+        handledOffset = null
     }
 
     /**
-     * Where the caret last was, in the field's coordinates.
-     *
-     * The field is the only child of the column and sits at its top, so what
-     * the rect says is where the caret stands in the scrolled content — and
-     * that does not move when the keyboard takes half the screen away, which is
-     * why it is worth keeping.
-     */
-    private var caret: Rect? = null
-
-    /**
-     * The rect of the ask that arrives with the focus, kept apart from [caret].
-     *
-     * That ask is about the caret as the note was opened — the first line —
-     * because the tap that moves it is applied a frame or two later. Letting it
-     * into [caret] was the whole of the jump that came back: it does not scroll
-     * anything by itself, but the keyboard arriving right afterwards asks for
-     * the remembered caret to be made visible, and that was the top of the note.
-     *
-     * It is still worth keeping for the one case where it is right: a tap that
-     * lands where the caret already was changes no selection, so no second ask
-     * ever comes, and this is then the only thing that knows which line to keep
-     * out from under the keyboard.
-     */
-    private var caretAtFocus: Rect? = null
-
-    /**
-     * Moves the column so that [caret] can be seen, and no further than that.
+     * Moves the column so that the caret at [offset] can be seen, and no
+     * further than that.
      *
      * This is what carries the view along while somebody writes: every
-     * keystroke asks again, and typing onto a line that would be the first one
-     * off the bottom of the screen brings it up instead of leaving the writing
-     * to happen out of sight.
+     * keystroke moves the caret, and typing onto a line that would be the first
+     * one off the bottom of the screen brings it up instead of leaving the
+     * writing to happen out of sight.
      *
      * A line of room is left on either side. A caret pressed against the very
      * edge is one you cannot read the line under, and every further character
      * would ask for the same scroll again — so it goes one line past what it
      * strictly needs, and the next few keystrokes cost nothing.
      */
-    suspend fun bringIntoView(caret: Rect) {
-        if (heldFrames > 0) {
-            caretAtFocus = caret
-            return
-        }
-
-        this.caret = caret
+    suspend fun caretMoved(offset: Int, caret: Rect) {
+        if (offset == handledOffset) return
+        handledOffset = offset
 
         val viewport = scrollState.viewportSize
         if (viewport <= 0) return
@@ -108,19 +83,18 @@ internal class CaretScroller(private val scrollState: ScrollState) {
      * Puts the caret in the middle of what is left of the screen, if the
      * keyboard has just covered where it was.
      *
-     * This is what the first tap into a note ends in: the tap itself moves
-     * nothing (see [hold]), the keyboard then arrives and takes half the view
-     * with it, and the line that was tapped is behind it. Bringing it just far
-     * enough would leave it lying on the keyboard, so it goes to the middle —
-     * where the next few lines of what is being written are visible too.
+     * This is what the first tap into a note ends in: the tap lands on a line
+     * that can be seen, so nothing is scrolled for it, the keyboard then
+     * arrives and takes half the view with it, and the line that was tapped is
+     * behind it. Bringing it just far enough would leave it lying on the
+     * keyboard, so it goes to the middle — where the next few lines of what is
+     * being written are visible too.
      *
      * Only when it is really out of sight. A caret the keyboard did not reach
      * stays exactly where it is: the note moving for no reason is the thing
      * this was all about.
      */
-    suspend fun keepCaretVisible() {
-        val caret = caret ?: caretAtFocus ?: return
-
+    suspend fun keepCaretVisible(caret: Rect) {
         val viewport = scrollState.viewportSize
         if (viewport <= 0) return
 
@@ -133,6 +107,27 @@ internal class CaretScroller(private val scrollState: ScrollState) {
     private suspend fun scrollTo(target: Float) {
         scrollState.scrollTo(target.roundToInt().coerceIn(0, scrollState.maxValue))
     }
+}
+
+/**
+ * Where the caret stands in the scrolled column, or null while the field has
+ * not been laid out yet.
+ *
+ * The field is the only child of the column and sits at its top, so the only
+ * thing between the two coordinate systems is the padding the field draws its
+ * text inside — [textTop], which the caller reads from the same defaults the
+ * reading mode is padded with.
+ */
+internal fun caretRectOf(
+    layout: TextLayoutResult?,
+    selection: TextRange,
+    textTop: Float,
+): Rect? {
+    if (layout == null) return null
+
+    val offset = selection.start.coerceIn(0, layout.layoutInput.text.length)
+
+    return layout.getCursorRect(offset).translate(0f, textTop)
 }
 
 /**
@@ -166,39 +161,33 @@ internal fun centreTargetFor(caret: Rect, top: Int, viewport: Int): Float? {
 }
 
 /**
- * Hands every request to make something inside visible to [scroller] instead of
- * to whatever scrolls above. Nothing is passed on: the column must not answer
- * these, that is the whole point.
+ * Swallows every request to make something inside visible.
+ *
+ * Nothing is passed on and nothing is done: where the caret has to be is worked
+ * out from the text layout instead (see [CaretScroller]), and the column above
+ * must not answer these either — a field that takes focus asks for the caret
+ * the note was opened with, and the column scrolled to the top of the note for
+ * it.
  */
-internal fun Modifier.caretIntoView(scroller: CaretScroller): Modifier =
-    this then CaretIntoViewElement(scroller)
+internal fun Modifier.caretIntoView(): Modifier = this then CaretIntoViewElement
 
-private data class CaretIntoViewElement(
-    val scroller: CaretScroller,
-) : ModifierNodeElement<CaretIntoViewNode>() {
+private data object CaretIntoViewElement : ModifierNodeElement<CaretIntoViewNode>() {
 
-    override fun create() = CaretIntoViewNode(scroller)
+    override fun create() = CaretIntoViewNode()
 
-    override fun update(node: CaretIntoViewNode) {
-        node.scroller = scroller
-    }
+    override fun update(node: CaretIntoViewNode) {}
 
     override fun InspectorInfo.inspectableProperties() {
         name = "caretIntoView"
-        properties["scroller"] = scroller
     }
 }
 
-private class CaretIntoViewNode(
-    var scroller: CaretScroller,
-) : Modifier.Node(), BringIntoViewModifierNode {
+private class CaretIntoViewNode : Modifier.Node(), BringIntoViewModifierNode {
 
     override suspend fun bringIntoView(
         childCoordinates: LayoutCoordinates,
         boundsProvider: () -> Rect?,
     ) {
-        val bounds = boundsProvider() ?: return
-        val here = requireLayoutCoordinates()
-        scroller.bringIntoView(bounds.translate(here.localPositionOf(childCoordinates, Offset.Zero)))
+        // the request stops here
     }
 }
