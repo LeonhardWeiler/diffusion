@@ -53,5 +53,5 @@ sealed interface SyncState {
  * else it happens behind a list that is already on screen.
  */
 sealed class Progress {
-    data class GeneratingDatabase(val path: String) : Progress()
+    data class ReadingRepo(val path: String) : Progress()
 }

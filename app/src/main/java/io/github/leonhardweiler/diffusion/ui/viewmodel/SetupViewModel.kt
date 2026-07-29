@@ -159,12 +159,9 @@ class SetupViewModel : ViewModel() {
             prefs.applyGitAuthorDefaults(gitManager.currentSignature())
             prefs.initRepo(storageConfig, remoteUrl)
 
-            // the repo has just been opened, so the database is built from
-            // whatever is on disk, committed or not
-            storageManager.updateDatabase(
-                force = true,
-                progressCb = { announceProgress(it) }
-            )
+            // the repo has just been opened, so the list is read from whatever
+            // is on disk, committed or not
+            storageManager.rebuildIndex(progressCb = { announceProgress(it) })
 
             // whether it already syncs somewhere or not, the setup goes on from
             // here rather than finishing: a repository without a remote is a
@@ -323,10 +320,9 @@ class SetupViewModel : ViewModel() {
         prefs.updateCred(cred)
         prefs.applyGitAuthorDefaults(gitManager.currentSignature())
 
-        // force, like the one in openRepo: what was just cloned or just given a
-        // remote is a working tree the database has never seen, whatever
-        // databaseCommit happens to say about it.
-        storageManager.updateDatabase(force = true, progressCb = { announceProgress(it) })
+        // what was just cloned, or just given a remote, is a working tree
+        // nothing has read yet
+        storageManager.rebuildIndex(progressCb = { announceProgress(it) })
 
         finishSetup(onSuccess)
 
@@ -366,8 +362,8 @@ class SetupViewModel : ViewModel() {
     private fun announceProgress(progress: Progress) {
         appScope.launch {
             when (progress) {
-                is Progress.GeneratingDatabase ->
-                    _initState.emit(InitState.GeneratingDatabase(progress.path))
+                is Progress.ReadingRepo ->
+                    _initState.emit(InitState.ReadingRepo(progress.path))
             }
         }
     }

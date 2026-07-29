@@ -11,7 +11,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.res.stringResource
 import io.github.leonhardweiler.diffusion.R
-import io.github.leonhardweiler.diffusion.data.room.Note
+import io.github.leonhardweiler.diffusion.data.index.Note
 import io.github.leonhardweiler.diffusion.ui.component.CustomDropDown
 import io.github.leonhardweiler.diffusion.ui.component.CustomDropDownModel
 import io.github.leonhardweiler.diffusion.ui.component.GetStringDialog

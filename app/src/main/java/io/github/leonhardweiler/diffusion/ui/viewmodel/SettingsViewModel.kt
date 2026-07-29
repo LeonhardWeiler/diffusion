@@ -57,9 +57,9 @@ class SettingsViewModel : ViewModel() {
         }
     }
 
-    fun reloadDatabase() {
+    fun reloadIndex() {
         appScope.launch {
-            val res = storageManager.updateDatabase(force = true)
+            val res = storageManager.rebuildIndex()
             res.onFailure {
                 uiHelper.makeToast("$it")
             }

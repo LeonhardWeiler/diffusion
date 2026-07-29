@@ -32,7 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.leonhardweiler.diffusion.R
-import io.github.leonhardweiler.diffusion.data.room.Note
+import io.github.leonhardweiler.diffusion.data.index.Note
 import io.github.leonhardweiler.diffusion.helper.openFileWithAnotherApp
 import io.github.leonhardweiler.diffusion.ui.component.CustomDropDown
 import io.github.leonhardweiler.diffusion.ui.component.GetStringDialog

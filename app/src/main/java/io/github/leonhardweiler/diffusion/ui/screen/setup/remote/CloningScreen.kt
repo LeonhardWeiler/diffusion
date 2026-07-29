@@ -64,7 +64,7 @@ fun CloningScreen(
 
         Button(
             onClick = onCancel,
-            enabled = cloneState !is InitState.GeneratingDatabase
+            enabled = cloneState !is InitState.ReadingRepo
         ) {
             Text(
                 if (cloneState is InitState.Error) {

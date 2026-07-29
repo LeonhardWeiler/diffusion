@@ -42,7 +42,7 @@ internal fun SearchBar(
     padding: PaddingValues,
     onSettingsClick: () -> Unit,
     searchFocusRequester: FocusRequester,
-    onReloadDatabase: () -> Unit,
+    onReloadIndex: () -> Unit,
     query: String,
     clearQuery: () -> Unit,
     search: (String) -> Unit,
@@ -152,8 +152,8 @@ internal fun SearchBar(
                                 ),
                                 if (BuildConfig.BUILD_TYPE != "release") {
                                     CustomDropDownModel(
-                                        text = stringResource(R.string.reload_database),
-                                        onClick = onReloadDatabase
+                                        text = stringResource(R.string.reload_notes),
+                                        onClick = onReloadIndex
                                     )
                                 } else null
                             )

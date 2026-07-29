@@ -22,13 +22,6 @@ class AppPreferences(
 
     val isInit = booleanPreference("isInit", false)
 
-    /**
-     * The commit the note index was built from, empty when it was never built.
-     * StorageManager compares it against HEAD to decide whether the rows still
-     * describe the files.
-     */
-    val databaseCommit = stringPreference("databaseCommit")
-
     private val repoPath = stringPreference("repoPath")
 
     /**
@@ -139,14 +132,6 @@ class AppPreferences(
      * inherit the other one's remote.
      */
     suspend fun initRepo(storageConfig: StorageConfiguration, remoteUrl: String = "") {
-        // The index belongs to the repository it was built from, so a different
-        // path invalidates it. The same path does not: opening a repository that
-        // turns out to have a remote comes back through here after the database
-        // was already built, and rebuilding it a second time is the slowest part
-        // of a setup that should not be felt at all.
-        if (repoPath.get() != storageConfig.path) {
-            databaseCommit.update("")
-        }
         isInit.update(true)
         this.remoteUrl.update(remoteUrl)
 
@@ -157,13 +142,6 @@ class AppPreferences(
     suspend fun closeRepo() {
         isInit.update(false)
         knownRepoPath = null
-
-        // The rows go with the repository (StorageManager.closeRepo clears
-        // them), so the commit they were built from describes nothing from here
-        // on. Left standing it is a claim that the database already holds that
-        // commit — and the next repository to arrive at the same path with the
-        // same HEAD, a re-clone of the one just closed, was believed.
-        databaseCommit.update("")
     }
 
     val isReadOnlyModeActive = booleanPreference("isReadOnlyModeActive", false)

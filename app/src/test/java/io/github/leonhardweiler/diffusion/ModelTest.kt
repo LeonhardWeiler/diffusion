@@ -1,20 +1,19 @@
 package io.github.leonhardweiler.diffusion
 
-import io.github.leonhardweiler.diffusion.data.room.Note
-import io.github.leonhardweiler.diffusion.data.room.NoteFolder
+import io.github.leonhardweiler.diffusion.data.index.Note
+import io.github.leonhardweiler.diffusion.data.index.NoteFolder
 import io.github.leonhardweiler.diffusion.helper.movedUnder
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * The columns a note carries that are derived from its path, and the path
- * arithmetic a folder move does to everything under it.
+ * What a note derives from its path, and the path arithmetic a folder move does
+ * to everything under it.
  *
- * parentPath and fileName are stored rather than computed per query, because a
- * value SQLite has to work out for every row cannot use an index — which means
- * anything that builds a Note has to leave them agreeing with relativePath.
+ * parentPath and fileName are worked out once and carried, so anything that
+ * builds a Note by hand has to leave them agreeing with relativePath.
  */
-class SchemaTest {
+class ModelTest {
 
     @Test
     fun a_note_at_the_root_has_no_parent() {

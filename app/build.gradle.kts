@@ -6,8 +6,6 @@ import java.io.InputStreamReader
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
-    // for room
-    alias(libs.plugins.ksp)
     // @Parcelize on the navigation destinations, which is what lets the
     // backstack survive the process being killed
     id("kotlin-parcelize")
@@ -206,10 +204,6 @@ androidComponents {
     }
 }
 
-ksp {
-    arg("room.schemaLocation", "$projectDir/schemas")
-}
-
 kotlin {
     // set what version of the jdk will be used to compile the code
     jvmToolchain(21)
@@ -250,16 +244,6 @@ dependencies {
     compileOnly(libs.compose.ui.tooling.preview)
     debugImplementation(libs.compose.ui.tooling.preview)
     debugImplementation(libs.androidx.ui.tooling)
-
-    // Room
-    implementation(libs.room.runtime)
-    implementation(libs.room.ktx)
-    annotationProcessor(libs.room.compiler)
-    ksp(libs.room.compiler)
-    implementation(libs.sqlite)
-    implementation(libs.paging)
-    implementation(libs.paging.compose)
-    implementation(libs.room.paging)
 
     // Markdown
     implementation(libs.compose.markdown.core)

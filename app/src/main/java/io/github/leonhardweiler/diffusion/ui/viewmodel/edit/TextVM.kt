@@ -13,7 +13,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.leonhardweiler.diffusion.MyApp
 import io.github.leonhardweiler.diffusion.R
 import io.github.leonhardweiler.diffusion.data.platform.NodeFs
-import io.github.leonhardweiler.diffusion.data.room.Note
+import io.github.leonhardweiler.diffusion.data.index.Note
 import io.github.leonhardweiler.diffusion.helper.EditHistory
 import io.github.leonhardweiler.diffusion.helper.NameValidation
 import io.github.leonhardweiler.diffusion.helper.PathProblem

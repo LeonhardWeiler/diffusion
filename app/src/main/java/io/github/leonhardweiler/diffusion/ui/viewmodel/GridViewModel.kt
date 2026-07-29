@@ -3,20 +3,16 @@ package io.github.leonhardweiler.diffusion.ui.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.paging.Pager
-import androidx.paging.PagingConfig
-import androidx.paging.PagingData
-import androidx.paging.cachedIn
-import androidx.paging.insertHeaderItem
-import androidx.paging.map
 import io.github.leonhardweiler.diffusion.MyApp
 import io.github.leonhardweiler.diffusion.R
 import io.github.leonhardweiler.diffusion.data.AppPreferences
 import io.github.leonhardweiler.diffusion.data.platform.NodeFs
-import io.github.leonhardweiler.diffusion.data.room.Note
-import io.github.leonhardweiler.diffusion.data.room.NoteFolder
-import io.github.leonhardweiler.diffusion.data.room.LIMIT_FILE_SIZE_DB
-import io.github.leonhardweiler.diffusion.data.room.RepoDatabase
+import io.github.leonhardweiler.diffusion.data.index.Note
+import io.github.leonhardweiler.diffusion.data.index.NoteFolder
+import io.github.leonhardweiler.diffusion.data.index.LIMIT_FILE_SIZE
+import io.github.leonhardweiler.diffusion.data.index.foldersIn
+import io.github.leonhardweiler.diffusion.data.index.notesIn
+import io.github.leonhardweiler.diffusion.data.index.search
 import io.github.leonhardweiler.diffusion.helper.NameValidation
 import io.github.leonhardweiler.diffusion.helper.ResolvedPath
 import io.github.leonhardweiler.diffusion.helper.keepExtension
@@ -26,19 +22,16 @@ import io.github.leonhardweiler.diffusion.ui.model.FileExtension
 import io.github.leonhardweiler.diffusion.ui.model.GridItem
 import io.github.leonhardweiler.diffusion.ui.model.GridNote
 import io.github.leonhardweiler.diffusion.ui.model.NoteHeader
-import io.github.leonhardweiler.diffusion.ui.model.SortOrder
 import io.github.leonhardweiler.diffusion.helper.getParentPath
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -47,10 +40,6 @@ class GridViewModel : ViewModel() {
 
     companion object {
         private const val TAG = "GridViewModel"
-
-        /** Notes are shown newest first, folders alphabetically. */
-        private val NOTE_SORT_ORDER = SortOrder.MostRecent
-        private val FOLDER_SORT_ORDER = SortOrder.AZ
     }
 
 
@@ -58,8 +47,7 @@ class GridViewModel : ViewModel() {
     private val appScope = MyApp.appModule.appScope
 
     val prefs: AppPreferences = MyApp.appModule.appPreferences
-    private val db: RepoDatabase = MyApp.appModule.repoDatabase
-    private val dao = db.repoDatabaseDao
+    private val index = MyApp.appModule.noteIndex
     val uiHelper = MyApp.appModule.uiHelper
 
     private val _query = MutableStateFlow("")
@@ -115,13 +103,14 @@ class GridViewModel : ViewModel() {
         Log.d(TAG, "init")
     }
 
-    /** Drops from the selection whatever is no longer in the database. */
+    /** Drops from the selection whatever is no longer in the repository. */
     private suspend fun refreshSelection() {
         _selectedNotes.emit(
-            selectedNotes.value.filter { dao.isNoteExist(it.relativePath) }
+            selectedNotes.value.filter { index.hasNote(it.relativePath) }
         )
 
-        val folders = dao.folderList(currentNoteFolderRelativePath.value, FOLDER_SORT_ORDER)
+        val folders = index.state.value
+            .foldersIn(currentNoteFolderRelativePath.value)
             .map { it.noteFolder }
         _selectedFolders.emit(selectedFolders.value.filter { folders.contains(it) })
     }
@@ -206,15 +195,17 @@ class GridViewModel : ViewModel() {
         val folderPath = currentNoteFolderRelativePath.value
         val currentQuery = query.value
 
+        val state = index.state.value
+
         _selectedNotes.emit(
-            dao.gridNoteList(folderPath, NOTE_SORT_ORDER, currentQuery).map { it.note }
+            withContext(Dispatchers.IO) { state.search(folderPath, currentQuery) }
         )
 
         // a search spans subfolders, so the folders of the one being looked at
         // are not among what it found — the list does not show them either
         _selectedFolders.emit(
             if (currentQuery.isEmpty()) {
-                dao.folderList(folderPath, FOLDER_SORT_ORDER).map { it.noteFolder }
+                state.foldersIn(folderPath).map { it.noteFolder }
             } else {
                 emptyList()
             }
@@ -258,12 +249,12 @@ class GridViewModel : ViewModel() {
      *
      * So does one the index refused to read. The row is there either way, since
      * the list shows every file in the repository, but the editor is given what
-     * the index holds — and for a file above [LIMIT_FILE_SIZE_DB] that is
-     * nothing. Opening it would show an empty note, and the first save would
-     * make the file agree with it.
+     * the index holds — and for a file above [LIMIT_FILE_SIZE] that is nothing.
+     * Opening it would show an empty note, and the first save would make the
+     * file agree with it.
      */
     fun openNote(note: NoteHeader, onLoaded: (Note) -> Unit) = viewModelScope.launch {
-        val loaded = dao.note(note.relativePath)
+        val loaded = withContext(Dispatchers.IO) { index.loadNote(note.relativePath) }
         if (loaded == null) {
             uiHelper.makeToast(uiHelper.getString(R.string.error_note_not_found))
             return@launch
@@ -273,7 +264,7 @@ class GridViewModel : ViewModel() {
             runCatching { NodeFs.File.fromPath(prefs.repoPath(), note.relativePath).fileSize() }
                 .getOrDefault(0L)
         }
-        if (size > LIMIT_FILE_SIZE_DB) {
+        if (size > LIMIT_FILE_SIZE) {
             uiHelper.makeToast(uiHelper.getString(R.string.error_note_too_large, note.fileName))
             return@launch
         }
@@ -318,9 +309,9 @@ class GridViewModel : ViewModel() {
         }
 
         appScope.launch {
-            // the row of the list carries no content, and the move needs the
-            // whole note to write the row again on the other side
-            val loaded = dao.note(note.relativePath)
+            // the row of the list carries no text, and the move writes the row
+            // again on the other side with everything it had
+            val loaded = withContext(Dispatchers.IO) { index.loadNote(note.relativePath) }
             if (loaded == null) {
                 uiHelper.makeToast(uiHelper.getString(R.string.error_note_not_found))
                 return@launch
@@ -374,102 +365,77 @@ class GridViewModel : ViewModel() {
     }
 
 
-    private data class GridQuery(
-        val folderPath: String,
-        val query: String,
-    )
-
-    private val gridQuery: Flow<GridQuery> = combine(
-        currentNoteFolderRelativePath,
-        query,
-    ) { folderPath, query ->
-        GridQuery(folderPath, query)
-    }
-
     /**
-     * The notes of the folder being looked at, or what a search found.
+     * The whole list: the way out of the folder, its subfolders and its notes.
      *
-     * Nothing may be combined into this before [cachedIn]. A [PagingData] can
-     * be collected exactly once, and combining means re-emitting the one that
-     * arrived last whenever the other side changes — which hands cachedIn a
-     * stream that has already been read, and that is an outright crash
-     * ("Attempt to collect twice from pageEventFlow"). It was the selection
-     * that used to be combined in here, so the app died on the second tap of a
-     * multiple selection.
+     * One list from one place. It was a paged query and a second flow of folder
+     * rows folded into it, which is what a database bought and also what it
+     * cost — a [androidx.paging.PagingData] may be collected exactly once, and
+     * everything that wanted to know about the list had to be careful not to be
+     * the second reader.
      *
-     * After cachedIn it is safe, and that is the whole point of cachedIn: what
-     * it holds is multicast, so a later collector — the one that comes back
-     * from the editor, or the one below that folds the folder rows in — gets
-     * the same pages again instead of an empty stream.
+     * The search reads the files, so it runs off the main thread and the one
+     * before it is cancelled the moment another letter is typed. Everything
+     * else is a filter over what is already in memory.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val pagedNotes: Flow<PagingData<GridItem>> = gridQuery
-        .flatMapLatest { gridQuery ->
-            Pager(
-                config = PagingConfig(pageSize = 50),
-                pagingSourceFactory = {
-                    if (gridQuery.query.isEmpty()) {
-                        dao.gridNotes(gridQuery.folderPath, NOTE_SORT_ORDER)
-                    } else {
-                        dao.gridNotesWithQuery(
-                            gridQuery.folderPath,
-                            NOTE_SORT_ORDER,
-                            gridQuery.query
+    val gridItems: StateFlow<List<GridItem>> =
+        combine(
+            index.state,
+            currentNoteFolderRelativePath,
+            query,
+        ) { state, folderPath, query -> Triple(state, folderPath, query) }
+            .mapLatest { (state, folderPath, query) ->
+
+                val notes = if (query.isEmpty()) {
+                    state.notesIn(folderPath)
+                } else {
+                    state.search(folderPath, query)
+                }
+
+                // A name that appears once is enough to tell a row by; the
+                // others say where they are. Asked of what is being shown, not
+                // of the whole repository — two notes called the same in two
+                // folders are only worth telling apart when both are listed.
+                val duplicated = notes
+                    .groupingBy { it.fileName }
+                    .eachCount()
+
+                buildList {
+                    // A search shows neither the way out of the folder nor its
+                    // subfolders: it reaches into them, so they are not what was
+                    // asked for, and the way out would sit above results that
+                    // come from inside.
+                    if (query.isEmpty()) {
+                        if (folderPath.isNotEmpty()) {
+                            add(GridItem.ParentFolder(getParentPath(folderPath)))
+                        }
+                        state.foldersIn(folderPath).forEach { add(GridItem.Folder(it)) }
+                    }
+
+                    notes.forEach { note ->
+                        add(
+                            GridItem.Note(
+                                GridNote(
+                                    note = note,
+                                    isUnique = duplicated[note.fileName] == 1,
+                                )
+                            )
                         )
                     }
                 }
-            ).flow
-        }
-        .map { pagingData -> pagingData.map<GridNote, GridItem> { GridItem.Note(it) } }
-        .cachedIn(viewModelScope)
-
-    /**
-     * The rows above the notes: the way out of the folder and its subfolders.
-     *
-     * A search shows neither. It reaches into the subfolders, so the folders of
-     * the one being looked at are not what was asked for — and the way out of
-     * it would sit above results that come from inside it.
-     */
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private val folderRows: Flow<List<GridItem>> = gridQuery.flatMapLatest { gridQuery ->
-        if (gridQuery.query.isNotEmpty()) return@flatMapLatest flowOf(emptyList())
-
-        dao.folders(gridQuery.folderPath, FOLDER_SORT_ORDER).map { folders ->
-            buildList {
-                if (gridQuery.folderPath.isNotEmpty()) {
-                    add(GridItem.ParentFolder(getParentPath(gridQuery.folderPath)))
-                }
-                folders.forEach { add(GridItem.Folder(it)) }
             }
-        }
-    }
+            .flowOn(Dispatchers.IO)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /**
-     * The whole list: the way out of the folder, its subfolders and its notes.
-     * The folders ride along in the [PagingData] instead of being a list of
-     * their own, so opening a folder swaps the list in one go rather than
-     * rebuilding the layout twice.
+     * Reads the repository again, which catches whatever changed outside the
+     * app. The remote is not part of it — syncing is the button in the search
+     * bar and nothing else.
      */
-    val gridItems: Flow<PagingData<GridItem>> =
-        combine(pagedNotes, folderRows) { pagingData, headers ->
-            var items = pagingData
-
-            // every header goes to the very front, so the last one inserted wins
-            headers.asReversed().forEach { header ->
-                items = items.insertHeaderItem(item = header)
-            }
-
-            items
-        }
-
-    /**
-     * Reads the files back into the database, which catches whatever changed
-     * outside the app. The remote is not part of it — syncing is the button in
-     * the search bar and nothing else.
-     */
-    fun reloadDatabase() {
+    fun reloadIndex() {
         appScope.launch {
-            storageManager.updateDatabase(force = true).onFailure {
+            storageManager.rebuildIndex().onFailure {
                 uiHelper.makeToast("$it")
             }
             refreshSelection()

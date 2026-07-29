@@ -18,7 +18,7 @@ sealed class InitState {
      */
     data object OpeningRepo : InitState()
 
-    data class GeneratingDatabase(val path: String) : InitState()
+    data class ReadingRepo(val path: String) : InitState()
 
     /**
      * A repository that was already on the device, being synced with its remote
@@ -33,7 +33,7 @@ sealed class InitState {
         return when (this) {
             is Cloning -> "Cloning: $percent %"
             is Error -> if (message != null) "Error: $message" else "Error"
-            is GeneratingDatabase -> "Generating database, path: $path"
+            is ReadingRepo -> "Reading the repository, path: $path"
             OpeningRepo -> "Opening the repository…"
             SyncingRepo -> "Syncing with the remote…"
             Idle -> ""

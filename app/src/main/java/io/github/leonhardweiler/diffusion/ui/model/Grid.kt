@@ -1,19 +1,14 @@
 package io.github.leonhardweiler.diffusion.ui.model
 
-import androidx.room.Embedded
-import io.github.leonhardweiler.diffusion.data.room.NoteFolder
+import io.github.leonhardweiler.diffusion.data.index.NoteFolder
 import io.github.leonhardweiler.diffusion.manager.extensionType
 import io.github.leonhardweiler.diffusion.manager.isExtensionSupported
 
-enum class SortOrder {
-    AZ,
-    ZA,
-    MostRecent,
-    Oldest,
-}
-
+/**
+ * A folder as a row of the list: what it is called, and how many notes stand
+ * under it — which is what deleting it would take with it.
+ */
 data class FolderModel(
-    @Embedded
     val noteFolder: NoteFolder,
     val noteCount: Int,
 )
@@ -63,7 +58,6 @@ data class NoteHeader(
  * the selection itself now.
  */
 data class GridNote(
-    @Embedded
     val note: NoteHeader,
     val isUnique: Boolean,
 )

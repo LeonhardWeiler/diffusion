@@ -3,7 +3,7 @@ package io.github.leonhardweiler.diffusion.ui.viewmodel.edit
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.lifecycle.viewmodel.compose.viewModel
-import io.github.leonhardweiler.diffusion.data.room.Note
+import io.github.leonhardweiler.diffusion.data.index.Note
 import io.github.leonhardweiler.diffusion.ui.destination.EditParams
 import io.github.leonhardweiler.diffusion.ui.model.EditType
 import io.github.leonhardweiler.diffusion.ui.viewmodel.viewModelFactory

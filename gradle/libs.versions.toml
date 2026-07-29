@@ -2,16 +2,11 @@
 agp = "9.3.0"
 kotlin = "2.4.10"
 
-ksp = "2.3.4"
-
 core-ktx = "1.19.0"
 lifecycle-runtime = "2.11.0"
 activity-compose = "1.13.0"
 datastore-preferences = "1.2.1"
 compose-bom = "2026.06.01"
-room = "2.8.4"
-sqlite = "3.49.0"
-paging = "3.5.0"
 compose-markdown = "0.43.0"
 
 androidx-benchmark = "1.5.0-alpha07"
@@ -41,16 +36,6 @@ androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
 compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
 
-# Room
-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
-sqlite = { group = "com.github.requery", name = "sqlite-android", version.ref = "sqlite" }
-paging = { group = "androidx.paging", name = "paging-runtime", version.ref = "paging" }
-paging-compose = { group = "androidx.paging", name = "paging-compose", version.ref = "paging" }
-room-paging = { group = "androidx.room", name = "room-paging", version.ref = "room" }
-
-
 # Markdown
 compose-markdown-core = { group = "com.mikepenz", name = "multiplatform-markdown-renderer", version.ref = "compose-markdown" }
 compose-markdown-renderer = { group = "com.mikepenz", name = "multiplatform-markdown-renderer-m3", version.ref = "compose-markdown" }
@@ -71,6 +56,5 @@ uiautomator = { group = "androidx.test.uiautomator", name = "uiautomator", versi
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 android-test = { id = "com.android.test", version.ref = "agp" }
 baselineprofile = { id = "androidx.baselineprofile", version.ref = "androidx-benchmark" }

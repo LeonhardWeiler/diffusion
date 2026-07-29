@@ -4,16 +4,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.paging.compose.LazyPagingItems
-import androidx.paging.compose.itemContentType
-import androidx.paging.compose.itemKey
-import io.github.leonhardweiler.diffusion.data.room.Note
-import io.github.leonhardweiler.diffusion.data.room.NoteFolder
+import io.github.leonhardweiler.diffusion.data.index.Note
+import io.github.leonhardweiler.diffusion.data.index.NoteFolder
 import io.github.leonhardweiler.diffusion.ui.model.EditType
 import io.github.leonhardweiler.diffusion.ui.model.GridItem
 import io.github.leonhardweiler.diffusion.ui.model.NoteHeader
@@ -26,7 +24,7 @@ import java.text.DateFormat
  */
 @Composable
 internal fun NoteListView(
-    gridItems: LazyPagingItems<GridItem>,
+    gridItems: List<GridItem>,
     topSpacerHeight: Dp,
     listState: LazyListState,
     modifier: Modifier = Modifier,
@@ -54,13 +52,13 @@ internal fun NoteListView(
         }
 
         items(
-            count = gridItems.itemCount,
-            key = gridItems.itemKey { it.key() },
+            items = gridItems,
+            key = { it.key() },
             // folders and notes lay out differently; telling them apart lets a
             // scrolled row be reused instead of built again
-            contentType = gridItems.itemContentType { it::class }
-        ) { index ->
-            when (val gridItem = gridItems[index]) {
+            contentType = { it::class }
+        ) { gridItem ->
+            when (gridItem) {
                 is GridItem.ParentFolder -> ParentFolderRow(
                     onClick = { onFolderClick(gridItem.relativePath) }
                 )
@@ -84,8 +82,6 @@ internal fun NoteListView(
                     isSearching = isSearching,
                     dateFormat = dateFormat,
                 )
-
-                null -> Unit
             }
         }
 

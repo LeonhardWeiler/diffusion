@@ -1,7 +1,7 @@
 package io.github.leonhardweiler.diffusion.ui.destination
 
 import android.os.Parcelable
-import io.github.leonhardweiler.diffusion.data.room.Note
+import io.github.leonhardweiler.diffusion.data.index.Note
 import io.github.leonhardweiler.diffusion.ui.model.EditType
 import io.github.leonhardweiler.diffusion.ui.model.FileExtension
 import kotlinx.parcelize.Parcelize

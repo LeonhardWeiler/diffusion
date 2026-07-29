@@ -204,10 +204,10 @@ fun SettingsScreen(
             )
 
             DefaultSettingsRow(
-                title = stringResource(R.string.reload_database),
+                title = stringResource(R.string.reload_notes),
                 startIcon = Icons.Default.Refresh,
                 onClick = {
-                    vm.reloadDatabase()
+                    vm.reloadIndex()
                 }
             )
 

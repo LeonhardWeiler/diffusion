@@ -5,7 +5,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import io.github.leonhardweiler.diffusion.data.AppPreferences
-import io.github.leonhardweiler.diffusion.data.room.RepoDatabase
+import io.github.leonhardweiler.diffusion.data.index.NoteIndex
 import io.github.leonhardweiler.diffusion.helper.EditHistoryStore
 import io.github.leonhardweiler.diffusion.helper.NetworkMonitor
 import io.github.leonhardweiler.diffusion.helper.UiHelper
@@ -15,7 +15,7 @@ import io.github.leonhardweiler.diffusion.manager.StorageManager
 
 interface AppModule {
     val appScope: CoroutineScope
-    val repoDatabase: RepoDatabase
+    val noteIndex: NoteIndex
     val uiHelper: UiHelper
     val storageManager: StorageManager
     val gitManager: GitManager
@@ -30,8 +30,9 @@ class AppModuleImpl(
     override val context: Context
 ) : AppModule {
 
-    override val repoDatabase: RepoDatabase by lazy {
-        RepoDatabase.buildDatabase(context)
+    /** What the note list reads, built from the files at every start. */
+    override val noteIndex: NoteIndex by lazy {
+        NoteIndex()
     }
 
     override val uiHelper: UiHelper by lazy {

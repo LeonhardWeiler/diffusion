@@ -38,10 +38,9 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.paging.compose.collectAsLazyPagingItems
 import io.github.leonhardweiler.diffusion.R
-import io.github.leonhardweiler.diffusion.data.room.Note
-import io.github.leonhardweiler.diffusion.data.room.NoteFolder
+import io.github.leonhardweiler.diffusion.data.index.Note
+import io.github.leonhardweiler.diffusion.data.index.NoteFolder
 import io.github.leonhardweiler.diffusion.helper.openFileWithAnotherApp
 import io.github.leonhardweiler.diffusion.ui.component.CustomDropDown
 import io.github.leonhardweiler.diffusion.ui.component.CustomDropDownModel
@@ -129,8 +128,8 @@ fun GridScreen(
             onSettingsClick = onSettingsClick,
             searchFocusRequester = searchFocusRequester,
             padding = padding,
-            onReloadDatabase = {
-                vm.reloadDatabase()
+            onReloadIndex = {
+                vm.reloadIndex()
             },
             query = vm.query,
             clearQuery = vm::clearQuery,
@@ -163,7 +162,7 @@ private fun GridView(
     topSpacerHeight: Dp,
     padding: PaddingValues,
 ) {
-    val gridItems = vm.gridItems.collectAsLazyPagingItems()
+    val gridItems by vm.gridItems.collectAsState()
     val query = vm.query.collectAsState()
 
 

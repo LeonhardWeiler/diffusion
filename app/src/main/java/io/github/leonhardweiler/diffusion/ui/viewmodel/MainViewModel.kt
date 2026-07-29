@@ -48,24 +48,27 @@ class MainViewModel : ViewModel() {
         }
         prefs.applyGitAuthorDefaults(gitManager.currentSignature())
 
-        // What a previous run left in the working tree is still there — being
-        // killed does not commit anything. Nothing carried that over, though:
-        // the flag behind the dot starts false in a fresh process and was only
-        // ever set by a write or by a sync, so an app that had crashed came
-        // back saying everything had been sent. Asking git walks the working
-        // tree, so it goes to the app's scope rather than holding up the first
-        // frame.
+        // Everything that has to read the repository goes to the app's scope,
+        // in this order and not in three of their own: this runs on the way to
+        // the first frame, and each of them walks the whole working tree.
         appScope.launch {
-            storageManager.refreshChangeState()
-        }
+            // The list is held in memory and there is nothing left of it from
+            // the last run, so this is what a start costs now — a few hundred
+            // milliseconds behind a screen that is coming up anyway.
+            storageManager.rebuildIndex()
 
-        // Opening the app is one of the two moments a sync does not have to be
-        // asked for — what another device wrote is what one opens the app to
-        // read. It brings the database in line on the way through, and says
-        // nothing if the network is not there. Unless it was turned off: a
-        // transfer nobody asked for is not always wanted.
-        if (prefs.syncOnOpenAndClose.get()) {
-            appScope.launch {
+            // What a previous run left in the working tree is still there —
+            // being killed does not commit anything, and the flag behind the
+            // dot starts false in a fresh process, so an app that had crashed
+            // came back saying everything had been sent.
+            storageManager.refreshChangeState()
+
+            // Opening the app is one of the two moments a sync does not have to
+            // be asked for — what another device wrote is what one opens the
+            // app to read. It says nothing if the network is not there. Unless
+            // it was turned off: a transfer nobody asked for is not always
+            // wanted.
+            if (prefs.syncOnOpenAndClose.get()) {
                 storageManager.syncWithRemote(announceErrors = false)
             }
         }

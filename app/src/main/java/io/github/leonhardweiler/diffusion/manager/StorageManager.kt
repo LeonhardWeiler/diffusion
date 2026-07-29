@@ -1,18 +1,15 @@
 package io.github.leonhardweiler.diffusion.manager
 
-import android.os.SystemClock
 import android.util.Log
 import androidx.annotation.StringRes
-import androidx.room.withTransaction
 import io.github.leonhardweiler.diffusion.MyApp
 import io.github.leonhardweiler.diffusion.R
 import io.github.leonhardweiler.diffusion.data.AppPreferences
 import io.github.leonhardweiler.diffusion.data.platform.NodeFs
-import io.github.leonhardweiler.diffusion.data.room.Note
-import io.github.leonhardweiler.diffusion.data.room.NoteFolder
-import io.github.leonhardweiler.diffusion.data.room.RepoDatabase
+import io.github.leonhardweiler.diffusion.data.index.Note
+import io.github.leonhardweiler.diffusion.data.index.NoteFolder
+import io.github.leonhardweiler.diffusion.data.index.NoteIndex
 import io.github.leonhardweiler.diffusion.helper.getParentPath
-import io.github.leonhardweiler.diffusion.helper.movedUnder
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,15 +28,6 @@ private const val TAG = "StorageManager"
 private const val GIT_KEEP = ".gitkeep"
 
 /**
- * Stands in [AppPreferences.databaseCommit] for a repository that has no commit
- * yet. It has to be something other than the empty string, which is what the
- * preference holds before the database has ever been built: a freshly cloned
- * repository that reports no HEAD would otherwise look like one whose commit is
- * already loaded, and the note list would stay empty until a reload.
- */
-private const val NO_COMMIT = "none"
-
-/**
  * How long a pull waits before trying a second time, when the first found no
  * network. Long enough for a resolver that is being set up to be ready, short
  * enough that somebody watching the button does not give up on it.
@@ -50,13 +38,12 @@ class StorageManager {
 
 
     val prefs: AppPreferences = MyApp.appModule.appPreferences
-    private val db: RepoDatabase = MyApp.appModule.repoDatabase
 
     private val uiHelper = MyApp.appModule.uiHelper
 
     private val networkMonitor = MyApp.appModule.networkMonitor
 
-    private val dao = this.db.repoDatabaseDao
+    private val index: NoteIndex = MyApp.appModule.noteIndex
 
     private val gitManager: GitManager = MyApp.appModule.gitManager
 
@@ -191,25 +178,6 @@ class StorageManager {
     @Volatile
     private var lastWrite: Job? = null
 
-    /**
-     * What HEAD said the last time it was asked, or null when it has to be
-     * asked again.
-     *
-     * Every mutation begins by comparing HEAD against the commit the database
-     * was built from, and that comparison used to be a JNI transition and a
-     * git_revparse behind two mutexes — the second of which belongs to the sync,
-     * so a note being saved could end up waiting on a pull over the network.
-     * Answered with "unchanged" every time, because HEAD does not move while
-     * notes are written: that is the whole reason the index can stay in step
-     * incrementally.
-     *
-     * So it is asked once and remembered, and forgotten again by exactly the
-     * things that can move HEAD — committing, pulling, and whatever happened
-     * outside this class before updateDatabase was called. Read and written
-     * only under [locker], or the cheap answer would be a race instead.
-     */
-    private var knownFsCommit: String? = null
-
     private suspend fun syncWithRemoteLocked(announceErrors: Boolean): Result<Unit> = locker.withLock {
         Log.d(TAG, "syncWithRemote")
 
@@ -228,9 +196,6 @@ class StorageManager {
 
         announceSyncErrors = announceErrors
 
-        // a commit is one of the two things that move HEAD
-        knownFsCommit = null
-
         // Only a fallback: the message a commit really carries is the notes it
         // is about, and only the rust side, which stages them, knows those.
         gitManager.commitAll(
@@ -245,72 +210,31 @@ class StorageManager {
     }
 
     /**
-     * Update the database with the last files
-     * available of the fs, and update with the
-     * head commit of the repo.
+     * Reads the whole repository into the index, which is the only thing that
+     * says what is in it.
      *
-     * /!\ Warning there can be pending file added to the database
-     * that are not committed to the repo.
-     * The caller must ensure that all files has been committed
-     * to keep the database in sync with the remote repo
+     * There is nothing to compare against anymore. The index lives in memory,
+     * so it is built when a repository is opened and read again whenever
+     * something other than this app may have written to it — a pull, and the
+     * reload in the menu. A note written here is put in as it is written, and
+     * committing does not touch the working tree.
      */
-    private suspend fun updateDatabaseWithoutLocker(
-        force: Boolean = false,
-        progressCb: ((Progress) -> Unit)? = null
-    ): Result<Unit> {
-
-        // A repository that cannot be read is not one that has nothing new: the
-        // failure has to travel, or the rebuild is skipped for a reason nobody
-        // ever sees.
-        val fsCommit = knownFsCommit
-            ?: gitManager.lastCommit().getOrElse { return failure(it) } ?: NO_COMMIT
-
-        knownFsCommit = fsCommit
-
-        val databaseCommit = prefs.databaseCommit.get()
-
-        Log.d(TAG, "fsCommit: $fsCommit, databaseCommit: $databaseCommit")
-        if (!force && fsCommit == databaseCommit) {
-            Log.d(TAG, "last commit is already loaded in data base")
-            return success(Unit)
-        }
-
-        val repoPath = prefs.repoPath()
-        Log.d(TAG, "repoPath = $repoPath")
-
-        // The other half of the measurement in clearAndInit: that one is the
-        // walk, this is the walk plus the transaction it is written in, which
-        // is what a start would have to pay if the index were given up and the
-        // repository read at every launch instead.
-        val startedAt = SystemClock.elapsedRealtime()
-
-        db.withTransaction {
-            dao.clearAndInit(repoPath, progressCb)
-        }
-        prefs.databaseCommit.update(fsCommit)
-
-        Log.i(
-            TAG,
-            "database rebuilt in ${SystemClock.elapsedRealtime() - startedAt} ms"
-        )
-
-        return success(Unit)
-    }
-
-    /**
-     * See the documentation of [updateDatabaseWithoutLocker]
-     */
-    suspend fun updateDatabase(
-        force: Boolean = false,
+    suspend fun rebuildIndex(
         progressCb: ((Progress) -> Unit)? = null
     ): Result<Unit> = locker.withLock {
-        // The three places this is called from — start up, the reload and the
-        // end of a setup — are exactly the ones where the repository may have
-        // been written to by something that is not this app.
-        knownFsCommit = null
         refreshLocalChanges()
 
-        updateDatabaseWithoutLocker(force, progressCb)
+        rebuildIndexWithoutLocker(progressCb)
+    }
+
+    private suspend fun rebuildIndexWithoutLocker(
+        progressCb: ((Progress) -> Unit)? = null
+    ): Result<Unit> {
+        val repoPath = runCatching { prefs.repoPath() }.getOrElse { return failure(it) }
+
+        index.rebuild(repoPath, progressCb)
+
+        return success(Unit)
     }
 
     /**
@@ -336,14 +260,14 @@ class StorageManager {
             newFile.write(new.content).orComplain(R.string.error_write_file)
             newFile.dateBy(new)
 
-            // relativePath is the primary key, so as long as the note keeps its
-            // name the upsert rewrites the row in place. Only a rename needs the
-            // old row taken away first — and that is rare, while this runs on
-            // every typing pause.
+            // A note that kept its name writes over the row it already had.
+            // Only a rename leaves an old one behind, and that is rare while
+            // this runs on every typing pause.
             if (renamed) {
-                dao.removeNote(previous)
+                index.moveNote(previous.relativePath, new)
+            } else {
+                index.putNote(new)
             }
-            dao.insertNote(new)
 
             success(Unit)
         }
@@ -363,7 +287,7 @@ class StorageManager {
             file.write(note.content).orComplain(R.string.error_write_file)
             file.dateBy(note)
 
-            dao.insertNote(note)
+            index.putNote(note)
 
             success(Unit)
         }
@@ -381,7 +305,7 @@ class StorageManager {
             val file = NodeFs.File.fromPath(prefs.repoPath(), relativePath)
             file.delete().orComplain(R.string.error_delete_file, file.path)
 
-            dao.removeNoteAt(relativePath)
+            index.removeNoteAt(relativePath)
             success(Unit)
         }
     }
@@ -399,12 +323,9 @@ class StorageManager {
                 file.delete().orComplain(R.string.error_delete_file, file.path)
             }
 
-            // then the rows, all of them together: the screen shows the
-            // database, so the whole selection disappears at once rather than
-            // note by note
-            relativePaths.forEach { relativePath ->
-                dao.removeNoteAt(relativePath)
-            }
+            // then the rows, all of them together: the screen shows the index,
+            // so the whole selection disappears at once rather than note by note
+            index.removeNotesAt(relativePaths)
             success(Unit)
         }
     }
@@ -417,9 +338,8 @@ class StorageManager {
      * bytes are never read, so a note that is only renamed keeps its date and a
      * file too large to be indexed is moved like any other.
      *
-     * The row is rewritten with the id, the content and the date it already
-     * held. Reading the file back would give an indexed note nothing new and an
-     * unindexed one an empty content where the row correctly holds none.
+     * The row is rewritten with the id and the date it already held, so the
+     * list keeps its place and an open undo history stays with its note.
      */
     suspend fun renameNote(note: Note, newRelativePath: String): Result<Unit> = locker.withLock {
         Log.d(TAG, "renameNote: ${note.relativePath} -> $newRelativePath")
@@ -445,12 +365,11 @@ class StorageManager {
             NodeFs.File.fromPath(repoPath, note.relativePath).moveTo(target.path)
                 .onFailure { return@update failure(it) }
 
-            dao.removeNoteAt(note.relativePath)
-
             // through the constructor, so parentPath and fileName are derived
             // from the new path rather than kept from the old one
-            dao.insertNoteRow(
-                Note(
+            index.moveNote(
+                oldRelativePath = note.relativePath,
+                note = Note(
                     relativePath = newRelativePath,
                     content = note.content,
                     lastModifiedTimeMillis = note.lastModifiedTimeMillis,
@@ -475,7 +394,7 @@ class StorageManager {
                 Log.e(TAG, "could not create $GIT_KEEP in ${folder.path}: ${it.message}")
             }
 
-            dao.insertNoteFolder(noteFolder)
+            index.putFolder(noteFolder)
 
             success(Unit)
         }
@@ -489,8 +408,8 @@ class StorageManager {
      * rename of the directory, so the subfolders and the notes come along
      * without being touched.
      *
-     * The rows are rewritten rather than rebuilt from the disk afterwards. A
-     * rebuild would read every file in the repository for a change that touched
+     * The rows are rewritten rather than read from the disk afterwards. A
+     * rebuild would walk every file in the repository for a change that touched
      * one subtree, and the rows already hold everything the new ones need — the
      * ids among it, so the list keeps its place and an open undo history stays
      * with its note.
@@ -528,33 +447,7 @@ class StorageManager {
             NodeFs.Folder.fromPath(repoPath, oldPath).moveTo(target.path)
                 .onFailure { return@update failure(it) }
 
-            // read before anything is deleted: these rows are the only place the
-            // ids and the dates still are
-            val notes = dao.notesIn("$oldPath/")
-            val folders = dao.foldersUnder(oldPath)
-
-            dao.internalDeleteNotesIn("$oldPath/")
-            dao.internalDeleteFoldersIn("$oldPath/")
-            dao.internalDeleteNoteFolder(noteFolder)
-
-            folders.forEach { folder ->
-                dao.insertNoteFolderRow(
-                    folder.copy(relativePath = movedUnder(folder.relativePath, oldPath, newRelativePath))
-                )
-            }
-
-            notes.forEach { note ->
-                // through the constructor, so parentPath and fileName are
-                // derived again instead of keeping the ones they had
-                dao.insertNoteRow(
-                    Note(
-                        relativePath = movedUnder(note.relativePath, oldPath, newRelativePath),
-                        content = note.content,
-                        lastModifiedTimeMillis = note.lastModifiedTimeMillis,
-                        id = note.id,
-                    )
-                )
-            }
+            index.moveFolder(noteFolder, newRelativePath)
 
             success(Unit)
         }
@@ -588,17 +481,16 @@ class StorageManager {
 
             // then the rows, all of them together, so that the list loses the
             // whole selection at once rather than folder by folder
-            noteFolders.forEach { dao.deleteNoteFolder(it) }
+            index.removeFolders(noteFolders)
 
             success(Unit)
         }
     }
 
     suspend fun closeRepo() = locker.withLock {
-        knownFsCommit = null
         prefs.closeRepo()
         gitManager.closeRepo()
-        dao.clearDatabase()
+        index.clear()
         // the next repository starts without the last one's sync result, which
         // otherwise greets it as an error it never had
         _syncState.emit(SyncState.Idle)
@@ -632,27 +524,22 @@ class StorageManager {
         }
 
     /**
-     * Applies a change to the files first and to the database second. Nothing
-     * is committed here: the working tree carries the change until the user
-     * asks for a sync, which is what [syncWithRemote] then commits and pushes
-     * in one go.
+     * Applies a change to the files first and to the index second. Nothing is
+     * committed here: the working tree carries the change until the user asks
+     * for a sync, which is what [syncWithRemote] then commits and pushes in one
+     * go.
      *
      * That order is the whole of it. Both are written one after the other and
      * the process can die in between, and then one of them is behind — so the
      * question is which. The files are the truth: a row left over for a file
      * that is gone is noticed the moment the note is opened ("this note is no
-     * longer there"), and the next rebuild clears it. The other way round, a
-     * file with no row is a note that is simply not in the list, and since
-     * databaseCommit still agrees with HEAD nothing rebuilds to find it.
+     * longer there"), and the index is read from the files again at the next
+     * start anyway. The other way round, a file with no row is a note that is
+     * simply not in the list until then.
      */
     private suspend fun <T> update(
         f: suspend () -> Result<T>
     ): Result<T> {
-
-        updateDatabaseWithoutLocker().onFailure { err ->
-            failSync(err.message)
-            return failure(err)
-        }
 
         return f().onSuccess {
             // a note was written, renamed or deleted, and nothing commits by
@@ -668,7 +555,9 @@ class StorageManager {
         var hasRemote = prefs.remoteUrl.get().isNotEmpty()
         val cred = prefs.cred()
         var isError = false
-        var conflicted = false
+
+        // Whether the working tree was written to, which only a pull does here.
+        var pulledFiles = false
 
         // The two syncs nobody asks for run when the app is opened and when it
         // is left, which is exactly the moment a phone comes back from being
@@ -710,23 +599,26 @@ class StorageManager {
                 pulled = gitManager.pull(cred, prefs.gitAuthor())
             }
 
-            // and the pull is the other one
-            knownFsCommit = null
-
-            pulled.onFailure { err ->
+            pulled.onSuccess {
+                pulledFiles = true
+            }.onFailure { err ->
                 isError = true
-                conflicted = err is GitException && err.type == GitExceptionType.MergeConflict
+                // a conflict is written into the notes, so it is something the
+                // list has to be told about like any other pull
+                pulledFiles = err is GitException && err.type == GitExceptionType.MergeConflict
                 reportSyncFailure(err)
             }
         }
 
-        // Also runs without a remote: the local commits still have to reach the
-        // database. A conflict is written into the notes without HEAD moving,
-        // so it takes a rebuild that does not ask whether the commit changed —
-        // otherwise the conflict would be in the files and nowhere on screen.
-        updateDatabaseWithoutLocker(force = conflicted).onFailure { err ->
-            failSync(err.message)
-            return failure(err)
+        // Only what a pull wrote is worth reading again: it is the one thing
+        // here that touches the working tree. A conflict counts as well — it is
+        // written into the notes without HEAD moving, and without this it would
+        // be in the files and nowhere on screen.
+        if (pulledFiles) {
+            rebuildIndexWithoutLocker().onFailure { err ->
+                failSync(err.message)
+                return failure(err)
+            }
         }
 
         // Not after a pull that did not go through: the push would be refused
