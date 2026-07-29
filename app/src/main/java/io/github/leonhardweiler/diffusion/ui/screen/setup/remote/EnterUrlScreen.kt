@@ -100,7 +100,7 @@ fun EnterUrlScreen(
                     scope.launch {
                         if (NetworkPermissionHelper.requiresLocalNetworkPermission(urlText) && !NetworkPermissionHelper.isPermissionGranted(context)) {
                             pendingUrl.value = urlText
-                            nearbyPermissionLauncher.launch(android.Manifest.permission.ACCESS_LOCAL_NETWORK)
+                            nearbyPermissionLauncher.launch(NetworkPermissionHelper.PERMISSION)
                         } else {
                             onUrl(urlText)
                         }

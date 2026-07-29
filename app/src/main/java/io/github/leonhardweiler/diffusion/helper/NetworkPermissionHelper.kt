@@ -1,6 +1,7 @@
 package io.github.leonhardweiler.diffusion.helper
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Build
 import androidx.core.content.PermissionChecker
@@ -11,12 +12,22 @@ import kotlinx.coroutines.withContext
 
 class NetworkPermissionHelper {
     companion object {
+
+        /**
+         * What a repository on the local network needs, from Android 37 on.
+         *
+         * The constant is a plain string and is copied into this class file
+         * rather than looked up on the platform — which is what makes naming it
+         * on an older device harmless, and it is never asked for there anyway:
+         * [isPermissionGranted] answers true below 37.
+         */
+        @SuppressLint("InlinedApi")
+        val PERMISSION: String = Manifest.permission.ACCESS_LOCAL_NETWORK
+
         fun isPermissionGranted(context: Context): Boolean {
             if (Build.VERSION.SDK_INT < 37) return true
-            return PermissionChecker.checkSelfPermission(
-                context,
-                Manifest.permission.ACCESS_LOCAL_NETWORK
-            ) == PermissionChecker.PERMISSION_GRANTED
+            return PermissionChecker.checkSelfPermission(context, PERMISSION) ==
+                    PermissionChecker.PERMISSION_GRANTED
         }
 
         suspend fun requiresLocalNetworkPermission(urlString: String): Boolean = withContext(Dispatchers.IO) {

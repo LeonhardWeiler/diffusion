@@ -118,8 +118,15 @@ android {
     }
 
     lint {
-        abortOnError = false
+        // A lint error stops the build. It could not before, which meant a new
+        // critical finding would have gone past in the same silence the nine
+        // harmless warnings do.
+        abortOnError = true
         checkReleaseBuilds = false
+
+        // "a newer AGP is available" is not something the code can be wrong
+        // about, and it would break the build on its own schedule.
+        disable += "AndroidGradlePluginVersion"
     }
 
 }
