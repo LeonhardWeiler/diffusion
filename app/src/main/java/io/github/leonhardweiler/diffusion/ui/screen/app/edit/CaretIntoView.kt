@@ -99,14 +99,7 @@ internal class CaretScroller(private val scrollState: ScrollState) {
         val viewport = scrollState.viewportSize
         if (viewport <= 0) return
 
-        val margin = caret.height
-        val top = scrollState.value
-        val target = when {
-            caret.top - margin < top -> caret.top - margin
-            caret.bottom + margin > top + viewport -> caret.bottom + margin - viewport
-            // already there, and moving anyway is the other way of being wrong
-            else -> return
-        }
+        val target = scrollTargetFor(caret, scrollState.value, viewport) ?: return
 
         scrollTo(target)
     }
@@ -131,16 +124,45 @@ internal class CaretScroller(private val scrollState: ScrollState) {
         val viewport = scrollState.viewportSize
         if (viewport <= 0) return
 
-        val top = scrollState.value
-        if (caret.top >= top && caret.bottom <= top + viewport) return
+        val target = centreTargetFor(caret, scrollState.value, viewport) ?: return
 
-        scrollTo(caret.center.y - viewport / 2f)
+        scrollTo(target)
     }
 
     /** Instantly, never animated: this is a correction, not a movement. */
     private suspend fun scrollTo(target: Float) {
         scrollState.scrollTo(target.roundToInt().coerceIn(0, scrollState.maxValue))
     }
+}
+
+/**
+ * Where the column has to stand for [caret] to be readable, or null when it
+ * already is — and a caret one can see is not one to move the note for.
+ *
+ * A line of the caret's own height is left on either side. A caret pressed
+ * against the very edge is one you cannot read the line under, and every
+ * further character would ask for the same scroll again.
+ */
+internal fun scrollTargetFor(caret: Rect, top: Int, viewport: Int): Float? {
+    val margin = caret.height
+
+    return when {
+        caret.top - margin < top -> caret.top - margin
+        caret.bottom + margin > top + viewport -> caret.bottom + margin - viewport
+        else -> null
+    }
+}
+
+/**
+ * Where it has to stand for [caret] to sit in the middle of the viewport, or
+ * null when the caret can be seen at all — this is the correction for a
+ * keyboard that has just covered it, and bringing it just far enough would
+ * leave it lying on the keys.
+ */
+internal fun centreTargetFor(caret: Rect, top: Int, viewport: Int): Float? {
+    if (caret.top >= top && caret.bottom <= top + viewport) return null
+
+    return caret.center.y - viewport / 2f
 }
 
 /**

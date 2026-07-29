@@ -77,7 +77,7 @@ private fun SortOrder.orderBy(nameColumn: String, dateColumn: String): String = 
  * Room only supports FTS4, whose MATCH syntax gives some characters a meaning
  * the user did not type. Quote the whole query as soon as one turns up.
  */
-private fun ftsEscape(query: String): String {
+internal fun ftsEscape(query: String): String {
     val specialChars =
         listOf("\"", "*", "-", "(", ")", "<", ">", ":", "^", "~", "'", "AND", "OR", "NOT")
 

@@ -99,3 +99,14 @@ fun requireNotEndOrStartWithSlash(str: String) {
     }
     require(requirement)
 }
+
+/**
+ * The same place, read from [newPrefix] instead of from [oldPrefix].
+ *
+ * What a folder move does to every path under it. The prefix is a whole path,
+ * so `a/b` moved to `c` turns `a/b/note.md` into `c/note.md` and leaves `a/bc`
+ * alone — which is why the caller asks about the folder itself and about paths
+ * that begin with it and a slash, and never about the string alone.
+ */
+fun movedUnder(path: String, oldPrefix: String, newPrefix: String): String =
+    newPrefix + path.substring(oldPrefix.length)

@@ -11,6 +11,7 @@ import io.github.leonhardweiler.diffusion.data.room.Note
 import io.github.leonhardweiler.diffusion.data.room.NoteFolder
 import io.github.leonhardweiler.diffusion.data.room.RepoDatabase
 import io.github.leonhardweiler.diffusion.helper.getParentPath
+import io.github.leonhardweiler.diffusion.helper.movedUnder
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -473,7 +474,7 @@ class StorageManager {
 
             folders.forEach { folder ->
                 dao.insertNoteFolderRow(
-                    folder.copy(relativePath = folder.relativePath.movedFrom(oldPath, newRelativePath))
+                    folder.copy(relativePath = movedUnder(folder.relativePath, oldPath, newRelativePath))
                 )
             }
 
@@ -482,7 +483,7 @@ class StorageManager {
                 // derived again instead of keeping the ones they had
                 dao.insertNoteRow(
                     Note(
-                        relativePath = note.relativePath.movedFrom(oldPath, newRelativePath),
+                        relativePath = movedUnder(note.relativePath, oldPath, newRelativePath),
                         content = note.content,
                         lastModifiedTimeMillis = note.lastModifiedTimeMillis,
                         id = note.id,
@@ -493,10 +494,6 @@ class StorageManager {
             success(Unit)
         }
     }
-
-    /** The same path, read from [newPrefix] instead of from [oldPrefix]. */
-    private fun String.movedFrom(oldPrefix: String, newPrefix: String): String =
-        newPrefix + substring(oldPrefix.length)
 
     /** Says why nothing happened, and answers as a failure. */
     private fun complain(@StringRes text: Int, vararg args: Any?): Result<Unit> {

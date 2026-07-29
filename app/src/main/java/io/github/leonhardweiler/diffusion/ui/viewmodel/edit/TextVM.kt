@@ -66,6 +66,26 @@ private const val CHEAP_NOTE_CHARS = 16 * 1024
 /** However large a note gets, this is the longest it goes unwritten while typing. */
 private const val MAX_SAVE_DEBOUNCE_MS = 3_000L
 
+/**
+ * The pause before a note of [length] characters is written to disk.
+ *
+ * A save is not free: the whole file is written out, the row is rewritten, and
+ * the full text search index is built again from it. Half a second is nothing
+ * to ask of a note of a few kilobytes and quite a lot to ask of one with a book
+ * pasted into it — that one was rewritten twice a second for as long as
+ * somebody kept typing in it, which is the disk being busy underneath the thing
+ * that is trying to draw. So the pause grows with the note, up to a ceiling.
+ *
+ * Nothing is risked by waiting longer: leaving the editor, leaving the app and
+ * the view model being cleared all write straight away.
+ */
+internal fun saveDelayMillis(length: Int): Long {
+    if (length <= CHEAP_NOTE_CHARS) return SAVE_DEBOUNCE_MS
+
+    return (SAVE_DEBOUNCE_MS * length / CHEAP_NOTE_CHARS)
+        .coerceAtMost(MAX_SAVE_DEBOUNCE_MS)
+}
+
 open class TextVM() : ViewModel() {
 
     lateinit var editType: EditType
@@ -383,30 +403,9 @@ open class TextVM() : ViewModel() {
     private fun scheduleSave() {
         saveJob?.cancel()
         saveJob = viewModelScope.launch {
-            delay(saveDelayMillis())
+            delay(saveDelayMillis(content.value.text.length))
             saveNow()
         }
-    }
-
-    /**
-     * The pause grows with the note.
-     *
-     * A save is not free: the whole file is written out, the row is rewritten,
-     * and the full text search index is built again from it. Half a second is
-     * nothing to ask of a note of a few kilobytes and quite a lot to ask of one
-     * with a book pasted into it — that one was rewritten twice a second for as
-     * long as somebody kept typing in it, which is the disk being busy
-     * underneath the thing that is trying to draw.
-     *
-     * Nothing is risked by waiting longer: leaving the editor, leaving the app
-     * and the view model being cleared all write straight away.
-     */
-    private fun saveDelayMillis(): Long {
-        val length = content.value.text.length
-        if (length <= CHEAP_NOTE_CHARS) return SAVE_DEBOUNCE_MS
-
-        return (SAVE_DEBOUNCE_MS * length / CHEAP_NOTE_CHARS)
-            .coerceAtMost(MAX_SAVE_DEBOUNCE_MS)
     }
 
     /** The name that was last complained about, so the toast is shown once. */
