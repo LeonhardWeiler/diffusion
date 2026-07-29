@@ -16,6 +16,13 @@ class AppPreferences(
 
     companion object {
         const val DEFAULT_USERNAME = "diffusion"
+
+        /**
+         * How many notes are remembered as being read rather than written. A
+         * repository can hold ten thousand of them, and this is one preference
+         * that is read whenever a note is opened.
+         */
+        const val MAX_REMEMBERED_READING_NOTES = 200
     }
 
     val theme = enumPreference("theme", Theme.SYSTEM)
@@ -138,8 +145,44 @@ class AppPreferences(
         knownRepoPath = null
     }
 
-    val isReadOnlyModeActive = booleanPreference("isReadOnlyModeActive", false)
+    /**
+     * The notes that were last left in reading mode, by relative path, one per
+     * line.
+     *
+     * Reading or writing belongs to the note, not to the app: one note is a page
+     * to read and the next is a list to tick off, and the switch in the search
+     * bar's menu was a single answer for all of them — turned on to read one note
+     * and then in the way of every note after it. There is no setting anymore.
+     * The eye above an open note is the whole of it, and what it decides is
+     * remembered for that note.
+     *
+     * By path, because that is the only name a note has between two runs: an id
+     * is made up again every time the repository is read. A note that is renamed
+     * is therefore one this has never seen and opens for writing again, which
+     * costs one tap. A path cannot hold a newline (NameValidation refuses it), so
+     * one per line is a list that reads back.
+     *
+     * The most recently switched are at the end, and only
+     * [MAX_REMEMBERED_READING_NOTES] of them are kept.
+     */
+    private val readingModeNotes = stringPreference("readingModeNotes")
 
+    /** Whether this note was left being read. Written notes are not listed. */
+    fun opensInReadingMode(relativePath: String): Boolean =
+        readingModeNotes.getBlocking().lineSequence().any { it == relativePath }
+
+    suspend fun setReadingMode(relativePath: String, reading: Boolean) {
+        val kept = readingModeNotes.get()
+            .lineSequence()
+            .filter { it.isNotEmpty() && it != relativePath }
+            .toMutableList()
+
+        if (reading) kept += relativePath
+
+        readingModeNotes.update(
+            kept.takeLast(MAX_REMEMBERED_READING_NOTES).joinToString("\n")
+        )
+    }
 }
 
 

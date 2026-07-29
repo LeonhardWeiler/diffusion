@@ -109,8 +109,7 @@ fun EditScreen(
     // way back was the very button that put it there.
     val hasReadingMode = vm is MarkDownVM
 
-    val isReadOnlyModeActive = hasReadingMode &&
-            vm.prefs.isReadOnlyModeActive.getAsState().value
+    val isReadOnlyModeActive = hasReadingMode && vm.isReading.value
 
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,

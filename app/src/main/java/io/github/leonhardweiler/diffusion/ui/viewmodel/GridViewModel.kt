@@ -118,10 +118,6 @@ class GridViewModel : ViewModel() {
     }
 
 
-    fun updateSettings(f: suspend AppPreferences.() -> Unit) {
-        viewModelScope.launch { prefs.f() }
-    }
-
     fun search(query: String) {
         viewModelScope.launch {
             _query.emit(query)

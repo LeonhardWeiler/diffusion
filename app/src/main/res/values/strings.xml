@@ -121,8 +121,6 @@
 
     <string name="edit_note">Edit the note</string>
     <string name="view_note">View the note</string>
-    <string name="read_only_mode_activate">Activate read only mode</string>
-    <string name="read_only_mode_deactive">Deactivate read only mode</string>
     <string name="url_explain_enter_url">Enter the Git clone URL</string>
     <string name="next">Next</string>
     <string name="ssh_keys_setup_title">In order to access this repository, this public key must be copied as a deploy key</string>

@@ -31,7 +31,6 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import io.github.leonhardweiler.diffusion.BuildConfig
 import io.github.leonhardweiler.diffusion.R
-import io.github.leonhardweiler.diffusion.data.AppPreferences
 import io.github.leonhardweiler.diffusion.manager.SyncState
 import io.github.leonhardweiler.diffusion.ui.component.CustomDropDown
 import io.github.leonhardweiler.diffusion.ui.component.CustomDropDownModel
@@ -50,8 +49,6 @@ internal fun SearchBar(
     syncState: SyncState,
     hasLocalChanges: Boolean,
     onSyncClick: () -> Unit,
-    isReadOnlyModeActive: Boolean,
-    updateSettings: (suspend AppPreferences.() -> Unit) -> Unit,
 ) {
 
 
@@ -136,6 +133,9 @@ internal fun SearchBar(
                         }
 
 
+                        // Reading or writing is not in here anymore: it was one
+                        // switch for every note in the repository, and it is the
+                        // eye above an open note now, remembered per note.
                         @Suppress("KotlinConstantConditions", "SimplifyBooleanWithConstants")
                         CustomDropDown(
                             expanded = expanded,
@@ -143,16 +143,6 @@ internal fun SearchBar(
                                 CustomDropDownModel(
                                     text = stringResource(R.string.settings),
                                     onClick = onSettingsClick
-                                ),
-                                CustomDropDownModel(
-                                    text = if (isReadOnlyModeActive) stringResource(
-                                        R.string.read_only_mode_deactive
-                                    ) else stringResource(R.string.read_only_mode_activate),
-                                    onClick = {
-                                        updateSettings {
-                                            this.isReadOnlyModeActive.update(!isReadOnlyModeActive)
-                                        }
-                                    }
                                 ),
                                 if (BuildConfig.BUILD_TYPE != "release") {
                                     CustomDropDownModel(

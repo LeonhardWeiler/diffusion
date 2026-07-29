@@ -111,6 +111,7 @@ open class TextVM() : ViewModel() {
 
         this.previousNote = previousNote
         this.openedNote = previousNote
+        _isReading.value = prefs.opensInReadingMode(previousNote.relativePath)
 
         val textFieldValue = TextFieldValue(
             previousNote.content,
@@ -159,9 +160,21 @@ open class TextVM() : ViewModel() {
         scheduleSave()
     }
 
+    /**
+     * Whether this note is being read rather than written.
+     *
+     * The note's own answer, not the app's: see
+     * [io.github.leonhardweiler.diffusion.data.AppPreferences.opensInReadingMode].
+     * A note nobody has ever switched opens for writing.
+     */
+    private val _isReading = mutableStateOf(false)
+    val isReading: State<Boolean> get() = _isReading
+
     fun setReadOnlyMode(value: Boolean) {
+        _isReading.value = value
+
         viewModelScope.launch {
-            prefs.isReadOnlyModeActive.update(value)
+            prefs.setReadingMode(previousNote.relativePath, value)
         }
     }
 

@@ -12,7 +12,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import io.github.leonhardweiler.diffusion.data.AppPreferences
 import io.github.leonhardweiler.diffusion.manager.SyncState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -42,8 +41,6 @@ fun TopBar(
     syncState: SyncState,
     hasLocalChanges: Boolean,
     onSyncClick: () -> Unit,
-    isReadOnlyModeActive: Boolean,
-    updateSettings: (suspend AppPreferences.() -> Unit) -> Unit,
     unselectAll: () -> Unit,
     selectAll: () -> Unit,
     deleteSelection: () -> Unit,
@@ -73,8 +70,6 @@ fun TopBar(
                 syncState = syncState,
                 hasLocalChanges = hasLocalChanges,
                 onSyncClick = onSyncClick,
-                isReadOnlyModeActive = isReadOnlyModeActive,
-                updateSettings = updateSettings,
             )
         } else {
             SelectableTopBar(
@@ -103,8 +98,6 @@ private fun TopBarPreview() {
         syncState = SyncState.Error("hello"),
         hasLocalChanges = true,
         onSyncClick = {},
-        isReadOnlyModeActive = true,
-        updateSettings = { },
         selectionSize = 0,
         selectedFolderCount = 0,
         unselectAll = { },
