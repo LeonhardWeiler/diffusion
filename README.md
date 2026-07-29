@@ -70,10 +70,6 @@ _Supported Architecture: `arm64-v8a`, `x86_64`_
 - Android does not differentiate case for file name, so if you have a folder named `A` and another folder named `a`, `a` will not be displayed.
 - Conflicts are resolved by hand, in the note. When the same note was changed here and on the remote, the sync stops and reports which notes it could not merge. Both versions are then in the note, between `<<<<<<<` and `>>>>>>>` markers: edit it down to what you want to keep and sync again, and that sync is what finishes the merge. Until then every sync refuses to commit, so the markers cannot end up in the history by themselves.
 
-## Contributing
-
-See [this file](./CONTRIBUTING.md).
-
 ## Credits
 
 Diffusion is a fork of GitNote, created by

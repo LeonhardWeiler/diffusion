@@ -38,3 +38,11 @@ To do that,
 4. `make build_install` (you can add `DEBUG=0` for a release build). This will also copy the build artifacts to the jni folders
 
 Et voilà!
+
+### File extensions
+
+Which extensions count as a note is decided in
+[`app/src/main/rust/supported_extensions`](./app/src/main/rust/supported_extensions).
+The lists are embedded at compile time and looked up with a binary search, so
+they have to stay sorted — `just sort-supported-extension` does that, and so
+does every Rust build. Adding one therefore means rebuilding the `.so`.
