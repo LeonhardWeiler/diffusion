@@ -21,8 +21,6 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.lifecycle.viewModelScope
-import dev.olshevski.navigation.reimagined.NavController
-import dev.olshevski.navigation.reimagined.navigate
 import io.github.leonhardweiler.diffusion.BuildConfig
 import io.github.leonhardweiler.diffusion.R
 import io.github.leonhardweiler.diffusion.manager.browserUrlLib
@@ -43,7 +41,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun SettingsScreen(
     onBackClick: () -> Unit,
-    navController: NavController<SettingsDestination>,
+    onShowLogs: () -> Unit,
     onCloseRepo: () -> Unit,
     vm: SettingsViewModel
 ) {
@@ -238,7 +236,7 @@ fun SettingsScreen(
                 title = stringResource(R.string.show_logs),
                 startIcon = Icons.AutoMirrored.Filled.Article,
                 onClick = {
-                    navController.navigate(SettingsDestination.Logs)
+                    onShowLogs()
                 }
             )
 

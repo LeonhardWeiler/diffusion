@@ -8,18 +8,15 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.viewmodel.compose.viewModel
-import dev.olshevski.navigation.reimagined.AnimatedNavHost
-import dev.olshevski.navigation.reimagined.NavBackHandler
-import dev.olshevski.navigation.reimagined.navigate
-import dev.olshevski.navigation.reimagined.popAll
-import dev.olshevski.navigation.reimagined.popUpTo
-import dev.olshevski.navigation.reimagined.rememberNavController
+import io.github.leonhardweiler.diffusion.ui.navigation.NavHost
+import io.github.leonhardweiler.diffusion.ui.navigation.rememberBackstack
 import io.github.leonhardweiler.diffusion.ui.destination.AppDestination
 import io.github.leonhardweiler.diffusion.ui.destination.Destination
 import io.github.leonhardweiler.diffusion.ui.destination.SetupDestination
 import io.github.leonhardweiler.diffusion.ui.screen.app.AppScreen
 import io.github.leonhardweiler.diffusion.ui.screen.setup.SetupNav
 import io.github.leonhardweiler.diffusion.ui.theme.DiffusionTheme
+import io.github.leonhardweiler.diffusion.ui.utils.crossFade
 import io.github.leonhardweiler.diffusion.ui.theme.Theme
 import io.github.leonhardweiler.diffusion.ui.viewmodel.MainViewModel
 import kotlinx.coroutines.launch
@@ -57,35 +54,28 @@ class MainActivity : ComponentActivity() {
                     } else Destination.Setup(SetupDestination.Main)
                 }
 
-                val navController =
-                    rememberNavController(startDestination = startDestination)
+                val backstack = rememberBackstack(startDestination)
 
-                NavBackHandler(navController)
-
-                AnimatedNavHost(
-                    controller = navController
+                NavHost(
+                    backstack = backstack,
+                    // The setup and the app are not two steps of one path, so
+                    // neither slides into the other.
+                    transition = { _, _, _ -> crossFade() },
                 ) { destination ->
                     when (destination) {
-                        is Destination.Setup -> {
-                            SetupNav(
-                                startDestination = destination.setupDestination,
-                                onSetupSuccess = {
-                                    navController.popUpTo(
-                                        inclusive = true
-                                    ) {
-                                        it is Destination.Setup
-                                    }
-                                    navController.navigate(Destination.App(AppDestination.Grid))
-                                }
-                            )
-                        }
-
+                        is Destination.Setup -> SetupNav(
+                            startDestination = destination.setupDestination,
+                            onSetupSuccess = {
+                                backstack.replaceAll(Destination.App(AppDestination.Grid))
+                            }
+                        )
 
                         is Destination.App -> AppScreen(
                             appDestination = destination.appDestination,
                             onCloseRepo = {
-                                navController.popAll()
-                                navController.navigate(Destination.Setup(SetupDestination.Main))
+                                backstack.replaceAll(
+                                    Destination.Setup(SetupDestination.Main)
+                                )
                             }
                         )
                     }

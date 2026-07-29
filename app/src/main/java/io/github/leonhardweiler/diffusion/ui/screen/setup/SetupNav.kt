@@ -1,20 +1,12 @@
 package io.github.leonhardweiler.diffusion.ui.screen.setup
 
-import androidx.compose.animation.ContentTransform
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.viewmodel.compose.viewModel
-import dev.olshevski.navigation.reimagined.AnimatedNavHost
-import dev.olshevski.navigation.reimagined.NavAction
-import dev.olshevski.navigation.reimagined.NavBackHandler
-import dev.olshevski.navigation.reimagined.NavTransitionScope
-import dev.olshevski.navigation.reimagined.NavTransitionSpec
-import dev.olshevski.navigation.reimagined.navigate
-import dev.olshevski.navigation.reimagined.pop
-import dev.olshevski.navigation.reimagined.rememberNavController
+import io.github.leonhardweiler.diffusion.ui.navigation.NavHost
+import io.github.leonhardweiler.diffusion.ui.navigation.rememberBackstack
 import io.github.leonhardweiler.diffusion.ui.destination.SetupDestination
 import io.github.leonhardweiler.diffusion.ui.screen.setup.remote.RemoteScreen
-import io.github.leonhardweiler.diffusion.ui.utils.crossFade
 import io.github.leonhardweiler.diffusion.ui.utils.slide
 import io.github.leonhardweiler.diffusion.ui.viewmodel.SetupViewModel
 
@@ -28,14 +20,11 @@ fun SetupNav(
 
     val vm: SetupViewModel = viewModel()
 
-    val navController =
-        rememberNavController(startDestination = startDestination)
+    val backstack = rememberBackstack(startDestination)
 
-    NavBackHandler(navController)
-
-    AnimatedNavHost(
-        controller = navController,
-        transitionSpec = InitNavTransitionSpec
+    NavHost(
+        backstack = backstack,
+        transition = { _, _, wentBack -> slide(backWard = wentBack) },
     ) { setupDestination ->
         when (setupDestination) {
 
@@ -43,7 +32,7 @@ fun SetupNav(
                 openRepo = vm::openRepo,
                 checkPathForClone = vm::checkPathForClone,
                 makeToast = vm.uiHelper::makeToast,
-                navigate = navController::navigate,
+                navigate = backstack::navigate,
                 onSetupSuccess = onSetupSuccess,
                 initState = vm.initState.collectAsState().value,
             )
@@ -53,32 +42,9 @@ fun SetupNav(
                 storageConfig = setupDestination.storageConfig,
                 openedRemoteUrl = setupDestination.openedRemoteUrl,
                 onInitSuccess = onSetupSuccess,
-                onBackClick = {
-                    navController.pop()
-                }
+                onBackClick = { backstack.pop() }
             )
         }
     }
 }
 
-private object InitNavTransitionSpec : NavTransitionSpec<SetupDestination> {
-
-    override fun NavTransitionScope.getContentTransform(
-        action: NavAction,
-        from: SetupDestination,
-        to: SetupDestination
-    ): ContentTransform {
-
-        return when (from) {
-            SetupDestination.Main -> when (to) {
-                SetupDestination.Main -> crossFade()
-                is SetupDestination.Remote -> slide()
-            }
-
-            is SetupDestination.Remote -> when (to) {
-                SetupDestination.Main -> slide(backWard = true)
-                is SetupDestination.Remote -> crossFade()
-            }
-        }
-    }
-}

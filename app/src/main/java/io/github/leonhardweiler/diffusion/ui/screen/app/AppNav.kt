@@ -3,14 +3,8 @@ package io.github.leonhardweiler.diffusion.ui.screen.app
 import android.util.Log
 import androidx.compose.animation.ContentTransform
 import androidx.compose.runtime.Composable
-import dev.olshevski.navigation.reimagined.AnimatedNavHost
-import dev.olshevski.navigation.reimagined.NavAction
-import dev.olshevski.navigation.reimagined.NavBackHandler
-import dev.olshevski.navigation.reimagined.NavTransitionScope
-import dev.olshevski.navigation.reimagined.NavTransitionSpec
-import dev.olshevski.navigation.reimagined.navigate
-import dev.olshevski.navigation.reimagined.pop
-import dev.olshevski.navigation.reimagined.rememberNavController
+import io.github.leonhardweiler.diffusion.ui.navigation.NavHost
+import io.github.leonhardweiler.diffusion.ui.navigation.rememberBackstack
 import io.github.leonhardweiler.diffusion.ui.destination.AppDestination
 import io.github.leonhardweiler.diffusion.ui.destination.EditParams
 import io.github.leonhardweiler.diffusion.ui.destination.SettingsDestination
@@ -29,27 +23,25 @@ fun AppScreen(
     onCloseRepo: () -> Unit,
 ) {
 
-    val navController = rememberNavController(appDestination)
+    val backstack = rememberBackstack(appDestination)
 
-    NavBackHandler(navController)
-
-    AnimatedNavHost(
-        controller = navController,
-        transitionSpec = AppNavTransitionSpec
+    NavHost(
+        backstack = backstack,
+        transition = ::appTransition,
     ) {
         when (it) {
 
             is AppDestination.Grid -> {
                 GridScreen(
                     onSettingsClick = {
-                        navController.navigate(
+                        backstack.navigate(
                             AppDestination.Settings(
                                 SettingsDestination.Main
                             )
                         )
                     },
                     onEditClick = { note, editType ->
-                        navController.navigate(AppDestination.Edit(EditParams(note, editType)))
+                        backstack.navigate(AppDestination.Edit(EditParams(note, editType)))
                     },
                 )
             }
@@ -57,12 +49,12 @@ fun AppScreen(
             is AppDestination.Edit -> EditScreen(
                 editParams = it.params,
                 onFinished = {
-                    navController.pop()
+                    backstack.pop()
                 }
             )
 
             is AppDestination.Settings -> SettingsNav(
-                onBackClick = { navController.pop() },
+                onBackClick = { backstack.pop() },
                 destination = it.settingsDestination,
                 onCloseRepo = onCloseRepo
             )
@@ -70,26 +62,13 @@ fun AppScreen(
     }
 }
 
-private object AppNavTransitionSpec : NavTransitionSpec<AppDestination> {
-
-    override fun NavTransitionScope.getContentTransform(
-        action: NavAction,
-        from: AppDestination,
-        to: AppDestination
-    ): ContentTransform {
-
-        return when (from) {
-            is AppDestination.Edit -> crossFade()
-            AppDestination.Grid -> {
-                if (to is AppDestination.Settings) {
-                    slide()
-                } else {
-                    crossFade()
-                }
-            }
-
-            is AppDestination.Settings -> slide(backWard = true)
-        }
-    }
+/** Settings slide in from the side; the editor fades, because it is the note. */
+private fun appTransition(
+    from: AppDestination,
+    to: AppDestination,
+    wentBack: Boolean,
+): ContentTransform = when {
+    from is AppDestination.Settings || to is AppDestination.Settings -> slide(backWard = wentBack)
+    else -> crossFade()
 }
 

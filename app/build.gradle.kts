@@ -8,7 +8,8 @@ plugins {
     alias(libs.plugins.compose.compiler)
     // for room
     alias(libs.plugins.ksp)
-    // for compose navigation
+    // @Parcelize on the navigation destinations, which is what lets the
+    // backstack survive the process being killed
     id("kotlin-parcelize")
     // consumes what :baselineprofile records
     alias(libs.plugins.baselineprofile)
@@ -153,6 +154,8 @@ dependencies {
     implementation(libs.profileinstaller)
     implementation(libs.lifecycle.runtime.ktx)
     implementation(libs.lifecycle.runtime.compose)
+    // viewModel() and LocalViewModelStoreOwner, which ui/navigation scopes per screen
+    implementation(libs.lifecycle.viewmodel.compose)
     implementation(libs.activity.compose)
     implementation(libs.datastore.preferences)
 
@@ -183,9 +186,6 @@ dependencies {
     implementation(libs.paging)
     implementation(libs.paging.compose)
     implementation(libs.room.paging)
-
-    // Compose Navigation
-    implementation(libs.reimagined.navigation)
 
     // Markdown
     implementation(libs.compose.markdown.core)

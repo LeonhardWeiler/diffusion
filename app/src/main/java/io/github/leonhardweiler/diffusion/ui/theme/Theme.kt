@@ -121,20 +121,12 @@ fun DiffusionTheme(
     // A light theme has nothing to switch off, so the setting says nothing
     // there rather than turning the app inside out.
     if (darkTheme && pureBlack) colorScheme = colorScheme.pureBlack()
-
-
-    CompositionLocalProvider(
-        LocalSpaces provides Spaces()
-    ) {
-        MaterialTheme(
-            colorScheme = colorScheme,
-            typography = Typography,
-            shapes = Shape,
-            content = content
-        )
-    }
-
-
+    MaterialTheme(
+        colorScheme = colorScheme,
+        typography = Typography,
+        shapes = Shape,
+        content = content
+    )
 }
 
 enum class Theme {

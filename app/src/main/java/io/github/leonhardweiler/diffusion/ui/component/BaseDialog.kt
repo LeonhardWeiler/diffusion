@@ -16,6 +16,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import io.github.leonhardweiler.diffusion.ui.utils.conditional
 
+/**
+ * Between what a dialog says and the buttons that answer it. Enough that the
+ * answer is not tapped by the finger that opened the dialog.
+ */
+val DialogSeparation = 80.dp
+
 @Composable
 fun BaseDialog(
     expanded: MutableState<Boolean>,

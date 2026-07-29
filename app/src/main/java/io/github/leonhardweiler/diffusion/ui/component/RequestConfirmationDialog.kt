@@ -26,7 +26,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import io.github.leonhardweiler.diffusion.R
-import io.github.leonhardweiler.diffusion.ui.theme.LocalSpaces
 
 @Composable
 fun RequestConfirmationDialog(
@@ -56,7 +55,7 @@ fun RequestConfirmationDialog(
             )
         }
 
-        Spacer(modifier = Modifier.height(LocalSpaces.current.dialogSeparation))
+        Spacer(modifier = Modifier.height(DialogSeparation))
 
         Row(
             modifier = Modifier
