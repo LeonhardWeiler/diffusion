@@ -14,7 +14,6 @@ use jni::{Env, jni_sig, jni_str};
 /// username and password pair went with https.
 pub enum Cred {
     Ssh {
-        username: String,
         public_key: String,
         private_key: String,
         passphrase: Option<String>,
@@ -39,13 +38,11 @@ impl Debug for Cred {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Ssh {
-                username,
                 public_key,
                 private_key: _private_key,
                 passphrase: _passphrase,
             } => f
                 .debug_struct("Ssh")
-                .field("username", username)
                 .field("public_key", public_key)
                 .finish(),
         }
@@ -102,14 +99,12 @@ impl Cred {
 
         match class_name.as_str() {
             "io.github.leonhardweiler.diffusion.ui.model.Cred$Ssh" => {
-                let username = jstring_field!(env, cred_obj, "username");
                 let public_key = jstring_field!(env, cred_obj, "publicKey");
 
                 let private_key = jstring_field!(env, cred_obj, "privateKey");
                 let passphrase = jstring_field_nullable!(env, cred_obj, "passphrase");
 
                 Ok(Some(Cred::Ssh {
-                    username,
                     public_key,
                     private_key,
                     passphrase,

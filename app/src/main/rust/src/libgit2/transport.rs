@@ -103,15 +103,23 @@ pub(super) fn certificate_check(
     }
 }
 
-pub(super) fn credential_helper(cred: &Cred) -> Result<git2::Cred, git2::Error> {
+/// Who we say we are is read off the url, not stored: `ssh://tom@host/notes.git`
+/// authenticates as `tom`, and it used to authenticate as `git` because that was
+/// the only name the app ever put into a [Cred]. libgit2 hands the name from the
+/// url to this callback and leaves it out when the url carries none — which is
+/// the one case that still falls back to `git`, the name every hosted forge
+/// answers to.
+pub(super) fn credential_helper(
+    cred: &Cred,
+    username_from_url: Option<&str>,
+) -> Result<git2::Cred, git2::Error> {
     match cred {
         Cred::Ssh {
-            username,
             private_key,
             public_key,
             passphrase,
         } => git2::Cred::ssh_key_from_memory(
-            username,
+            username_from_url.unwrap_or("git"),
             Some(public_key),
             private_key,
             passphrase.as_deref(),

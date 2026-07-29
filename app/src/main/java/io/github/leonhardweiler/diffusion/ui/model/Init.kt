@@ -8,18 +8,22 @@ import kotlinx.parcelize.Parcelize
 /**
  * How the remote is authenticated against, which is with an ssh key and nothing
  * else. Username and password used to be the other way; it went with https.
+ *
+ * There is no username here: the name to log in as is the one standing in the
+ * remote url, and the rust side reads it off the url libgit2 is dialling rather
+ * than off this. A field carrying "git" for everyone was a repository on a host
+ * that answers to another name failing at authentication.
  */
 @Parcelize
 sealed class Cred : Parcelable {
 
     data class Ssh(
-        val username: String = "git",
         val publicKey: String,
         val privateKey: String,
         val passphrase: String?,
     ) : Cred() {
         override fun toString(): String {
-            return "Ssh(username=$username, publicKey=$publicKey, privateKeyLen=${privateKey.length}, passphraseLen=${passphrase?.length})"
+            return "Ssh(publicKey=$publicKey, privateKeyLen=${privateKey.length}, passphraseLen=${passphrase?.length})"
         }
     }
 }

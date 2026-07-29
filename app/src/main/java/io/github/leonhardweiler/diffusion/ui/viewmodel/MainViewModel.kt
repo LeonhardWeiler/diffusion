@@ -43,7 +43,23 @@ class MainViewModel : ViewModel() {
         storageManager.closeRepo()
     }
 
+    /**
+     * Opens the stored repository and reads it, and says whether that worked.
+     *
+     * Called at every creation of the activity, which is not the same as every
+     * start: a rotation or a theme change builds it again on a process that
+     * already has the repository open, and everything below walks the whole
+     * working tree. So an open repository is answered for straight away —
+     * [io.github.leonhardweiler.diffusion.manager.GitManager.isRepoInitialized]
+     * is the one thing that says whether this process has been through here,
+     * and it dies with the process, which is exactly when the work has to
+     * happen again.
+     */
     suspend fun tryInit(): Boolean {
+
+        if (gitManager.isRepoInitialized) {
+            return true
+        }
 
         if (!prefs.isInit.get()) {
             return false

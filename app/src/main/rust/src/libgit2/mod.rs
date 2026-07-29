@@ -106,8 +106,9 @@ pub fn clone_repo(
     callbacks.certificate_check(certificate_check);
 
     if let Some(cred) = cred {
-        callbacks
-            .credentials(move |_url, _username_from_url, _allowed_types| credential_helper(&cred));
+        callbacks.credentials(move |_url, username_from_url, _allowed_types| {
+            credential_helper(&cred, username_from_url)
+        });
     }
 
     callbacks.transfer_progress(|stats: Progress| {
@@ -481,8 +482,9 @@ pub fn push(cred: Option<Cred>) -> Result<(), Error> {
     callbacks.certificate_check(certificate_check);
 
     if let Some(cred) = cred {
-        callbacks
-            .credentials(move |_url, _username_from_url, _allowed_types| credential_helper(&cred));
+        callbacks.credentials(move |_url, username_from_url, _allowed_types| {
+            credential_helper(&cred, username_from_url)
+        });
     }
 
     let mut push_opts = PushOptions::new();
@@ -510,8 +512,9 @@ pub fn pull(cred: Option<Cred>, author: &GitAuthor) -> Result<(), Error> {
     callbacks.certificate_check(certificate_check);
 
     if let Some(cred) = cred {
-        callbacks
-            .credentials(move |_url, _username_from_url, _allowed_types| credential_helper(&cred));
+        callbacks.credentials(move |_url, username_from_url, _allowed_types| {
+            credential_helper(&cred, username_from_url)
+        });
     }
 
     let mut fetch_options = FetchOptions::new();

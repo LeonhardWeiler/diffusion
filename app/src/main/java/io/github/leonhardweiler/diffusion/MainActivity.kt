@@ -5,9 +5,10 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.leonhardweiler.diffusion.ui.navigation.NavHost
 import io.github.leonhardweiler.diffusion.ui.navigation.rememberBackstack
@@ -45,15 +46,27 @@ class MainActivity : ComponentActivity() {
                 darkTheme = (theme == Theme.SYSTEM && isSystemInDarkTheme()) || theme == Theme.DARK,
             ) {
 
+                // Opening the repository belongs to the process and not to the
+                // saved state, so this is remembered rather than saved: what
+                // tryInit builds — libgit2's open repository and the note index
+                // — is held in memory and is gone when the process is killed,
+                // while the backstack below comes back out of the bundle still
+                // pointing at the app. Held in rememberSaveable, it was a note
+                // list that came up empty with a sync button that could not do
+                // anything, because nothing had opened the repository again.
+                // After the first time it costs nothing: tryInit answers at
+                // once for a repository it has already opened.
+                val repoOpened = remember { runBlocking { vm.tryInit() } }
+
                 // A repository that is set up but cannot be read is not one to
                 // set up again: everything about it is stored, and what is
                 // missing is the permission to read the files. Being sent back
                 // to "open or clone" for that meant picking the same folder
                 // again to arrive at what was already written down — which is
                 // what a new build installed over the old one used to cost.
-                val startDestination: Destination = rememberSaveable {
+                val startDestination: Destination = remember {
                     when {
-                        runBlocking { vm.tryInit() } -> Destination.App(AppDestination.Grid)
+                        repoOpened -> Destination.App(AppDestination.Grid)
 
                         else -> runBlocking { vm.repoAwaitingPermission() }
                             ?.let { Destination.MissingPermission(it) }
@@ -62,6 +75,18 @@ class MainActivity : ComponentActivity() {
                 }
 
                 val backstack = rememberBackstack(startDestination)
+
+                // The other half of that: a restored backstack can be showing
+                // the app while this process failed to open anything at all —
+                // the folder is gone, the permission is not there. The screen
+                // to be on instead has just been worked out. Only ever in that
+                // one direction: a setup that has already opened its repository
+                // is mid-flight and stays where it is.
+                LaunchedEffect(Unit) {
+                    if (!repoOpened && backstack.current is Destination.App) {
+                        backstack.replaceAll(startDestination)
+                    }
+                }
 
                 NavHost(
                     backstack = backstack,
