@@ -127,6 +127,7 @@
     <string name="next">Next</string>
     <string name="ssh_keys_setup_title">In order to access this repository, this public key must be copied as a deploy key</string>
     <string name="copy_the_key">Copy the key</string>
+    <string name="add_key_if_missing">Add this key to the git provider, if it is not there already</string>
     <string name="copy_key">Copy Key</string>
     <string name="regenerate_key">Regenerate Key</string>
     <string name="paste_deploy_key_no_provider">Add the public key to the git provider</string>

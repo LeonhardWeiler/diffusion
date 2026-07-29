@@ -5,6 +5,7 @@ import android.content.ClipDescription
 import android.util.Log
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -14,6 +15,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -123,6 +125,37 @@ fun GenerateNewSshKeysScreen(
             }
         }
 
+        val clipboard = LocalClipboard.current
+
+        fun copyKey() {
+            val data = ClipData(
+                ClipDescription("public ssh key", arrayOf(ClipDescription.MIMETYPE_TEXT_PLAIN)),
+                ClipData.Item(publicKey.value)
+            )
+
+            scope.launch {
+                clipboard.setClipEntry(ClipEntry(data))
+                keyCopied.value = true
+                copyCount.intValue++
+            }
+        }
+
+        fun startClone() {
+            cloneWith(
+                Cred.Ssh(
+                    publicKey = publicKey.value,
+                    privateKey = privateKey.value,
+                    passphrase = passphrase.value
+                )
+            )
+        }
+
+        // the keys are generated off the composition, so for a moment there is
+        // nothing here to authenticate with — and until the key has been copied
+        // it is nowhere the remote could know it
+        val canStart = keyCopied.value &&
+                SshKeyValidation.isKeyPair(publicKey.value, privateKey.value)
+
         SetupPage(
             title = stringResource(
                 if (storedKey == null) {
@@ -133,49 +166,38 @@ fun GenerateNewSshKeysScreen(
             )
         ) {
 
-            SetupLine(
-                text = "1. " + stringResource(R.string.copy_the_key)
-            ) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    tonalElevation = 4.dp,
-                    shadowElevation = 4.dp,
-                    shape = RoundedCornerShape(4.dp)
+            // A key that is already on this device has one thing left to be
+            // done with it and one thing to try afterwards. Copying it and
+            // handing it to the provider are the same step then — it is very
+            // likely there already, and the step says so — and there is nothing
+            // to regenerate, which is what the button on the screen before this
+            // one is for.
+            if (storedKey != null) {
+
+                SetupLine(text = "1. " + stringResource(R.string.add_key_if_missing)) {
+                    KeyBox(publicKey = publicKey.value)
+                    CopyKeyButton(justCopied = justCopied, onCopy = ::copyKey)
+                    OpenRepositoryButton(remoteUrl = remoteUrl)
+                }
+
+                SetupLine(
+                    text = "2. " + stringResource(
+                        if (alreadyOnDevice) R.string.try_syncing else R.string.try_cloning
+                    )
                 ) {
-                    Text(
-                        modifier = Modifier
-                            .padding(8.dp)
-                            .horizontalScroll(rememberScrollState()),
-                        text = publicKey.value,
-                        maxLines = 1
+                    StartButton(
+                        alreadyOnDevice = alreadyOnDevice,
+                        enabled = canStart,
+                        onClick = ::startClone,
                     )
                 }
 
+                return@SetupPage
+            }
 
-                val clipboardManager = LocalClipboard.current
-
-                SetupButton(
-                    text = if (justCopied.value) {
-                        stringResource(R.string.key_copied)
-                    } else {
-                        stringResource(R.string.copy_key)
-                    },
-                    onClick = {
-                        val data = ClipData(
-                            ClipDescription(
-                                "public ssh key",
-                                arrayOf(ClipDescription.MIMETYPE_TEXT_PLAIN)
-                            ),
-                            ClipData.Item(publicKey.value)
-                        )
-
-                        scope.launch {
-                            clipboardManager.setClipEntry(ClipEntry(data))
-                            keyCopied.value = true
-                            copyCount.intValue++
-                        }
-                    }
-                )
+            SetupLine(text = "1. " + stringResource(R.string.copy_the_key)) {
+                KeyBox(publicKey = publicKey.value)
+                CopyKeyButton(justCopied = justCopied, onCopy = ::copyKey)
 
                 SetupButton(
                     text = stringResource(R.string.regenerate_key),
@@ -193,27 +215,9 @@ fun GenerateNewSshKeysScreen(
                 )
             }
 
-
-
-            SetupLine(
-                text = "2. " + stringResource(R.string.paste_deploy_key_no_provider)
-            ) {
-                // The key belongs in the settings of one particular repository,
-                // and its address is the one thing this setup already knows.
-                // Nothing is shown for an address with no page behind it.
-                val webUrl = remember(remoteUrl) { repoWebUrl(remoteUrl) }
-
-                if (webUrl != null) {
-                    val context = LocalContext.current
-
-                    SetupButton(
-                        text = stringResource(R.string.open_git_repository),
-                        link = true,
-                        onClick = { openUrlInBrowser(context, webUrl) }
-                    )
-                }
+            SetupLine(text = "2. " + stringResource(R.string.paste_deploy_key_no_provider)) {
+                OpenRepositoryButton(remoteUrl = remoteUrl)
             }
-
 
             SetupLine(
                 text = "3. " + stringResource(
@@ -233,28 +237,75 @@ fun GenerateNewSshKeysScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
 
-                SetupButton(
-                    text = stringResource(
-                        if (alreadyOnDevice) R.string.sync_repo else R.string.clone_repo
-                    ),
-                    // the keys are generated off the composition, so for a moment
-                    // there is nothing here to authenticate with — and until the
-                    // key has been copied it is nowhere the remote could know it
-                    enabled = keyCopied.value
-                            && SshKeyValidation.isKeyPair(publicKey.value, privateKey.value),
-                    onClick = {
-                        cloneWith(
-                            Cred.Ssh(
-                                publicKey = publicKey.value,
-                                privateKey = privateKey.value,
-                                passphrase = passphrase.value
-                            )
-                        )
-                    },
+                StartButton(
+                    alreadyOnDevice = alreadyOnDevice,
+                    enabled = canStart,
+                    onClick = ::startClone,
                 )
             }
         }
     }
+}
+
+/** The public key as it stands, on one line and scrollable sideways. */
+@Composable
+private fun KeyBox(publicKey: String) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        tonalElevation = 4.dp,
+        shadowElevation = 4.dp,
+        shape = RoundedCornerShape(4.dp)
+    ) {
+        Text(
+            modifier = Modifier
+                .padding(8.dp)
+                .horizontalScroll(rememberScrollState()),
+            text = publicKey,
+            maxLines = 1
+        )
+    }
+}
+
+@Composable
+private fun CopyKeyButton(justCopied: MutableState<Boolean>, onCopy: () -> Unit) {
+    SetupButton(
+        text = if (justCopied.value) {
+            stringResource(R.string.key_copied)
+        } else {
+            stringResource(R.string.copy_key)
+        },
+        onClick = onCopy
+    )
+}
+
+/**
+ * The way to where the key belongs, which is the settings of one particular
+ * repository — and its address is the one thing this setup already knows.
+ * Nothing is shown for an address with no page behind it.
+ */
+@Composable
+private fun ColumnScope.OpenRepositoryButton(remoteUrl: String) {
+    val webUrl = remember(remoteUrl) { repoWebUrl(remoteUrl) } ?: return
+
+    val context = LocalContext.current
+
+    SetupButton(
+        text = stringResource(R.string.open_git_repository),
+        link = true,
+        onClick = { openUrlInBrowser(context, webUrl) }
+    )
+}
+
+/** What the whole screen leads to: the first thing that reaches the remote. */
+@Composable
+private fun StartButton(alreadyOnDevice: Boolean, enabled: Boolean, onClick: () -> Unit) {
+    SetupButton(
+        text = stringResource(
+            if (alreadyOnDevice) R.string.sync_repo else R.string.clone_repo
+        ),
+        enabled = enabled,
+        onClick = onClick,
+    )
 }
 
 @Preview
@@ -269,4 +320,22 @@ private fun GenerateNewSshKeysScreenPreview() {
         cloneWith = {},
     )
 
+}
+
+@Preview
+@Composable
+private fun StoredSshKeyScreenPreview() {
+    GenerateNewSshKeysScreen(
+        onBackClick = {},
+        cloneState = InitState.Idle,
+        remoteUrl = "git@github.com:LeonhardWeiler/diffusion.git",
+        alreadyOnDevice = true,
+        generateSshKeys = { "" to "" },
+        cloneWith = {},
+        storedKey = Cred.Ssh(
+            publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIexample",
+            privateKey = "-----BEGIN OPENSSH PRIVATE KEY-----",
+            passphrase = null,
+        ),
+    )
 }
