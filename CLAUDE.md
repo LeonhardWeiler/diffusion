@@ -63,7 +63,7 @@ profiles land in `app/src/<variant>/generated/baselineProfiles/`.
 sit next to what they preview, so the annotation has to compile everywhere, but
 the release must not carry the package.
 
-Build variants: `debug` (`.debug` suffix), `nightly` (release-shrunk, signed with the committed `nightly-signing-key.jks`, `.nightly` suffix), `release` (signing via `KEY_ALIAS`/`KEY_PASSWORD`/`STORE_PASSWORD` env vars + `app/key.jks`). All three share one launcher icon: the per-variant drawables distinguished nothing, and the label already says which build it is. The icon is `assets/app_icon.svg` and everything drawn from it — `drawable/ic_launcher_foreground.xml` and `ic_launcher_monochrome.xml` carry the path as it stands there, the `mipmap-*` webp files are that canvas cropped to the 72 dp a launcher shows of an adaptive icon (the round one clipped to a circle), and `metadata/en-US/images/icon.png` is the whole canvas. Changing the svg means redrawing all of them.
+Build variants: `debug` (`.debug` suffix), `nightly` (release-shrunk, signed with the committed `nightly-signing-key.jks`, `.nightly` suffix), `release` (signing via `KEY_ALIAS`/`KEY_PASSWORD`/`STORE_PASSWORD` env vars + `app/key.jks`). All three share one launcher icon: the per-variant drawables distinguished nothing, and the label already says which build it is. The icon is `assets/app_icon.svg` and everything drawn from it — `drawable/ic_launcher_foreground.xml` and `ic_launcher_monochrome.xml` carry the path as it stands there, and the `mipmap-*` webp files are that canvas cropped to the 72 dp a launcher shows of an adaptive icon, the round one clipped to a circle. Changing the svg means redrawing all of them.
 
 `checkJniLibsAreRelease` runs before every non-debug packaging task and fails above 20 MB per `.so`: `jniLibs` is gitignored and filled by `make build_install`, so a release built after a debug `make` silently carried a 68 MB debug library instead of a 7 MB one.
 
@@ -159,7 +159,7 @@ Preferences are DataStore-backed with a small typed wrapper (`PreferencesManager
 
 ## Conventions
 
-- The app is English only. `app/src/main/res/values/` and `metadata/en-US/` are the only string sources; localisation was removed rather than left half done, so do not add `values-*` directories.
+- The app is English only. `app/src/main/res/values/` is the only string source; localisation was removed rather than left half done, so do not add `values-*` directories.
 - Git LFS is used for `app/src/main/jniLibs/**`, `*.png`, `*.zip` — clone with LFS enabled. The gradle wrapper jar deliberately is **not** in LFS, so `./gradlew` works without it.
 - `app/schemas/` holds exported Room schemas (KSP `room.schemaLocation`); bump `version` in `RepoDatabase` when entities change.
 - The markdown editing lives in `ui/viewmodel/edit/`, split by subject: `MarkdownList.kt` parses a list line, `MarkdownActions.kt` holds the seven button actions, `MarkdownSmartEditor.kt` what enter and delete do by themselves, `TextEdits.kt` the line arithmetic under all of it. `MarkdownEditingTest` pins their behaviour down case by case — change it there first, deliberately, or not at all.
