@@ -1,16 +1,11 @@
 package io.github.leonhardweiler.diffusion.ui.theme
 
-import android.os.Build
-import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import io.github.leonhardweiler.diffusion.MyApp
 import io.github.leonhardweiler.diffusion.R
@@ -45,6 +40,16 @@ private val LightColors = lightColorScheme(
     surfaceTint = md_theme_light_surfaceTint,
     outlineVariant = md_theme_light_outlineVariant,
     scrim = md_theme_light_scrim,
+    // The container family is what Material draws menus and sheets on. Left at
+    // its defaults it is a tinted grey of its own, which is the one place a
+    // colour would have come back in.
+    surfaceDim = md_theme_light_surfaceDim,
+    surfaceBright = md_theme_light_surfaceBright,
+    surfaceContainerLowest = md_theme_light_surfaceContainerLowest,
+    surfaceContainerLow = md_theme_light_surfaceContainerLow,
+    surfaceContainer = md_theme_light_surfaceContainer,
+    surfaceContainerHigh = md_theme_light_surfaceContainerHigh,
+    surfaceContainerHighest = md_theme_light_surfaceContainerHighest,
 )
 
 
@@ -78,50 +83,32 @@ private val DarkColors = darkColorScheme(
     surfaceTint = md_theme_dark_surfaceTint,
     outlineVariant = md_theme_dark_outlineVariant,
     scrim = md_theme_dark_scrim,
+    surfaceDim = md_theme_dark_surfaceDim,
+    surfaceBright = md_theme_dark_surfaceBright,
+    surfaceContainerLowest = md_theme_dark_surfaceContainerLowest,
+    surfaceContainerLow = md_theme_dark_surfaceContainerLow,
+    surfaceContainer = md_theme_dark_surfaceContainer,
+    surfaceContainerHigh = md_theme_dark_surfaceContainerHigh,
+    surfaceContainerHighest = md_theme_dark_surfaceContainerHighest,
 )
 
 /**
- * The dark scheme with everything a page is drawn on set to black.
+ * Two schemes and nothing to choose between them but light and dark.
  *
- * Only the surfaces the app actually covers the screen with, not the
- * containers: an oled screen saves what it does not light, and a note behind a
- * black background is the whole of it. The elevated surfaces stay derived —
- * [surfaceColorAtElevation] tints upwards from `surface`, so a bar above a
+ * There is no dynamic colour: what the wallpaper is has nothing to say about a
+ * page of text, and the app was the same shapes in somebody else's blue. There
+ * is no pure-black setting either — dark *is* black now, which is what it was
+ * offering, and the elevated surfaces stay derived from it
+ * ([surfaceColorAtElevation] tints upwards from `surface`) so a bar above a
  * black page still reads as a bar.
  */
-private fun ColorScheme.pureBlack(): ColorScheme = copy(
-    background = Color.Black,
-    surface = Color.Black,
-    surfaceContainerLowest = Color.Black,
-    surfaceContainerLow = Color.Black,
-)
-
 @Composable
 fun DiffusionTheme(
     darkTheme: Boolean,
-    dynamicColor: Boolean,
-    pureBlack: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    var colorScheme = when {
-        dynamicColor -> {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                val context = LocalContext.current
-                if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-            } else {
-                if (darkTheme) DarkColors else LightColors
-            }
-        }
-
-        darkTheme -> DarkColors
-        else -> LightColors
-    }
-
-    // A light theme has nothing to switch off, so the setting says nothing
-    // there rather than turning the app inside out.
-    if (darkTheme && pureBlack) colorScheme = colorScheme.pureBlack()
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = if (darkTheme) DarkColors else LightColors,
         typography = Typography,
         shapes = Shape,
         content = content
@@ -145,4 +132,3 @@ enum class Theme {
 
 val MaterialTheme.topBarColor: @Composable () -> Color
     get() = { this.colorScheme.surfaceColorAtElevation(3.0.dp) }
-

@@ -18,14 +18,7 @@ class AppPreferences(
         const val DEFAULT_USERNAME = "diffusion"
     }
 
-    val dynamicColor = booleanPreference("dynamicColor", true)
     val theme = enumPreference("theme", Theme.SYSTEM)
-
-    /**
-     * Black instead of dark grey, for screens where a black pixel is one that
-     * is switched off. Only does anything while the dark theme is showing.
-     */
-    val pureBlack = booleanPreference("pureBlack", false)
 
     val isInit = booleanPreference("isInit", false)
 

@@ -65,26 +65,6 @@ fun SettingsScreen(
                 }
             )
 
-
-            val dynamicColor by vm.prefs.dynamicColor.getAsState()
-            ToggleableSettings(
-                title = stringResource(R.string.dynamic_colors),
-                checked = dynamicColor,
-                onCheckedChange = {
-                    vm.update { vm.prefs.dynamicColor.update(it) }
-                }
-            )
-
-            val pureBlack by vm.prefs.pureBlack.getAsState()
-            ToggleableSettings(
-                title = stringResource(R.string.pure_black),
-                subtitle = stringResource(R.string.pure_black_subtitle),
-                checked = pureBlack,
-                onCheckedChange = {
-                    vm.update { vm.prefs.pureBlack.update(it) }
-                }
-            )
-
         }
 
         SettingsSection(
