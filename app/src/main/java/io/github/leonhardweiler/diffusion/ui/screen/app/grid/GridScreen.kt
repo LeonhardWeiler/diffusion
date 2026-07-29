@@ -125,6 +125,7 @@ fun GridScreen(
                 if (selectionSize == 0) topBarSize = size
             },
             selectionSize = selectionSize,
+            selectedFolderCount = selectedFolders.size,
             onSettingsClick = onSettingsClick,
             searchFocusRequester = searchFocusRequester,
             padding = padding,

@@ -100,7 +100,14 @@
     <string name="confirm_delete_folder">Delete %1$s and everything in it?</string>
 
     <plurals name="confirm_delete_selection">
-        <item quantity="one">Delete the selected row?</item>
+        <item quantity="one">Delete the selected note?</item>
+        <item quantity="other">Delete the %1$d selected notes?</item>
+    </plurals>
+
+    <!-- only when the selection holds at least one folder, which is the delete
+         that takes more than what is marked -->
+    <plurals name="confirm_delete_selection_with_folders">
+        <item quantity="one">Delete the selected folder, and everything in it?</item>
         <item quantity="other">Delete the %1$d selected rows, and everything in the folders among them?</item>
     </plurals>
 

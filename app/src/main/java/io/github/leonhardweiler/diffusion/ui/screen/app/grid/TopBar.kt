@@ -32,6 +32,7 @@ fun TopBar(
     modifier: Modifier = Modifier,
     padding: PaddingValues,
     selectionSize: Int,
+    selectedFolderCount: Int,
     onSettingsClick: () -> Unit,
     searchFocusRequester: FocusRequester,
     onReloadDatabase: () -> Unit,
@@ -79,6 +80,7 @@ fun TopBar(
             SelectableTopBar(
                 padding = padding,
                 selectionSize = selectionSize,
+                selectedFolderCount = selectedFolderCount,
                 unselectAll = unselectAll,
                 selectAll = selectAll,
                 deleteSelection = deleteSelection,
@@ -104,6 +106,7 @@ private fun TopBarPreview() {
         isReadOnlyModeActive = true,
         updateSettings = { },
         selectionSize = 0,
+        selectedFolderCount = 0,
         unselectAll = { },
         selectAll = { },
         deleteSelection = {}
