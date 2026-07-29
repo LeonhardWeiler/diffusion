@@ -30,6 +30,12 @@ To add a repository to Diffusion, you can either clone a repository or open an e
 
 Notes are written directly to the repository as you type, so there is no save button.
 
+Creating a note asks for its name and then leaves it in the list; it is not opened for you. The name is exactly what you type, extension included — a name without one is treated as a plain text note. Renaming or moving a note happens from its row in the list, not from the note itself.
+
+The list shows folders first and then notes, both ordered by what was written most recently. A folder takes the date of the newest note inside it, however deep.
+
+Markdown notes carry a button above them that switches between reading and writing. That choice is remembered for each note.
+
 Nothing is committed until a sync is performed. A sync commits all changes, pulls from the remote, and pushes local commits in a single step. Commit messages are automatically generated from the affected notes, for example:
 
 ```
