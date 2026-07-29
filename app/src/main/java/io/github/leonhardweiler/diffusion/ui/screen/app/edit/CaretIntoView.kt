@@ -42,6 +42,7 @@ internal class CaretScroller(private val scrollState: ScrollState) {
     /** Leaves the caret alone until the tap that placed it has been applied. */
     fun hold() {
         heldFrames = KEEP_SCROLL_FRAMES
+        caretAtFocus = null
     }
 
     fun holdForOneFrame() {
@@ -59,6 +60,22 @@ internal class CaretScroller(private val scrollState: ScrollState) {
     private var caret: Rect? = null
 
     /**
+     * The rect of the ask that arrives with the focus, kept apart from [caret].
+     *
+     * That ask is about the caret as the note was opened — the first line —
+     * because the tap that moves it is applied a frame or two later. Letting it
+     * into [caret] was the whole of the jump that came back: it does not scroll
+     * anything by itself, but the keyboard arriving right afterwards asks for
+     * the remembered caret to be made visible, and that was the top of the note.
+     *
+     * It is still worth keeping for the one case where it is right: a tap that
+     * lands where the caret already was changes no selection, so no second ask
+     * ever comes, and this is then the only thing that knows which line to keep
+     * out from under the keyboard.
+     */
+    private var caretAtFocus: Rect? = null
+
+    /**
      * Moves the column so that [caret] can be seen, and no further than that.
      *
      * This is what carries the view along while somebody writes: every
@@ -72,9 +89,12 @@ internal class CaretScroller(private val scrollState: ScrollState) {
      * strictly needs, and the next few keystrokes cost nothing.
      */
     suspend fun bringIntoView(caret: Rect) {
-        this.caret = caret
+        if (heldFrames > 0) {
+            caretAtFocus = caret
+            return
+        }
 
-        if (heldFrames > 0) return
+        this.caret = caret
 
         val viewport = scrollState.viewportSize
         if (viewport <= 0) return
@@ -106,7 +126,7 @@ internal class CaretScroller(private val scrollState: ScrollState) {
      * this was all about.
      */
     suspend fun keepCaretVisible() {
-        val caret = caret ?: return
+        val caret = caret ?: caretAtFocus ?: return
 
         val viewport = scrollState.viewportSize
         if (viewport <= 0) return

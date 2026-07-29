@@ -321,8 +321,14 @@ fun GenericTextField(
         // scaffold takes the ime inset off, this box is measured smaller, and
         // the caret that was in the lower half is now behind the keys. One
         // frame later, so that the new size has reached the scroll state.
+        //
+        // And not before the hold is over: the keyboard comes up because the
+        // field was just tapped, so this fires while the tap that placed the
+        // caret may still be on its way. Correcting then would centre the line
+        // the note was opened at, which is the top of it.
         LaunchedEffect(scrollState.viewportSize) {
             withFrameNanos { }
+            while (caretScroller.heldFrames > 0) withFrameNanos { }
             caretScroller.keepCaretVisible()
         }
 
