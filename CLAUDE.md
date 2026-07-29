@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-GitNote is an Android note app (Kotlin + Jetpack Compose) whose notes are plain files in a real Git repository. Git itself is not implemented in Kotlin: a Rust `cdylib` (`libgit_wrapper.so`, crate `git_wrapper` in `app/src/main/rust`) wraps `libgit2` (with vendored openssl/libssh2) and is called through JNI.
+Diffusion is an Android note app (Kotlin + Jetpack Compose) whose notes are plain files in a real Git repository. Git itself is not implemented in Kotlin: a Rust `cdylib` (`libgit_wrapper.so`, crate `git_wrapper` in `app/src/main/rust`) wraps `libgit2` (with vendored openssl/libssh2) and is called through JNI.
 
 Consequence for any build: **the Rust library must be compiled before Gradle can produce a runnable APK.** The `.so` files live in `app/src/main/jniLibs/` (gitignored, LFS-tracked in CI).
 
@@ -126,7 +126,7 @@ The setup offers opening an existing repository or cloning one; there is no crea
 
 There is no provider integration anymore: the OAuth application it used to log into belonged to the upstream author, its client secret stood in the source of every apk, and it asked for full access to every private repository of whoever authorised it. What is left is what never needed an account — a clone url plus ssh keys or a token — so nothing in `ui/screen/setup/remote/` talks to a service, and the `gitnote-identity://` callback, the stored token and the provider preference are gone with it.
 
-Preferences are DataStore-backed with a small typed wrapper (`PreferencesManager.booleanPreference/stringPreference/enumPreference`), exposed as Compose state via `.getAsState()`. Two of them are not only preferences: `remoteUrl` has to be written into the repository as well (`SettingsViewModel.updateRemoteUrl` → `GitManager.setRemoteUrl`), because push and pull read the remote from there and a url that only sat in the store left the settings screen naming one address while every sync used another; and `pureBlack` reaches `GitNoteTheme`, which blacks out `background`/`surface` on top of whichever scheme was chosen, but only while the dark theme is showing.
+Preferences are DataStore-backed with a small typed wrapper (`PreferencesManager.booleanPreference/stringPreference/enumPreference`), exposed as Compose state via `.getAsState()`. Two of them are not only preferences: `remoteUrl` has to be written into the repository as well (`SettingsViewModel.updateRemoteUrl` → `GitManager.setRemoteUrl`), because push and pull read the remote from there and a url that only sat in the store left the settings screen naming one address while every sync used another; and `pureBlack` reaches `DiffusionTheme`, which blacks out `background`/`surface` on top of whichever scheme was chosen, but only while the dark theme is showing.
 
 ## Conventions
 

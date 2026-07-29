@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "io.github.leonhardweiler.gitnote.baselineprofile"
+    namespace = "io.github.leonhardweiler.diffusion.baselineprofile"
 
     compileSdk = 37
 

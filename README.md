@@ -4,13 +4,13 @@
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/logo_wide_dark.svg">
   <source media="(prefers-color-scheme: light)" srcset="assets/logo_wide_light.svg">
-  <img alt="GitNote" width="50%" src="assets/logo_wide_light.svg">
+  <img alt="Diffusion" width="50%" src="assets/logo_wide_light.svg">
 </picture>
 </h1>
 
 </div>
 
-[![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/LeonhardWeiler/gitnote.svg?logo=github&label=GitHub&cacheSeconds=3600)](https://github.com/LeonhardWeiler/gitnote/releases/latest)
+[![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/LeonhardWeiler/diffusion.svg?logo=github&label=GitHub&cacheSeconds=3600)](https://github.com/LeonhardWeiler/diffusion/releases/latest)
 
 Android note app which integrate Git. You can use this app with other desktop editors.
 
@@ -53,7 +53,7 @@ credentials it cannot read. A repository without a remote is asked about rather
 than left as it is, so notes written into it can still be synced later.
 
 <p  style="text-align: center;">
-  <img src="https://media.githubusercontent.com/media/LeonhardWeiler/gitnote/master/assets/edit.png" width="32%"  alt="edit screen"/>
+  <img src="https://media.githubusercontent.com/media/LeonhardWeiler/diffusion/master/assets/edit.png" width="32%"  alt="edit screen"/>
 </p>
 
 _Supported Android versions: 11 to 16_
@@ -76,7 +76,8 @@ See [this file](./CONTRIBUTING.md).
 
 ## Credits
 
-GitNote was created by [wiiznokes](https://github.com/wiiznokes), and this is a
-fork of [wiiznokes/gitnote](https://github.com/wiiznokes/gitnote) that goes its
-own way. Everything up to the fork is their work, and it stays under the same
-licence — see [LICENSE](./LICENSE).
+Diffusion is a fork of GitNote, created by
+[wiiznokes](https://github.com/wiiznokes) — see
+[wiiznokes/gitnote](https://github.com/wiiznokes/gitnote). Everything up to the
+fork is their work, and it stays under the same licence — see
+[LICENSE](./LICENSE).

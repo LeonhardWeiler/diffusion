@@ -57,10 +57,10 @@ mod test {
         let url = parse_url("ssh://username@host:5555/dir/repo.git").unwrap();
         assert_eq!(&url.kind, &UrlKind::Ssh);
 
-        let url = parse_url("https://github.com/LeonhardWeiler/gitnote.git").unwrap();
+        let url = parse_url("https://github.com/LeonhardWeiler/diffusion.git").unwrap();
         assert_eq!(&url.kind, &UrlKind::Https);
 
-        let url = parse_url("git@github.com:LeonhardWeiler/gitnote.git").unwrap();
+        let url = parse_url("git@github.com:LeonhardWeiler/diffusion.git").unwrap();
         assert_eq!(&url.kind, &UrlKind::Ssh);
 
         let url = parse_url("git@git.sr.ht:~user/notes").unwrap();
@@ -85,16 +85,16 @@ mod test {
     #[test]
     fn ssh_urls_become_web_addresses() {
         assert_eq!(
-            browser_url("git@github.com:LeonhardWeiler/gitnote.git").unwrap(),
-            "https://github.com/LeonhardWeiler/gitnote"
+            browser_url("git@github.com:LeonhardWeiler/diffusion.git").unwrap(),
+            "https://github.com/LeonhardWeiler/diffusion"
         );
         assert_eq!(
-            browser_url("ssh://git@github.com:22/LeonhardWeiler/gitnote.git").unwrap(),
-            "https://github.com/LeonhardWeiler/gitnote"
+            browser_url("ssh://git@github.com:22/LeonhardWeiler/diffusion.git").unwrap(),
+            "https://github.com/LeonhardWeiler/diffusion"
         );
         assert_eq!(
-            browser_url("https://github.com/LeonhardWeiler/gitnote.git").unwrap(),
-            "https://github.com/LeonhardWeiler/gitnote"
+            browser_url("https://github.com/LeonhardWeiler/diffusion.git").unwrap(),
+            "https://github.com/LeonhardWeiler/diffusion"
         );
     }
 }

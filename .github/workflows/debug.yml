@@ -58,10 +58,10 @@ jobs:
           mkdir -p packages
           # warning: do not use github.event syntax here
           # https://stackoverflow.com/questions/71458189/github-action-workflow-call-does-not-use-up-to-date-input-values
-          mv app/build/outputs/apk/debug/app-debug.apk packages/gitnote-debug.apk
+          mv app/build/outputs/apk/debug/app-debug.apk packages/diffusion-debug.apk
 
       - uses: actions/upload-artifact@v7
         with:
-          name: gitnote-debug
+          name: diffusion-debug
           path: packages/*
           if-no-files-found: error

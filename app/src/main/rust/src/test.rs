@@ -8,7 +8,7 @@ use ssh_key::{
 #[test]
 #[ignore = "local testing"]
 fn gen_keys() {
-    let comment = "GitNote";
+    let comment = "Diffusion";
 
     let pair = Ed25519Keypair::random(&mut OsRng);
 

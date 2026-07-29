@@ -14,6 +14,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "gitnote"
+rootProject.name = "diffusion"
 include(":app")
 include(":baselineprofile")
