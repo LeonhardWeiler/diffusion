@@ -17,7 +17,7 @@ Diffusion is an Android app that primarily thought for note taking and syncing t
 ## Why
 
 Because all apps which integrate git on Android either separate the note title from the name of the file or use old UI/UX frameworks
-Other similar apps like [gittasks](https://github.com/christianjann/gittasks) or [GitNote](https://github.com/wiiznokes/gitnote) (which this project is a fork of) exist, but they did not really fulfill my needs and especially the simplicity and performance I need. Instead of contributing to one of the projects I forked it, because I wanted my app to be done quick.
+Other similar apps like [gittasks](https://github.com/christianjann/gittasks) or [gitnote](https://github.com/wiiznokes/gitnote) (which this project is a fork of) exist, but they did not really fulfill my needs and especially the simplicity and performance I need. Instead of contributing to one of the projects I forked it, because I wanted my app to be done quick.
 
 ## Goals & Non-goals
 
