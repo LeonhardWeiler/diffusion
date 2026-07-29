@@ -124,7 +124,11 @@
     (PERF-1) · <strong>nach der sechsten Liste fortgeschrieben</strong>: die
     SQL-Datenbank ist weg — die größte Vereinfachung, die dieser Bericht kannte, ist
     umgesetzt (SIZE-1, TEST-1, „Die SQL-Datenbank ganz weglassen?“), und zwei neue
-    Befunde stehen darunter (PERF-3, BUILD-2)
+    Befunde stehen darunter (PERF-3, BUILD-2) · <strong>nach der siebten Liste
+    fortgeschrieben</strong>: die Rust-Schicht um libgit2 ist weg und die Git-Arbeit
+    macht JGit — SIZE-1 ist damit erledigt und gestrichen, und die beiden Fragen, die
+    an der zweiten Toolchain hingen, sind beantwortet („Alles in Kotlin …“ umgesetzt,
+    „gitoxide statt libgit2?“ hinfällig)
   </p>
 </header>
 
@@ -132,22 +136,21 @@
   <div class="counter crit"><span class="n">0</span><span class="l">kritisch</span></div>
   <div class="counter high"><span class="n">0</span><span class="l">hoch</span></div>
   <div class="counter med"><span class="n">1</span><span class="l">mittel</span></div>
-  <div class="counter low"><span class="n">5</span><span class="l">niedrig</span></div>
+  <div class="counter low"><span class="n">4</span><span class="l">niedrig</span></div>
   <div class="counter info"><span class="n">0</span><span class="l">Info</span></div>
 </div>
 
 <div class="note">
   <strong>Gates.</strong> <code>./gradlew assembleDebug lintDebug testDebugUnitTest</code> ist grün:
-  <strong>99 Unit-Tests</strong> in 13 Klassen und <strong>keine einzige Lint-Meldung</strong>
-  mehr — vorher zehn Warnungen, und Lint konnte den Bau ohnehin nicht anhalten. Beides hat
-  sich geändert: <code>abortOnError = true</code>. <code>assembleNightly</code> baut durch
-  und ergibt <strong>17,3 MB</strong> (vorher 22,0, davor 24,0) — die 4,7 MB sind Room,
-  <code>paging</code> und vor allem <code>libsqlite3x.so</code>, das mit requery weggefallen
-  ist. Instrumented Tests gibt es <strong>keine mehr</strong>: der einzige prüfte den
-  Room-DAO, und dessen Gegenstand ist gelöscht. Auf Rust-Seite: <code>cargo test</code>
-  11 bestanden, 4 als „local repo“ übersprungen; <code>cargo clippy --all-targets</code>
-  warnungsfrei; <code>cargo fmt --all --check</code> sauber; <code>make build_install
-  DEBUG=0</code> für beide Android-Ziele durch.
+  <strong>132 Unit-Tests</strong> in 16 Klassen. Lint meldet <strong>fünf Warnungen und keinen
+  Fehler</strong> — drei betreffen neuere Versionen bewusst gepinnter Abhängigkeiten, zwei
+  (<code>TrustAllX509TrustManager</code>) stehen in JGits HTTPS-Teil, für den diese App keinen
+  Transport baut; <code>abortOnError = true</code> bleibt scharf.
+  <code>assembleNightly</code> baut durch und ergibt <strong>6,2 MB</strong> (vorher 17,3,
+  davor 22,0): die 11 MB sind die beiden <code>libgit_wrapper.so</code>, die es nicht mehr gibt.
+  Instrumented Tests gibt es <strong>keine mehr</strong>: der einzige prüfte den Room-DAO, und
+  dessen Gegenstand ist gelöscht. Eine zweite Toolchain gibt es auch nicht mehr — kein
+  <code>cargo</code>, kein NDK, kein <code>make build_install</code> vor dem Bau.
   <br><br>
   <strong>Grenzen dieses Berichts.</strong> Wie beim letzten Mal: es stand für die Erhebung
   kein Gerät und kein Emulator zur Verfügung. Die App wurde nicht gestartet, nicht profiliert,
@@ -164,16 +167,15 @@
 <div class="toc">
   <ul>
     <li><a href="#perf-2">PERF-2 · Eine sehr lange Notiz im Compose-Textfeld</a> <span class="tag t-med">mittel</span></li>
-    <li><a href="#size-1">SIZE-1 · Die Hälfte des APK liegt auf jedem Gerät ungenutzt</a> <span class="tag t-low">niedrig</span></li>
     <li><a href="#test-1">TEST-1 · Der Schreibpfad bleibt ungetestet</a> <span class="tag t-low">niedrig</span></li>
     <li><a href="#perf-1">PERF-1 · Baseline-Profil noch nicht aufgezeichnet</a> <span class="tag t-low">niedrig</span></li>
     <li><a href="#perf-3">PERF-3 · Die Suche liest bei jeder Anfrage jede Datei</a> <span class="tag t-low">niedrig</span></li>
     <li><a href="#build-2">BUILD-2 · Das aufgezeichnete Profil ist von git ausgeschlossen</a> <span class="tag t-low">niedrig</span></li>
     <li><a href="#fragen">Vier Fragen, beantwortet</a></li>
-    <li><a href="#kotlin">&nbsp;&nbsp;· Alles in Kotlin statt zur Hälfte in Rust?</a></li>
+    <li><a href="#kotlin">&nbsp;&nbsp;· Alles in Kotlin statt zur Hälfte in Rust? — umgesetzt</a></li>
     <li><a href="#ohne-db">&nbsp;&nbsp;· Die SQL-Datenbank ganz weglassen? — umgesetzt</a></li>
     <li><a href="#e2e">&nbsp;&nbsp;· Ende-zu-Ende-Verschlüsselung?</a></li>
-    <li><a href="#gitoxide">&nbsp;&nbsp;· gitoxide statt libgit2?</a></li>
+    <li><a href="#gitoxide">&nbsp;&nbsp;· gitoxide statt libgit2? — hinfällig</a></li>
     <li><a href="#runde">Was diese Runde geändert hat</a></li>
     <li><a href="#geraet">Was auf ein Gerät gehört</a></li>
     <li><a href="#reihenfolge">Was als Nächstes anliegt</a></li>
@@ -209,53 +211,18 @@
   Aufwand L, und <code>MarkdownEditingTest</code> hängt daran. Nichts davon eilt.</p></div>
 </div>
 
-<div class="finding low" id="size-1">
-  <div class="fhead"><span class="fid">SIZE-1</span><h3>Die Hälfte des APK liegt auf jedem Gerät ungenutzt</h3><span class="tag t-low">niedrig</span></div>
-  <div class="where">app/build.gradle.kts · app/src/main/jniLibs · app/src/main/rust/Cargo.toml</div>
-  <p>Nachgemessen nach dem Wegfall der Datenbank: <code>assembleNightly</code> mit
-  <code>DEBUG=0</code> ergibt jetzt <strong>17,3 MB</strong> — 22,0 vorher, 24,0 davor. Die
-  4,7 MB dieser Runde sind fast vollständig <code>libsqlite3x.so</code>: requery wurde nur
-  gebraucht, um SQLite drei eigene Funktionen beizubringen, und ohne SQL gibt es die nicht mehr.
-  Die 2,0 MB der Runde davor kamen daher, dass libgit2 ohne das <code>https</code>-Feature
-  gebaut wird, seit die App nur noch SSH spricht.</p>
-
-  <div class="tablewrap"><table>
-    <tr><th>Bestandteil</th><th>Größe</th><th>Anteil</th></tr>
-    <tr><td><code>lib/x86_64/libgit_wrapper.so</code></td><td>7,84 MB</td><td>43 %</td></tr>
-    <tr><td><code>lib/arm64-v8a/libgit_wrapper.so</code></td><td>7,05 MB</td><td>39 %</td></tr>
-    <tr><td><code>classes.dex</code> + <code>classes2.dex</code> (nach R8)</td><td>2,94 MB</td><td>16 %</td></tr>
-    <tr><td>Ressourcen, Manifest, META-INF, alles übrige</td><td>0,4 MB</td><td>2 %</td></tr>
-  </table></div>
-  <p class="meta">Einträge unkomprimiert (18,2 MB zusammen), das Archiv selbst misst 17,3 MB.
-  <code>libsqlite3x.so</code> steht nicht mehr in der Tabelle, weil es nicht mehr im Paket ist.</p>
-
-  <p>Was noch in <code>libgit_wrapper.so</code> steckt: <code>libcrypto.a</code> 13,9 MB,
-  <code>libgit2.a</code> 3,6 MB, <code>libssh2.a</code> 0,56 MB — <code>libssl.a</code> wird
-  weiterhin gebaut, aber nicht mehr gelinkt. <strong>OpenSSL ganz loszuwerden geht nicht:</strong>
-  libssh2 benutzt libcrypto für seine Chiffren, und libcrypto ist der große Teil. Das ist die
-  vollständige Antwort auf „dann kann man doch auch openssl entfernen“ — die Hälfte, mehr nicht.</p>
-
-  <div class="rec"><strong>Empfehlung</strong>
-  <p>Unverändert, nach Ertrag:</p>
-  <ol>
-    <li><strong>Nach ABI aufteilen — rund 8,9 MB, also 40 %.</strong> Jedes APK trägt beide
-    Architekturen, ein Telefon benutzt eine. Mit <code>splits { abi { … } }</code> bleibt ein
-    arm64-APK von rund <strong>13 MB</strong>. Aufwand: S.</li>
-    <li><strong><code>com.github.requery:sqlite-android</code> ablösen — 1,84 MB je ABI.</strong>
-    Siehe die Frage weiter unten, ob die Datenbank überhaupt bleiben soll: dann fällt das
-    von selbst mit weg.</li>
-  </ol>
-  <p><strong>Erledigt:</strong> die dritte Empfehlung — der Bau ist abgesichert.
-  <code>checkJniLibsAreRelease</code> läuft vor jedem Packen außer <code>debug</code> und
-  hält den Bau über 20 MB je <code>.so</code> an; eine Debug-Bibliothek (68 MB statt 7)
-  kommt nicht mehr stillschweigend in ein Release.</p>
-  </div>
-</div>
-
 <div class="finding low" id="test-1">
   <div class="fhead"><span class="fid">TEST-1</span><h3>Der Schreibpfad bleibt ungetestet</h3><span class="tag t-low">niedrig</span></div>
-  <div class="where">app/src/test (99 Tests, 13 Klassen) · manager/StorageManager.kt · manager/GitManager.kt</div>
-  <p>Von 57 über 88 auf 99. Neu ist <code>NoteIndexTest</code> (8 Fälle) — das, was vorher SQL
+  <div class="where">app/src/test (132 Tests, 16 Klassen) · manager/StorageManager.kt · manager/git/</div>
+  <p><strong>Von 99 auf 132 seit der siebten Liste.</strong> Neu sind
+  <code>GitLayerTest</code> (18 Fälle gegen echte lokale Repositories: Commit-Nachricht,
+  Fast-Forward, Merge, Konflikt samt Auflösung, abgewiesener Push, Datieren, Öffnen und Klonen),
+  <code>SshKeysTest</code> (6, der erzeugte Schlüssel wird von jsch zurückgelesen) und
+  <code>CloneUrlTest</code> (7, was die alten Rust-Tests zu <code>parse_url</code> geprüft
+  haben). Damit ist der Git-Pfad zum ersten Mal ohne zweite Toolchain belegt — was daran noch
+  fehlt, ist der SSH-Transport, und der braucht ein Gerät.</p>
+
+  <p>Davor: von 57 über 88 auf 99. Neu war <code>NoteIndexTest</code> (8 Fälle) — das, was vorher SQL
   beantwortet hat und was jetzt Funktionen über einen <code>IndexState</code> sind: welche
   Notizen zu einem Ordner gehören und in welcher Reihenfolge, was ein Ordner-Verschieben mit
   den Pfaden darunter macht, was ein Löschen mitnimmt, und dass ein <code>workshop</code> nicht
@@ -373,51 +340,56 @@
 worden — sie sind hier beantwortet, damit die Antwort beim nächsten Mal nicht wieder erarbeitet
 werden muss. Wo unten geschätzt wird, steht das dabei.</p>
 
-<h3 id="kotlin" style="margin-top:1.5rem">Alles in Kotlin statt zur Hälfte in Rust?</h3>
+<h3 id="kotlin" style="margin-top:1.5rem">Alles in Kotlin statt zur Hälfte in Rust? — umgesetzt</h3>
 
-<p><strong>Machbar, und es würde den Bau erheblich vereinfachen. Trotzdem: nein.</strong></p>
+<p><strong>Der Bericht sagte „machbar, trotzdem nein“. Die siebte Aufgabenliste hat es
+entschieden und es ist umgesetzt: die Git-Arbeit macht JGit, die Rust-Schicht ist gelöscht.</strong>
+Was hier steht, ist der Abgleich zwischen der damaligen Rechnung und dem, was dabei
+herausgekommen ist.</p>
 
-<p>Was die Rust-Schicht tut, ist nicht viel Code — rund 1500 Zeilen — aber es ist alles, was
-die App zu einer Git-App macht: klonen mit Fortschritt, fetch und merge samt Schreiben der
-Konfliktmarker in die Notizen, den Index nach Konflikten befragen, ein Commit mit zwei Eltern,
-<code>is_change</code> über das Arbeitsverzeichnis, das Datieren nach einem Checkout, das
-Bilden der Commit-Nachricht aus dem Index, Ed25519-Schlüssel erzeugen, TOFU auf Hostkeys.</p>
-
-<p>In reinem Kotlin/Java gäbe es dafür genau einen Kandidaten: <strong>JGit</strong>. Andere
-Android-Git-Clients benutzen ihn, er läuft dort also. Was das brächte:</p>
-
-<ul>
-  <li><strong>Eine Toolchain statt zwei.</strong> Kein NDK, kein cargo, keine gepinnte
-  Rust-Version, kein vendored OpenSSL, kein <code>make build_install</code> vor jedem Bau,
-  keine <code>.so</code> in Git LFS, kein zweiter CI-Job, und die halbe <code>BUILD.md</code>
-  — die Windows-Anleitung mit den vorgebauten OpenSSL-Zips — fällt ersatzlos weg. Das ist der
-  größte Einzelgewinn und er ist real.</li>
-  <li><strong>Ein deutlich kleineres APK.</strong> Geschätzt: 14,9 MB nativer Code fallen weg,
-  JGit plus eine SSH-Anbindung kämen nach R8 grob bei 2–4 MB Dex heraus. Nicht gemessen, aber
-  die Größenordnung ist eindeutig.</li>
-  <li><strong>Die JNI-Grenze verschwindet</strong> — mit ihr die Regel, dass ein umbenanntes
-  Kotlin-File die Bindung erst zur Laufzeit bricht.</li>
-</ul>
-
-<p>Was es kostet, und warum die Antwort trotzdem nein ist:</p>
+<p>Der Ersatz ist <strong>JGit</strong> — der eine Kandidat, den die Antwort damals schon
+nannte — mit <code>org.eclipse.jgit.ssh.jsch</code> und dem gepflegten
+<code>com.github.mwiede:jsch</code> darunter für SSH, und Bouncycastle für die Ed25519-Erzeugung.
+Alles liegt in <code>manager/git/</code>, ein Thema je Datei.</p>
 
 <ul>
-  <li><strong>Es tauscht die Referenzimplementierung gegen eine Nachbildung.</strong> libgit2 ist
-  das, worauf die Desktop-Clients aufsetzen; JGit ist eine eigenständige zweite Implementierung
-  mit eigenen Eigenheiten. Für eine App, deren einziger Zweck ist, dass ein Repository
-  hinterher noch dasselbe Repository ist, ist das kein neutraler Tausch.</li>
-  <li><strong>Der Merge-Pfad ist der teuerste Teil.</strong> Genau er ist über zwei Runden
-  hinweg gebaut und mit Rust-Tests belegt worden — Konflikt in die Datei schreiben,
-  <code>MERGE_HEAD</code> lesen, mit zwei Eltern committen, Marker vor dem Commit erkennen.
-  Das wäre alles neu zu schreiben und neu zu belegen.</li>
-  <li><strong>Der Gewinn wird einmal beim Bauen eingelöst, der Preis täglich.</strong> Die
-  zweite Toolchain nervt den Entwickler; eine andere Git-Implementierung liegt unter den
-  Notizen.</li>
+  <li><strong>Eine Toolchain statt zwei — eingelöst.</strong> Kein NDK, kein cargo, keine
+  gepinnte Rust-Version, kein vendored OpenSSL, kein <code>make build_install</code> vor jedem
+  Bau, keine <code>.so</code> in Git LFS, kein <code>checkJniLibsAreRelease</code>. Die halbe
+  <code>flake.nix</code> ist mit weggefallen.</li>
+  <li><strong>Ein deutlich kleineres APK — eingelöst und besser als geschätzt.</strong>
+  Geschätzt waren 2–4 MB Dex an Stelle von 14,9 MB nativem Code; gemessen sind es
+  <strong>6,2 MB APK statt 17,3</strong>. Der Dex-Anteil wuchs von 2,94 auf 5,6 MB, also
+  ziemlich genau die untere Schätzung, und dazu kommt, dass beide ABIs entfallen — womit auch
+  SIZE-1 und dessen Empfehlung „nach ABI aufteilen“ gegenstandslos sind.</li>
+  <li><strong>Die JNI-Grenze ist weg</strong>, und mit ihr die Regel, dass ein umbenanntes
+  Kotlin-File die Bindung erst zur Laufzeit bricht, sowie die drei Fehlercodes
+  (<code>-1000</code> bis <code>-1002</code>), die auf beiden Seiten gleich gehalten werden
+  mussten. Es sind gewöhnliche Exceptions geworden.</li>
 </ul>
 
-<p class="meta">Wieder aufzugreifen, wenn die NDK-Kette wirklich zur Last wird — etwa wenn ein
-NDK-Wechsel den Bau bricht oder die CI daran hängenbleibt. Dann ist der Tausch die Mühe wert.
-Vorher nicht.</p>
+<p>Was die Gegenrechnung wert war:</p>
+
+<ul>
+  <li><strong>„Der Merge-Pfad ist der teuerste Teil“ — hat gestimmt, und ist der Teil, der
+  belegt werden musste.</strong> Er ist neu geschrieben (JGits <code>MergeCommand</code> mit
+  <code>setCommit(false)</code>, damit der Merge-Commit den eingerichteten Autor trägt und
+  <code>MERGE_HEAD</code> für den zweiten Elternteil stehen bleibt) und neu belegt: statt der
+  elf Rust-Tests laufen jetzt JVM-Tests gegen echte lokale Repositories — Klon, Fast-Forward,
+  echter Merge, Konflikt samt Auflösung, abgewiesener Push und das Datieren.</li>
+  <li><strong>„Referenzimplementierung gegen Nachbildung“ — bleibt wahr</strong> und ist der
+  Preis, der bezahlt wurde. Was dagegen steht: JGit ist selbst eine über zwanzig Jahre
+  gepflegte Implementierung, und mehrere Android-Git-Clients setzen darauf.</li>
+  <li><strong>Zwei Dinge, die die Rechnung nicht kannte.</strong> JGit erwartet die Umgebung
+  eines Desktops (Home, <code>/etc/gitconfig</code>, ein <code>git</code>-Binary zum Fragen) —
+  dagegen steht ein eigener <code>SystemReader</code>. Und ein Umdatieren muss die neuen Zeiten
+  <em>auch in den Index</em> schreiben, sonst liest sich jede Notiz eines frischen Klons als
+  geändert; unter libgit2 fiel das nicht auf.</li>
+</ul>
+
+<p class="meta">Offen bleibt genau ein Punkt, und er steht unten unter „Was auf ein Gerät
+gehört“: der SSH-Transport ist das Einzige, was sich ohne Gerät und ohne Remote nicht prüfen
+lässt. Alles andere an dieser Schicht läuft in den Unit-Tests.</p>
 
 <h3 id="ohne-db" style="margin-top:1.5rem">Die SQL-Datenbank ganz weglassen? — umgesetzt</h3>
 
@@ -484,37 +456,17 @@ herunter — <code>backup_rules.xml</code> und <code>data_extraction_rules.xml</
 Store aus —, aber auf einem gerooteten Gerät sind sie lesbar. Der private SSH-Schlüssel gehört
 in den Android Keystore. Aufwand: M, und der Nutzen ist konkret.</p>
 
-<h3 id="gitoxide" style="margin-top:1.5rem">gitoxide statt libgit2?</h3>
+<h3 id="gitoxide" style="margin-top:1.5rem">gitoxide statt libgit2? — hinfällig</h3>
 
-<p><strong>Heute nein, und aus dem Grund, den die Aufgabenliste nennt — aber nicht ganz: der
-Nutzen wäre größer als „Rust um des Rust willen“.</strong></p>
+<p><strong>Die Frage hat sich mit der Antwort darüber erledigt.</strong> Sie war die Suche nach
+einem Rust-Git ohne OpenSSL, um die 13,9 MB libcrypto und die Windows-Anleitung mit den
+vorgebauten Zip-Archiven loszuwerden. Beides ist weg, ohne gitoxide: es gibt keinen nativen
+Code mehr, den man bauen müsste.</p>
 
-<p>Was es brächte, ist nämlich messbar und es ist genau das, was oben unter SIZE-1 als nicht
-lösbar steht: <code>gix</code> ist reines Rust und kann TLS über <code>rustls</code> und SSH über
-eine Rust-Implementierung sprechen. Damit fiele <strong>OpenSSL vollständig weg</strong> —
-libcrypto allein sind 13,9 MB Archiv, und es ist der größte einzelne Posten im Bau. Mit ihm
-verschwände auch das Windows-Problem, dem <code>BUILD.md</code> einen halben Abschnitt und das
-Repository zwei vorgebaute Zip-Archive widmet, sowie ein guter Teil der Bauzeit.</p>
-
-<p>Warum es trotzdem nicht geht: die Bedürfnisse dieser App liegen genau auf der schwächsten
-Stelle von gitoxide.</p>
-
-<ul>
-  <li><strong>Merge.</strong> Diese App braucht kein „fetch and fast-forward“, sondern einen
-  echten Drei-Wege-Merge, der die Konfliktmarker in das Arbeitsverzeichnis schreibt, einen Index
-  hinterlässt, den man nach konfliktbehafteten Pfaden fragen kann, und ein
-  <code>MERGE_HEAD</code>. Das ist der am spätesten gereifte Teil von gix.</li>
-  <li><strong>Die API bewegt sich noch.</strong> Ein Wechsel würde nicht einmal stattfinden,
-  sondern über Jahre mitgezogen werden müssen.</li>
-  <li><strong>libgit2 tut hier heute alles, was gebraucht wird, und es ist belegt</strong> — elf
-  Rust-Tests, die den Merge samt Konfliktfall, das Datieren nach einem Pull und die
-  Commit-Nachricht abdecken.</li>
-</ul>
-
-<p class="meta">Also: die Einschätzung „bringt nichts, ist nur Rust um des Rust willen“ trifft die
-Sache heute im Ergebnis, aber nicht in der Begründung. Es brächte 14 MB weniger Bau und eine
-einfachere Windows-Anleitung — es kostet nur den einen Teil, den die App am meisten braucht.
-Wieder aufzugreifen, wenn gix' Merge-Unterstützung vollständig ist.</p>
+<p class="meta">Was von der Analyse bleibt, gilt weiterhin und ist der Grund, warum der Tausch
+nicht zu gix ging: der echte Drei-Wege-Merge mit Konfliktmarkern, befragbarem Index und
+<code>MERGE_HEAD</code> ist die Anforderung, an der eine Git-Implementierung für diese App
+gemessen wird. JGit kann ihn, und der Test dazu läuft ohne Gerät.</p>
 
 <h2 id="runde">Was diese Runde geändert hat</h2>
 
@@ -554,9 +506,10 @@ hinausgehen.</p>
   <tr>
     <td>Der DNS-Fehler beim automatischen Sync</td>
     <td>Die Ursache war, dass „das System sagt, es gibt ein Netz“ und „dieser Prozess kann
-    auflösen“ nicht dasselbe sind. libgit2 sagt das nur in der Fehlerklasse, die nie über die
-    JNI-Grenze kam. Jetzt hat sie einen eigenen Code, ein Pull wird einmal wiederholt, und was
-    danach noch scheitert und niemand angefordert hat, sagt gar nichts.</td>
+    auflösen“ nicht dasselbe sind. libgit2 sagte das nur in der Fehlerklasse, die nie über die
+    JNI-Grenze kam, weshalb sie einen eigenen Code bekam; seit der siebten Liste ist es die
+    Exception darunter, an der es erkannt wird. Ein Pull wird einmal wiederholt, und was danach
+    noch scheitert und niemand angefordert hat, sagt gar nichts.</td>
   </tr>
   <tr>
     <td>Die Navigation gehört jetzt diesem Repository</td>
@@ -591,8 +544,13 @@ Reihenfolge, in der es schiefgehen kann:</p>
   <code>NoteSaver</code>.</li>
   <li><strong>Der ganze Weg durch die Einrichtung</strong>, jetzt ohne Titelleiste und mit dem
   dritten Schlüsselknopf.</li>
-  <li><strong>Ein Merge-Konflikt von Anfang bis Ende</strong>, weiterhin nur durch Rust-Tests
-  belegt.</li>
+  <li><strong>Ein Merge-Konflikt von Anfang bis Ende.</strong> Der Ablauf selbst läuft seit der
+  siebten Liste in <code>GitLayerTest</code> gegen echte Repositories; auf dem Gerät zu sehen
+  ist, was die App daraus macht.</li>
+  <li><strong>Der SSH-Transport, einmal ganz.</strong> Klonen, Pull und Push gegen eine echte
+  Gegenstelle, mit einem erzeugten und mit einem geladenen Schlüssel — das ist der eine Teil der
+  neuen Git-Schicht, den keine JVM-Prüfung erreicht. Dazu: ein Host, dessen Schlüssel schon in
+  <code>.ssh/pinned_hosts</code> steht, muss weiter angenommen werden.</li>
 </ol>
 
 <h2 id="reihenfolge">Was als Nächstes anliegt</h2>
@@ -603,8 +561,9 @@ Reihenfolge, in der es schiefgehen kann:</p>
   <li><strong>Den Start und die Suche auf einem Gerät nachmessen</strong> — die Datenbank ist
     weg, also zahlt jeder Start den Durchlauf und jede Anfrage die Dateien (PERF-3). Beides ist
     im Log ablesbar: <code>adb logcat -s NoteIndex</code>.</li>
-  <li><strong>SIZE-1, Punkt 1</strong> — nach ABI aufteilen halbiert das APK fast; es sind
-    jetzt 17,3 MB, und 14,9 davon sind zwei Kopien derselben Bibliothek für zwei
+  <li><strong>Nachmessen, was das APK jetzt ausmacht.</strong> SIZE-1 ist mit dem nativen Code
+    erledigt (17,3 → 6,2 MB), und was übrig ist, ist Dex: Compose, JGit, jsch, Bouncycastle. Ob
+    davon noch etwas ungenutzt mitfährt, ist eine Frage an R8 und nicht mehr an die
     Architekturen.</li>
   <li><strong>BUILD-2 entscheiden</strong> — ein Profil, das im Repository fehlt, wirkt in
     keinem Bau, der daraus entsteht.</li>
@@ -619,9 +578,9 @@ Reihenfolge, in der es schiefgehen kann:</p>
 
 <h2 id="stark">Was bereits trägt</h2>
 <ul>
-  <li><strong>Lint kann den Bau anhalten, und hat nichts zu sagen.</strong> Von zehn Warnungen
-    auf null, und <code>abortOnError</code> ist an. Sechs der zehn standen in einer Datei, die
-    niemand aufrief.</li>
+  <li><strong>Lint kann den Bau anhalten.</strong> Von zehn Warnungen auf null, und
+    <code>abortOnError</code> ist an; die fünf, die seit JGit wieder dastehen, sind Versionsnotizen
+    und ein HTTPS-Teil einer Bibliothek, den diese App nicht baut.</li>
   <li><strong>Die Liste ist das Repository.</strong> Jede Datei bekommt eine Zeile; was diese App
     nicht lesen kann, wird an die App gereicht, die es kann.</li>
   <li><strong>Umbenennen und Verschieben sind ein Handgriff</strong> — für Notizen wie für
@@ -644,12 +603,12 @@ Reihenfolge, in der es schiefgehen kann:</p>
   <li><strong>Die Datenhaltung ist konsistent gedacht</strong> — Dateien sind die Wahrheit, Room
     ist ein ableitbarer Cache. Was diese Runde daran geheilt hat: ein geschlossenes Repository
     lässt seinen Commit nicht mehr für das nächste stehen.</li>
-  <li><strong>Die JNI-Grenze ist schmal und explizit</strong>, und um einen Fehlercode ärmer
-    geworden, den Kotlin selbst beantworten kann.</li>
-  <li><strong>Reproduzierbare Toolchain.</strong> Rust- und NDK-Version liegen in Dateien, die CI
-    und <code>flake.nix</code> gemeinsam lesen.</li>
-  <li><strong>Der Unterbau ist kein Ballast</strong> — siehe die Antwort zu Kotlin oben, in der
-    das zum ersten Mal durchgerechnet ist statt behauptet.</li>
+  <li><strong>Es gibt keine JNI-Grenze mehr.</strong> Die Git-Schicht ist Kotlin über JGit, und
+    was sie kann, sagen Tests gegen echte Repositories statt eine zweite Testkette.</li>
+  <li><strong>Eine Toolchain.</strong> JDK, Android-SDK, Gradle — <code>flake.nix</code> stellt
+    genau das bereit, und <code>./gradlew assembleDebug</code> allein ergibt ein lauffähiges APK.</li>
+  <li><strong>Der Unterbau ist kein Ballast</strong> — und seit dieser Runde auch keine 14,9 MB
+    nativer Code mehr: 6,2 MB APK statt 17,3.</li>
 </ul>
 
 <h2 id="entschieden">Bewusst so entschieden</h2>
