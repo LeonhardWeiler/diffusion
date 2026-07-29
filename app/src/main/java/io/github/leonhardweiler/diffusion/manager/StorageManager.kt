@@ -310,15 +310,6 @@ class StorageManager {
         val renamed = new.relativePath != previous.relativePath
 
         update {
-            // relativePath is the primary key, so as long as the note keeps its
-            // name the upsert rewrites the row in place. Only a rename needs the
-            // old row and the old file taken away first — and that is rare,
-            // while this runs on every typing pause.
-            if (renamed) {
-                dao.removeNote(previous)
-            }
-            dao.insertNote(new)
-
             val rootPath = prefs.repoPath()
 
             if (renamed) {
@@ -332,6 +323,15 @@ class StorageManager {
             newFile.write(new.content).orComplain(R.string.error_write_file)
             newFile.dateBy(new)
 
+            // relativePath is the primary key, so as long as the note keeps its
+            // name the upsert rewrites the row in place. Only a rename needs the
+            // old row taken away first — and that is rare, while this runs on
+            // every typing pause.
+            if (renamed) {
+                dao.removeNote(previous)
+            }
+            dao.insertNote(new)
+
             success(Unit)
         }
 
@@ -344,13 +344,13 @@ class StorageManager {
         Log.d(TAG, "createNote: $note")
 
         update {
-            dao.insertNote(note)
-
             val file = note.toFileFs(prefs.repoPath())
 
             file.create().orComplain(R.string.error_create_file)
             file.write(note.content).orComplain(R.string.error_write_file)
             file.dateBy(note)
+
+            dao.insertNote(note)
 
             success(Unit)
         }
@@ -365,10 +365,10 @@ class StorageManager {
 
         Log.d(TAG, "deleteNote: $relativePath")
         update {
-            dao.removeNoteAt(relativePath)
-
             val file = NodeFs.File.fromPath(prefs.repoPath(), relativePath)
             file.delete().orComplain(R.string.error_delete_file, file.path)
+
+            dao.removeNoteAt(relativePath)
             success(Unit)
         }
     }
@@ -377,12 +377,6 @@ class StorageManager {
         Log.d(TAG, "deleteNotes: ${relativePaths.size}")
 
         update {
-            // the rows go first, all of them: the screen shows the database, so
-            // the whole selection disappears at once instead of note by note
-            relativePaths.forEach { relativePath ->
-                dao.removeNoteAt(relativePath)
-            }
-
             val repoPath = prefs.repoPath()
             relativePaths.forEach { relativePath ->
 
@@ -390,6 +384,13 @@ class StorageManager {
                 val file = NodeFs.File.fromPath(repoPath, relativePath)
 
                 file.delete().orComplain(R.string.error_delete_file, file.path)
+            }
+
+            // then the rows, all of them together: the screen shows the
+            // database, so the whole selection disappears at once rather than
+            // note by note
+            relativePaths.forEach { relativePath ->
+                dao.removeNoteAt(relativePath)
             }
             success(Unit)
         }
@@ -399,8 +400,6 @@ class StorageManager {
         Log.d(TAG, "createNoteFolder: $noteFolder")
 
         update {
-            dao.insertNoteFolder(noteFolder)
-
             val folder = noteFolder.toFolderFs(prefs.repoPath())
             folder.create().orComplain(R.string.error_create_folder)
 
@@ -409,6 +408,8 @@ class StorageManager {
             folder.createFile(GIT_KEEP).onFailure {
                 Log.e(TAG, "could not create $GIT_KEEP in ${folder.path}: ${it.message}")
             }
+
+            dao.insertNoteFolder(noteFolder)
 
             success(Unit)
         }
@@ -517,15 +518,15 @@ class StorageManager {
         Log.d(TAG, "deleteNoteFolders: ${noteFolders.size}")
 
         update {
-            // the rows go first, all of them, so that the list loses the whole
-            // selection at once instead of folder by folder
-            noteFolders.forEach { dao.deleteNoteFolder(it) }
-
             val repoPath = prefs.repoPath()
             noteFolders.forEach { noteFolder ->
                 val folder = noteFolder.toFolderFs(repoPath)
                 folder.delete().orComplain(R.string.error_delete_folder)
             }
+
+            // then the rows, all of them together, so that the list loses the
+            // whole selection at once rather than folder by folder
+            noteFolders.forEach { dao.deleteNoteFolder(it) }
 
             success(Unit)
         }
@@ -569,9 +570,18 @@ class StorageManager {
         }
 
     /**
-     * Applies a change to the files and to the database. Nothing is committed
-     * here: the working tree carries the change until the user asks for a sync,
-     * which is what [syncWithRemote] then commits and pushes in one go.
+     * Applies a change to the files first and to the database second. Nothing
+     * is committed here: the working tree carries the change until the user
+     * asks for a sync, which is what [syncWithRemote] then commits and pushes
+     * in one go.
+     *
+     * That order is the whole of it. Both are written one after the other and
+     * the process can die in between, and then one of them is behind — so the
+     * question is which. The files are the truth: a row left over for a file
+     * that is gone is noticed the moment the note is opened ("this note is no
+     * longer there"), and the next rebuild clears it. The other way round, a
+     * file with no row is a note that is simply not in the list, and since
+     * databaseCommit still agrees with HEAD nothing rebuilds to find it.
      */
     private suspend fun <T> update(
         f: suspend () -> Result<T>
