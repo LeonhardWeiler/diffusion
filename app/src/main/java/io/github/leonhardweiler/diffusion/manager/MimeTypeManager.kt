@@ -28,7 +28,18 @@ private fun read(name: String): List<String> =
         ?.useLines { lines -> lines.map { it.trim() }.filter { it.isNotEmpty() }.toList() }
         ?: error("the list of $name extensions is missing")
 
-fun extensionType(extension: String): ExtensionType? = extensions[extension]
+/**
+ * What kind of note a file with this extension is, or null for one this app does
+ * not show itself and hands to another.
+ *
+ * No extension at all is text. A note is called whatever the person writing it
+ * typed, and now that nothing appends `.md` behind their back, "shopping" is a
+ * name somebody chose — it would be a row that refuses to open otherwise. A
+ * LICENSE or a Makefile in the repository reads as text here for the same
+ * reason, which beats handing it to whatever else happens to be installed.
+ */
+fun extensionType(extension: String): ExtensionType? =
+    if (extension.isEmpty()) Text else extensions[extension]
 
 /** Whether a file with this extension is one the app itself can show. */
 fun isExtensionSupported(extension: String): Boolean = extensionType(extension) != null

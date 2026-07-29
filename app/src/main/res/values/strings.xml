@@ -25,8 +25,6 @@
     <string name="sync_not_committed">%1$s — changes not committed yet</string>
     <string name="search_in_notes">Search in notes</string>
     <string name="user_interface">User interface</string>
-    <string name="edit">Edit</string>
-    <string name="default_note_extension">Default extension for notes</string>
     <string name="repository">Repository</string>
     <string name="remote_url">Remote url</string>
     <string name="git_author_name">Git author name</string>

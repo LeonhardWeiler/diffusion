@@ -40,8 +40,7 @@ fun FloatingActionButtons(
     // the list. Creating one used to open the editor on a note with no file
     // behind it yet — see GridViewModel.createNote.
     //
-    // Composed only while it is open, because what it starts out with is asked of
-    // the preferences and that answer is waited for.
+    // Composed only while it is open, the way the dialogs of a row are.
     if (showCreateNote.value) {
         GetStringDialog(
             expanded = showCreateNote,

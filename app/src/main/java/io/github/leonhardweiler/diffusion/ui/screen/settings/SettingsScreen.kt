@@ -32,7 +32,6 @@ import io.github.leonhardweiler.diffusion.ui.component.SettingsSection
 import io.github.leonhardweiler.diffusion.ui.component.SimpleIcon
 import io.github.leonhardweiler.diffusion.ui.component.StringSettings
 import io.github.leonhardweiler.diffusion.ui.component.ToggleableSettings
-import io.github.leonhardweiler.diffusion.ui.model.FileExtension
 import io.github.leonhardweiler.diffusion.ui.theme.Theme
 import io.github.leonhardweiler.diffusion.ui.viewmodel.SettingsViewModel
 import kotlinx.coroutines.launch
@@ -65,20 +64,6 @@ fun SettingsScreen(
                 }
             )
 
-        }
-
-        SettingsSection(
-            title = stringResource(R.string.edit)
-        ) {
-            val defaultExtension by vm.prefs.defaultExtension.getAsState()
-            MultipleChoiceSettings(
-                title = stringResource(R.string.default_note_extension),
-                subtitle = defaultExtension,
-                options = FileExtension.entries,
-                onOptionClick = {
-                    vm.update { vm.prefs.defaultExtension.update(it.text) }
-                }
-            )
         }
 
         SettingsSection(

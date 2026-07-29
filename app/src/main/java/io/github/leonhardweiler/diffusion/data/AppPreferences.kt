@@ -120,9 +120,6 @@ class AppPreferences(
      */
     val syncOnOpenAndClose = booleanPreference("syncOnOpenAndClose", true)
 
-    val defaultExtension = stringPreference("defaultExtension", "md")
-
-
     /**
      * @param remoteUrl what this repository pushes to, empty for one that has no
      * remote. Always written, so that a repository opened after another does not

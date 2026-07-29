@@ -360,15 +360,19 @@ class GridViewModel : ViewModel() {
 
     /**
      * What the name of a new note starts out as: whatever is in the search field,
-     * when that is something a file can be called, and the default extension
-     * after it. Somebody searching for a note that is not there is somebody about
-     * to write it.
+     * when that is something a file can be called, and otherwise nothing at all.
+     * Somebody searching for a note that is not there is somebody about to write
+     * it.
+     *
+     * No extension. There was a preference for which one to append, and what it
+     * did was put `.md` in the field before anybody had typed a name — so the
+     * name was typed in front of an extension, and the one thing a note's name
+     * says about it was a setting somewhere else. What is typed is what the file
+     * is called, extension or none, and a name with no dot in it is a text note
+     * (see extensionType).
      */
-    fun defaultNewNoteName(): String {
-        val name = query.value.let { if (NameValidation.check(it)) it else "" }
-
-        return "$name.${FileExtension.match(prefs.defaultExtension.getBlocking()).text}"
-    }
+    fun defaultNewNoteName(): String =
+        query.value.let { if (NameValidation.check(it)) it else "" }
 
     /**
      * Writes an empty note where the typed name says, and leaves it in the list.
