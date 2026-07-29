@@ -2,14 +2,26 @@ package io.github.leonhardweiler.diffusion.baselineprofile
 
 import androidx.benchmark.macro.junit4.BaselineProfileRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.Direction
 import androidx.test.uiautomator.UiDevice
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** The app as it is installed for the recording, without any suffix. */
-private const val PACKAGE = "io.github.leonhardweiler.diffusion"
+/**
+ * The app as it is installed for the recording.
+ *
+ * Asked of the plugin rather than written down: a profile is recorded per build
+ * type, and two of the three carry a suffix — nightly is
+ * `…diffusion.nightly`, and the name spelled out here was the release's alone.
+ * Recording for any other variant then failed with the app "not installed",
+ * which it was, under the name the plugin knew and this file did not.
+ */
+private val packageUnderTest: String
+    get() = InstrumentationRegistry.getArguments()
+        .getString("androidx.benchmark.targetPackageName")
+        ?: error("the plugin did not say which app is being profiled")
 
 /** How long to wait for a screen to have finished drawing itself. */
 private const val IDLE_MS = 2_000L
@@ -36,7 +48,7 @@ class BaselineProfileGenerator {
 
     @Test
     fun generate() = rule.collect(
-        packageName = PACKAGE,
+        packageName = packageUnderTest,
         // the first frames after tapping the icon are the ones a cold start is
         // judged by, and they are the same frames every time
         includeInStartupProfile = true,

@@ -14,6 +14,18 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // What a profile is recorded for is a build type of the app, and the two
+    // sides are matched by name. The app has three, so a nightly build asked
+    // this module for a variant it did not have and the whole
+    // generateBaselineProfile failed to resolve — "No matching variant of
+    // project ':baselineprofile'".
+    //
+    // Nothing is configured in them: this module has no code of its own to
+    // build differently, it only has to answer for the name.
+    buildTypes {
+        create("nightly") { }
+    }
+
     // what is being profiled
     targetProjectPath = ":app"
 }

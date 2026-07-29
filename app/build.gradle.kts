@@ -181,6 +181,16 @@ val checkJniLibsAreRelease = tasks.register("checkJniLibsAreRelease") {
 
 androidComponents {
     onVariants { variant ->
+
+        // The variants the baseline profile plugin adds are built from release
+        // and inherit its signing config, whose keystore is not in the
+        // repository — so recording a profile asked for the release key, which
+        // has nothing to do with recording one. They are never published, so
+        // they are signed like the nightly, whose key is committed.
+        if (variant.name.startsWith("nonMinified") || variant.name.startsWith("benchmark")) {
+            variant.signingConfig.setConfig(android.signingConfigs.getByName("nightly"))
+        }
+
         // debug is the one build that is meant to carry a debug library
         if (variant.buildType == "debug") return@onVariants
 
