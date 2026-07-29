@@ -1,7 +1,7 @@
 <!--
     assets/app_icon.svg, one path, at its own viewBox.
 
-    The glyph spans 131..300 across and 119..312 down, so it sits inside the
+    The glyph spans 151..281 across and 142..290 down, so it sits inside the
     264 units (66 of the 108 dp) an adaptive icon may count on being shown — no
     group scaling is needed to keep it out of what a launcher may mask away.
 -->
@@ -13,5 +13,5 @@
     <path
         android:fillColor="#000000"
         android:fillType="evenOdd"
-        android:pathData="M131,312L215.5,119H220.226L300,312H131ZM266.785,300.172L210.497,161.583L149.622,300.172H266.785Z" />
+        android:pathData="M151,290L216,142H219.635L281,290H151ZM255.45,280.93L212.151,174.654L165.324,280.93H255.45Z" />
 </vector>
