@@ -30,6 +30,14 @@ enum class GitExceptionType {
      * says which note has to be edited first.
      */
     UnresolvedConflict,
+
+    /**
+     * The far end was never reached: no name to resolve, no route, no socket.
+     * Told apart from the rest because it is what an automatic sync runs into
+     * all the time — the app is opened and left exactly when a phone comes back
+     * from sleep — and that is not something to put an error on a button for.
+     */
+    NetworkUnreachable,
     Other
 }
 
@@ -69,6 +77,12 @@ class GitManager {
          */
         private const val UNRESOLVED_CONFLICT = -1001
 
+        /**
+         * Returned by the rust side when libgit2 never reached the far end.
+         * See NETWORK_UNREACHABLE in rust/src/error.rs.
+         */
+        private const val NETWORK_UNREACHABLE = -1002
+
         init {
             Log.d(TAG, "init")
             System.loadLibrary("git_wrapper")
@@ -105,7 +119,14 @@ class GitManager {
             }
             success(f())
         } catch (e: Exception) {
-            Log.e(TAG, e.message ?: "libgit2 call failed", e)
+            // A network that is not there is not a fault to hand a stack trace
+            // about: it is the ordinary answer when the app is opened before
+            // wifi is back, and twelve of those filled the log.
+            if (e is GitException && e.type == GitExceptionType.NetworkUnreachable) {
+                Log.i(TAG, e.message ?: "no network")
+            } else {
+                Log.e(TAG, e.message ?: "libgit2 call failed", e)
+            }
             failure(e)
         }
     }
@@ -272,7 +293,10 @@ class GitManager {
         val res = pushLib(cred)
 
         if (res < 0) {
-            throw Exception(uiHelper.getString(R.string.error_push_repo, errorDetail(res)))
+            throw GitException(
+                typeOf(res),
+                uiHelper.getString(R.string.error_push_repo, errorDetail(res))
+            )
         }
 
     }
@@ -293,8 +317,17 @@ class GitManager {
         }
 
         if (res < 0) {
-            throw Exception(uiHelper.getString(R.string.error_pull_repo, errorDetail(res)))
+            throw GitException(
+                typeOf(res),
+                uiHelper.getString(R.string.error_pull_repo, errorDetail(res))
+            )
         }
+    }
+
+    /** What a negative return code is, as far as the caller has to care. */
+    private fun typeOf(res: Int): GitExceptionType = when (res) {
+        NETWORK_UNREACHABLE -> GitExceptionType.NetworkUnreachable
+        else -> GitExceptionType.Other
     }
 
     /**

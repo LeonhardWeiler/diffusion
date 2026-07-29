@@ -12,6 +12,7 @@ import io.github.leonhardweiler.diffusion.data.room.NoteFolder
 import io.github.leonhardweiler.diffusion.data.room.RepoDatabase
 import io.github.leonhardweiler.diffusion.utils.getParentPath
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -35,6 +36,13 @@ private const val GIT_KEEP = ".gitkeep"
  * already loaded, and the note list would stay empty until a reload.
  */
 private const val NO_COMMIT = "none"
+
+/**
+ * How long a pull waits before trying a second time, when the first found no
+ * network. Long enough for a resolver that is being set up to be ready, short
+ * enough that somebody watching the button does not give up on it.
+ */
+private const val RETRY_AFTER_NETWORK_FAILURE_MS = 1_500L
 
 class StorageManager {
 
@@ -100,6 +108,40 @@ class StorageManager {
     private suspend fun failSync(message: String?) {
         message?.let { Log.e(TAG, it) }
         _syncState.emit(SyncState.Error(message, announce = announceSyncErrors))
+    }
+
+    /**
+     * What a failed pull or push leaves on the button.
+     *
+     * Everything but one thing leaves an error there. The exception is a sync
+     * that nobody asked for failing because the network was not there: the app
+     * syncs when it is opened and when it is left, which is exactly when a
+     * phone comes back from sleep and wifi has not reassociated — and the wait
+     * beforehand only covers the case where the system knows it is offline, not
+     * the second after it says it is online while the resolver still is not.
+     *
+     * The dot on the button already says the notes have not gone out. An alert
+     * cloud on top of it, for something the next sync will do without being
+     * asked, is a warning about nothing.
+     */
+    /** Whether this went wrong because the far end was never reached. */
+    private fun Result<*>.isNetworkFailure(): Boolean =
+        (exceptionOrNull() as? GitException)?.type == GitExceptionType.NetworkUnreachable
+
+    private suspend fun reportSyncFailure(err: Throwable) {
+        val transient = !announceSyncErrors &&
+                err is GitException &&
+                err.type == GitExceptionType.NetworkUnreachable
+
+        if (transient) {
+            Log.d(TAG, "sync: no network, and nobody asked: ${err.message}")
+            // the button is mid-pull as far as it knows, and nothing after this
+            // will take it out of that
+            _syncState.emit(SyncState.Idle)
+            return
+        }
+
+        failSync(err.message)
     }
 
     /**
@@ -551,10 +593,27 @@ class StorageManager {
 
         if (hasRemote) {
             _syncState.emit(SyncState.Pull)
-            gitManager.pull(cred, prefs.gitAuthor()).onFailure { err ->
+
+            var pulled = gitManager.pull(cred, prefs.gitAuthor())
+
+            // The wait beforehand asks the system whether there is a network,
+            // and the system answers yes a moment before this process can
+            // actually use one — coming out of doze the route is up while the
+            // resolver still is not, which is the whole of "failed to resolve
+            // address for github.com". One more try after a breath turns most
+            // of those into a sync that happened rather than one that was
+            // skipped. Nothing has been merged at that point, so there is
+            // nothing to undo before trying again.
+            if (pulled.isNetworkFailure()) {
+                Log.d(TAG, "pull: no network yet, trying once more")
+                delay(RETRY_AFTER_NETWORK_FAILURE_MS)
+                pulled = gitManager.pull(cred, prefs.gitAuthor())
+            }
+
+            pulled.onFailure { err ->
                 isError = true
                 conflicted = err is GitException && err.type == GitExceptionType.MergeConflict
-                failSync(err.message)
+                reportSyncFailure(err)
             }
         }
 
@@ -574,7 +633,7 @@ class StorageManager {
             _syncState.emit(SyncState.Push)
             gitManager.push(cred).onFailure { err ->
                 isError = true
-                failSync(err.message)
+                reportSyncFailure(err)
             }
         }
 

@@ -19,6 +19,13 @@ pub(crate) const MERGE_CONFLICT: jint = -1000;
 /// Kotlin knows this value as GitManager.UNRESOLVED_CONFLICT.
 pub(crate) const UNRESOLVED_CONFLICT: jint = -1001;
 
+/// Returned when libgit2 never reached the far end: no name to resolve, no
+/// route, no socket. libgit2 answers all of those with the same raw code as
+/// everything else and only says so in the error class, which Kotlin never
+/// sees — so it is lifted out here. Kotlin knows this value as
+/// GitManager.NETWORK_UNREACHABLE.
+pub(crate) const NETWORK_UNREACHABLE: jint = -1002;
+
 #[derive(Debug)]
 pub(crate) enum Error {
     Git2 {
@@ -75,6 +82,14 @@ impl From<Error> for jint {
         }
 
         match value {
+            // A network failure is the one thing a sync nobody asked for does
+            // all the time: the app is opened and left exactly when a phone
+            // comes back from sleep, and wifi is not up yet. It has to be
+            // recognisable as such, and the class is the only place libgit2
+            // says it.
+            Error::Git2 { error, .. } if error.class() == git2::ErrorClass::Net => {
+                NETWORK_UNREACHABLE
+            }
             Error::Git2 { error, .. } => error.raw_code(),
             Error::MergeConflict { .. } => MERGE_CONFLICT,
             Error::UnresolvedConflict { .. } => UNRESOLVED_CONFLICT,
