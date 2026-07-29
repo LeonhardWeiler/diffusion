@@ -1,5 +1,9 @@
 package io.github.leonhardweiler.diffusion.helper
 
+import android.util.Log
+
+private const val TAG = "RepoPath"
+
 /** Why a typed name does not name a place in the repository. */
 enum class PathProblem {
     /** Nothing was typed, or what was typed names a folder rather than a thing in it. */
@@ -68,4 +72,30 @@ fun resolveRepoPath(parentPath: String, typed: String): ResolvedPath {
     if (segments.isEmpty()) return ResolvedPath.Bad(PathProblem.Empty)
 
     return ResolvedPath.Ok(segments.joinToString("/"))
+}
+
+/**
+ * The folder a path is in, and the empty string for one that is at the root.
+ */
+fun getParentPath(path: String) = path.substringBeforeLast(
+    delimiter = "/",
+    missingDelimiterValue = ""
+)
+
+/**
+ * A path the rest of the app can compare: no slash at either end.
+ *
+ * The root folder is the empty string, and everything else is measured from it,
+ * so a stray leading slash would make two names for the same place.
+ */
+fun removeFirstAndLastSlash(input: String): String =
+    input.removePrefix("/").removeSuffix("/")
+
+/** Says so in a debug build, where an invariant of the schema is broken. */
+fun requireNotEndOrStartWithSlash(str: String) {
+    val requirement = !str.startsWith("/") && !str.endsWith("/")
+    if (!requirement) {
+        Log.d(TAG, "error: requirement not satisfied for $str")
+    }
+    require(requirement)
 }

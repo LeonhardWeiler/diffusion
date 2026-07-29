@@ -25,7 +25,7 @@ private const val TAG = "SetupViewModel"
 /** What makes a folder a repository. */
 private const val GIT_DIR = ".git"
 
-class SetupViewModel : ViewModel(), SetupViewModelI {
+class SetupViewModel : ViewModel() {
 
     val prefs: AppPreferences = MyApp.appModule.appPreferences
     private val gitManager = MyApp.appModule.gitManager
@@ -194,10 +194,6 @@ class SetupViewModel : ViewModel(), SetupViewModelI {
         return result
     }
 
-    override fun launch(f: suspend () -> Unit) {
-        viewModelScope.launch { f() }
-    }
-
     /**
      * Setting up a repository writes to disk and to the preferences. Leaving the
      * screen must not tear that down half way, so it does not run in
@@ -209,7 +205,7 @@ class SetupViewModel : ViewModel(), SetupViewModelI {
         }
     }
 
-    override fun cloneRepo(
+    fun cloneRepo(
         storageConfig: StorageConfiguration,
         remoteUrl: String,
         cred: Cred?,

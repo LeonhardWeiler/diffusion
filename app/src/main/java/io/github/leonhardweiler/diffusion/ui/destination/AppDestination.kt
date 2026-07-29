@@ -19,24 +19,17 @@ sealed interface AppDestination : Parcelable {
 
 }
 
+/**
+ * Which note the editor was opened on, and whether it is being created.
+ *
+ * Only that. What is being typed lives in the editor's own saved state, which
+ * is where a half written note survives the process dying — there used to be a
+ * second variant here for that, fed from a file in the app's private directory.
+ */
 @Parcelize
-sealed class EditParams : Parcelable {
-    data class Saved(
-        val note: Note,
-        val editType: EditType,
-        val name: String,
-        val content: String,
-    ) : EditParams()
-
-    data class Idle(
-        val note: Note,
-        val editType: EditType
-    ) : EditParams()
-
-    fun fileExtension(): FileExtension {
-        return when (this) {
-            is Idle -> this.note.fileExtension()
-            is Saved -> this.note.fileExtension()
-        }
-    }
+data class EditParams(
+    val note: Note,
+    val editType: EditType,
+) : Parcelable {
+    fun fileExtension(): FileExtension = note.fileExtension()
 }

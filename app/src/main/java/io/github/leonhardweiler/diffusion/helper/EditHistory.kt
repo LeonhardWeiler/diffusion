@@ -1,7 +1,6 @@
 package io.github.leonhardweiler.diffusion.helper
 
 import androidx.compose.ui.text.input.TextFieldValue
-import io.github.leonhardweiler.diffusion.utils.endsWith
 import kotlin.math.absoluteValue
 
 /**
@@ -214,4 +213,18 @@ class EditHistoryStore {
     val size: Int get() = histories.size
 
     fun of(noteId: Int): EditHistory = histories.getOrPut(noteId) { EditHistory() }
+}
+
+/**
+ * Whether the text ends with [suffix] at [startIndex] rather than at its end.
+ *
+ * What was just typed is the character before the caret, and the caret is
+ * rarely at the end of the note — so the question is always about a place in
+ * the middle.
+ */
+private fun String.endsWith(suffix: String, startIndex: Int): Boolean {
+    if (startIndex < 0 || startIndex > length) return false
+    if (startIndex < suffix.length) return false
+
+    return regionMatches(startIndex - suffix.length, suffix, 0, suffix.length)
 }

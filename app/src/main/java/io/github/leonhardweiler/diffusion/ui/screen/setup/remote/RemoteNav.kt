@@ -19,6 +19,7 @@ import io.github.leonhardweiler.diffusion.ui.destination.RemoteDestination
 import io.github.leonhardweiler.diffusion.ui.destination.RemoteDestination.EnterUrl
 import io.github.leonhardweiler.diffusion.ui.destination.RemoteDestination.GenerateNewKeys
 import io.github.leonhardweiler.diffusion.ui.destination.RemoteDestination.SelectGenerateNewSshKeys
+import io.github.leonhardweiler.diffusion.ui.model.Cred
 import io.github.leonhardweiler.diffusion.ui.model.StorageConfiguration
 import io.github.leonhardweiler.diffusion.ui.screen.settings.LogsScreen
 import io.github.leonhardweiler.diffusion.ui.utils.crossFade
@@ -58,6 +59,18 @@ fun RemoteScreen(
     // entry would leave an empty backstack behind
     fun back() {
         if (navController.backstack.entries.size > 1) navController.pop() else onBackClick()
+    }
+
+    // The two key screens differ in where the credentials come from and in
+    // nothing else, so this is all they are given of the setup.
+    fun clone(url: String, cred: Cred) {
+        vm.cloneRepo(
+            storageConfig = storageConfig,
+            remoteUrl = url,
+            cred = cred,
+            onSuccess = onInitSuccess
+        )
+        navController.navigate(RemoteDestination.Cloning)
     }
 
     val initState = vm.initState.collectAsState().value
@@ -111,23 +124,15 @@ fun RemoteScreen(
             is GenerateNewKeys -> GenerateNewSshKeysScreen(
                 onBackClick = { navController.pop() },
                 cloneState = initState,
-                storageConfig = storageConfig,
-                url = remoteDestination.url,
-                vm = vm,
                 generateSshKeys = ::generateSshKeysLib,
-                onSuccess = onInitSuccess,
-                onClone = { navController.navigate(RemoteDestination.Cloning) },
+                cloneWith = { cred -> clone(remoteDestination.url, cred) },
                 storedKey = storedSshKey.takeIf { remoteDestination.useStored },
             )
 
             is RemoteDestination.LoadKeysFromDevice -> LoadKeysFromDeviceScreen(
                 onBackClick = { navController.pop() },
                 cloneState = initState,
-                storageConfig = storageConfig,
-                url = remoteDestination.url,
-                vm = vm,
-                onSuccess = onInitSuccess,
-                onClone = { navController.navigate(RemoteDestination.Cloning) }
+                cloneWith = { cred -> clone(remoteDestination.url, cred) },
             )
 
             RemoteDestination.Cloning -> CloningScreen(

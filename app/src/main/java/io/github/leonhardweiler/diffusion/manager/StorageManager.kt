@@ -10,7 +10,7 @@ import io.github.leonhardweiler.diffusion.data.platform.NodeFs
 import io.github.leonhardweiler.diffusion.data.room.Note
 import io.github.leonhardweiler.diffusion.data.room.NoteFolder
 import io.github.leonhardweiler.diffusion.data.room.RepoDatabase
-import io.github.leonhardweiler.diffusion.utils.getParentPath
+import io.github.leonhardweiler.diffusion.helper.getParentPath
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -110,6 +110,10 @@ class StorageManager {
         _syncState.emit(SyncState.Error(message, announce = announceSyncErrors))
     }
 
+    /** Whether this went wrong because the far end was never reached. */
+    private fun Result<*>.isNetworkFailure(): Boolean =
+        (exceptionOrNull() as? GitException)?.type == GitExceptionType.NetworkUnreachable
+
     /**
      * What a failed pull or push leaves on the button.
      *
@@ -124,10 +128,6 @@ class StorageManager {
      * cloud on top of it, for something the next sync will do without being
      * asked, is a warning about nothing.
      */
-    /** Whether this went wrong because the far end was never reached. */
-    private fun Result<*>.isNetworkFailure(): Boolean =
-        (exceptionOrNull() as? GitException)?.type == GitExceptionType.NetworkUnreachable
-
     private suspend fun reportSyncFailure(err: Throwable) {
         val transient = !announceSyncErrors &&
                 err is GitException &&

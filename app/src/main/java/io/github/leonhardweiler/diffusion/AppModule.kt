@@ -8,7 +8,6 @@ import io.github.leonhardweiler.diffusion.data.AppPreferences
 import io.github.leonhardweiler.diffusion.data.room.RepoDatabase
 import io.github.leonhardweiler.diffusion.helper.EditHistoryStore
 import io.github.leonhardweiler.diffusion.helper.NetworkMonitor
-import io.github.leonhardweiler.diffusion.helper.NoteSaver
 import io.github.leonhardweiler.diffusion.helper.UiHelper
 import io.github.leonhardweiler.diffusion.manager.GitManager
 import io.github.leonhardweiler.diffusion.manager.StorageManager
@@ -21,7 +20,6 @@ interface AppModule {
     val storageManager: StorageManager
     val gitManager: GitManager
     val appPreferences: AppPreferences
-    val noteSaver: NoteSaver
     val editHistoryStore: EditHistoryStore
     val networkMonitor: NetworkMonitor
     val context: Context
@@ -50,10 +48,6 @@ class AppModuleImpl(
     }
     /** Storage and git writes must not be cancelled when a screen goes away. */
     override val appScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
-    override val noteSaver: NoteSaver by lazy {
-        NoteSaver(context.filesDir)
-    }
 
     override val editHistoryStore: EditHistoryStore by lazy {
         EditHistoryStore()

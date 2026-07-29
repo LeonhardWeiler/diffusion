@@ -36,6 +36,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
@@ -55,6 +56,7 @@ import io.github.leonhardweiler.diffusion.manager.extensionType
 import io.github.leonhardweiler.diffusion.ui.component.SimpleIcon
 import io.github.leonhardweiler.diffusion.ui.destination.EditParams
 import io.github.leonhardweiler.diffusion.ui.model.EditType
+import io.github.leonhardweiler.diffusion.ui.viewmodel.edit.Draft
 import io.github.leonhardweiler.diffusion.ui.viewmodel.edit.MarkDownVM
 import io.github.leonhardweiler.diffusion.ui.viewmodel.edit.TextVM
 import io.github.leonhardweiler.diffusion.ui.viewmodel.edit.newEditViewModel
@@ -62,6 +64,12 @@ import io.github.leonhardweiler.diffusion.ui.viewmodel.edit.newMarkDownVM
 
 
 private const val TAG = "EditScreen"
+
+/** Two strings, which is all a [Draft] is. */
+private val DraftSaver = listSaver<Draft?, String>(
+    save = { draft -> draft?.let { listOf(it.name, it.content) } ?: emptyList() },
+    restore = { list -> if (list.size == 2) Draft(list[0], list[1]) else null }
+)
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -74,17 +82,28 @@ fun EditScreen(
 
     val extension = editParams.fileExtension()
 
+    // What the editor held when the process was last stopped, if the disk could
+    // not be given it — a name no file can carry is the only way that happens.
+    // Kept here rather than in a file of its own: this is saved state of the
+    // screen, so Android writes it out with everything else and hands it back
+    // when the process comes up again.
+    //
+    // Before the view model, because the view model is built from it.
+    var draft by rememberSaveable(stateSaver = DraftSaver) { mutableStateOf<Draft?>(null) }
+
     // Markdown gets the editor that knows about lists and headings; everything
     // else gets a text field. Not a failure for an extension nobody knows: the
     // list refuses to open those, but a draft restored after a crash can still
     // name one, and a note is better shown as plain text than not at all.
     val vm = when (extensionType(extension.text)) {
-        ExtensionType.Markdown -> newMarkDownVM(editParams)
-        else -> newEditViewModel(editParams)
+        ExtensionType.Markdown -> newMarkDownVM(editParams, draft)
+        else -> newEditViewModel(editParams, draft)
     }
 
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
         vm.saveNow()
+        // after the write, so that this is only what the write could not take
+        draft = vm.draft()
     }
 
     // there is no save button: leaving the editor is what ends an edit

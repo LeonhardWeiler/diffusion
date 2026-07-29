@@ -26,7 +26,7 @@ import io.github.leonhardweiler.diffusion.ui.model.GridItem
 import io.github.leonhardweiler.diffusion.ui.model.GridNote
 import io.github.leonhardweiler.diffusion.ui.model.NoteHeader
 import io.github.leonhardweiler.diffusion.ui.model.SortOrder
-import io.github.leonhardweiler.diffusion.utils.getParentPath
+import io.github.leonhardweiler.diffusion.helper.getParentPath
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow

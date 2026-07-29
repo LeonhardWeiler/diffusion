@@ -134,7 +134,6 @@ class AppPreferences(
     val syncOnOpenAndClose = booleanPreference("syncOnOpenAndClose", true)
 
     val defaultExtension = stringPreference("defaultExtension", "md")
-    val showLinesNumber = booleanPreference("showLinesNumber", false)
 
 
     /**

@@ -52,7 +52,7 @@ import io.github.leonhardweiler.diffusion.ui.model.EditType
 import io.github.leonhardweiler.diffusion.ui.model.GridNote
 import io.github.leonhardweiler.diffusion.ui.model.NoteHeader
 import io.github.leonhardweiler.diffusion.ui.viewmodel.GridViewModel
-import io.github.leonhardweiler.diffusion.utils.getParentPath
+import io.github.leonhardweiler.diffusion.helper.getParentPath
 
 
 private const val TAG = "GridScreen"

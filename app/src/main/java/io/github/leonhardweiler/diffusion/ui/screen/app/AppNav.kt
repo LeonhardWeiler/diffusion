@@ -3,7 +3,6 @@ package io.github.leonhardweiler.diffusion.ui.screen.app
 import android.util.Log
 import androidx.compose.animation.ContentTransform
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.saveable.rememberSaveable
 import dev.olshevski.navigation.reimagined.AnimatedNavHost
 import dev.olshevski.navigation.reimagined.NavAction
 import dev.olshevski.navigation.reimagined.NavBackHandler
@@ -12,7 +11,6 @@ import dev.olshevski.navigation.reimagined.NavTransitionSpec
 import dev.olshevski.navigation.reimagined.navigate
 import dev.olshevski.navigation.reimagined.pop
 import dev.olshevski.navigation.reimagined.rememberNavController
-import io.github.leonhardweiler.diffusion.MyApp
 import io.github.leonhardweiler.diffusion.ui.destination.AppDestination
 import io.github.leonhardweiler.diffusion.ui.destination.EditParams
 import io.github.leonhardweiler.diffusion.ui.destination.SettingsDestination
@@ -31,29 +29,7 @@ fun AppScreen(
     onCloseRepo: () -> Unit,
 ) {
 
-    val initialBackstack: List<AppDestination> = rememberSaveable {
-        buildList {
-            add(appDestination)
-
-            MyApp.appModule.noteSaver.getSaveState()?.let { saveInfo ->
-                Log.d(TAG, "restoring an unsaved edit")
-                add(
-                    AppDestination.Edit(
-                        EditParams.Saved(
-                            note = saveInfo.previousNote,
-                            editType = saveInfo.editType,
-                            name = saveInfo.name,
-                            content = saveInfo.content
-                        )
-                    )
-                )
-            }
-        }
-    }
-
-
-    val navController =
-        rememberNavController(initialBackstack)
+    val navController = rememberNavController(appDestination)
 
     NavBackHandler(navController)
 
@@ -73,7 +49,7 @@ fun AppScreen(
                         )
                     },
                     onEditClick = { note, editType ->
-                        navController.navigate(AppDestination.Edit(EditParams.Idle(note, editType)))
+                        navController.navigate(AppDestination.Edit(EditParams(note, editType)))
                     },
                 )
             }

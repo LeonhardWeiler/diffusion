@@ -23,10 +23,7 @@ import io.github.leonhardweiler.diffusion.ui.component.SetupButton
 import io.github.leonhardweiler.diffusion.ui.component.SetupLine
 import io.github.leonhardweiler.diffusion.ui.component.SetupPage
 import io.github.leonhardweiler.diffusion.ui.model.Cred
-import io.github.leonhardweiler.diffusion.ui.model.StorageConfiguration
 import io.github.leonhardweiler.diffusion.ui.viewmodel.InitState
-import io.github.leonhardweiler.diffusion.ui.viewmodel.SetupViewModelI
-import io.github.leonhardweiler.diffusion.ui.viewmodel.SetupViewModelMock
 
 
 
@@ -35,13 +32,9 @@ import io.github.leonhardweiler.diffusion.ui.viewmodel.SetupViewModelMock
 fun LoadKeysFromDeviceScreen(
     onBackClick: () -> Unit,
     cloneState: InitState,
-    storageConfig: StorageConfiguration,
-    url: String,
-    vm: SetupViewModelI,
-    onClone: () -> Unit,
-    onSuccess: () -> Unit,
-
-    ) {
+    /** Starts the clone with these credentials and goes to the clone screen. */
+    cloneWith: (Cred) -> Unit,
+) {
     AppPage(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -130,18 +123,13 @@ fun LoadKeysFromDeviceScreen(
                     text = stringResource(R.string.clone_repo),
                     enabled = SshKeyValidation.isKeyPair(publicKey.value.text, privateKey.value.text),
                     onClick = {
-                        vm.cloneRepo(
-                            storageConfig = storageConfig,
-                            remoteUrl = url,
-                            cred = Cred.Ssh(
+                        cloneWith(
+                            Cred.Ssh(
                                 publicKey = publicKey.value.text,
                                 privateKey = privateKey.value.text,
                                 passphrase = privateKeyPassword.value.text.ifEmpty { null }
-                            ),
-                            onSuccess = onSuccess
+                            )
                         )
-
-                        onClone()
                     },
                 )
             }
@@ -184,10 +172,6 @@ private fun LoadKeysFromDeviceScreenPreview() {
     LoadKeysFromDeviceScreen(
         onBackClick = {},
         cloneState = InitState.Idle,
-        vm = SetupViewModelMock(),
-        storageConfig = StorageConfiguration("/storage/emulated/0/notes"),
-        onSuccess = {},
-        onClone = {},
-        url = "url",
+        cloneWith = {},
     )
 }

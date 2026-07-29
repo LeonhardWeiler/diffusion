@@ -14,6 +14,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -31,10 +32,8 @@ import io.github.leonhardweiler.diffusion.ui.component.SetupButton
 import io.github.leonhardweiler.diffusion.ui.component.SetupLine
 import io.github.leonhardweiler.diffusion.ui.component.SetupPage
 import io.github.leonhardweiler.diffusion.ui.model.Cred
-import io.github.leonhardweiler.diffusion.ui.model.StorageConfiguration
 import io.github.leonhardweiler.diffusion.ui.viewmodel.InitState
-import io.github.leonhardweiler.diffusion.ui.viewmodel.SetupViewModelI
-import io.github.leonhardweiler.diffusion.ui.viewmodel.SetupViewModelMock
+import kotlinx.coroutines.launch
 
 private const val TAG = "GenerateNewSshKeysScreen"
 
@@ -42,12 +41,9 @@ private const val TAG = "GenerateNewSshKeysScreen"
 fun GenerateNewSshKeysScreen(
     onBackClick: () -> Unit,
     cloneState: InitState,
-    storageConfig: StorageConfiguration,
-    url: String,
-    vm: SetupViewModelI,
     generateSshKeys: () -> Pair<String, String>,
-    onClone: () -> Unit,
-    onSuccess: () -> Unit,
+    /** Starts the clone with these credentials and goes to the clone screen. */
+    cloneWith: (Cred) -> Unit,
     /**
      * The pair the app already holds, when the user chose to reuse it. Nothing
      * is generated then, and the clone is not made to wait for a copy: a key
@@ -63,6 +59,8 @@ fun GenerateNewSshKeysScreen(
         onBackClick = onBackClick,
         onBackClickEnabled = !cloneState.isLoading()
     ) {
+
+        val scope = rememberCoroutineScope()
 
         val publicKey = rememberSaveable { mutableStateOf(storedKey?.publicKey.orEmpty()) }
         val privateKey = rememberSaveable { mutableStateOf(storedKey?.privateKey.orEmpty()) }
@@ -132,7 +130,7 @@ fun GenerateNewSshKeysScreen(
                             ClipData.Item(publicKey.value)
                         )
 
-                        vm.launch {
+                        scope.launch {
                             clipboardManager.setClipEntry(ClipEntry(data))
                             keyCopied.value = true
                         }
@@ -186,18 +184,13 @@ fun GenerateNewSshKeysScreen(
                     enabled = keyCopied.value
                             && SshKeyValidation.isKeyPair(publicKey.value, privateKey.value),
                     onClick = {
-                        vm.cloneRepo(
-                            storageConfig = storageConfig,
-                            remoteUrl = url,
-                            cred = Cred.Ssh(
+                        cloneWith(
+                            Cred.Ssh(
                                 publicKey = publicKey.value,
                                 privateKey = privateKey.value,
                                 passphrase = passphrase.value
-                            ),
-                            onSuccess = onSuccess
+                            )
                         )
-
-                        onClone()
                     },
                 )
             }
@@ -211,12 +204,8 @@ private fun GenerateNewSshKeysScreenPreview() {
     GenerateNewSshKeysScreen(
         onBackClick = {},
         cloneState = InitState.Idle,
-        storageConfig = StorageConfiguration("/storage/emulated/0/notes"),
-        url = "url",
-        vm = SetupViewModelMock(),
         generateSshKeys = { "aaaaaaaaaaaabbbbbbbbbbbbb" to "aaaaaaaaaaaabbbbbbbbbbbbb" },
-        onSuccess = {},
-        onClone = {}
+        cloneWith = {},
     )
 
 }

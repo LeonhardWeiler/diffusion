@@ -3,7 +3,7 @@ package io.github.leonhardweiler.diffusion.data.platform
 import android.util.Log
 import io.github.leonhardweiler.diffusion.MyApp
 import io.github.leonhardweiler.diffusion.R
-import io.github.leonhardweiler.diffusion.data.removeFirstAndLastSlash
+import io.github.leonhardweiler.diffusion.helper.removeFirstAndLastSlash
 import io.github.leonhardweiler.diffusion.ui.model.FileExtension
 import io.github.leonhardweiler.diffusion.utils.toResult
 import java.nio.file.Files

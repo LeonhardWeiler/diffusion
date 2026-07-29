@@ -102,16 +102,6 @@ fun SettingsScreen(
                     vm.update { vm.prefs.defaultExtension.update(it.text) }
                 }
             )
-
-            /*
-            val showLinesNumber by vm.prefs.showLinesNumber.getAsState()
-            ToggleableSettings(
-                title = stringResource(R.string.show_lines_number),
-                checked = showLinesNumber
-            ) {
-                vm.update { vm.prefs.showLinesNumber.update(it) }
-            }
-             */
         }
 
         SettingsSection(

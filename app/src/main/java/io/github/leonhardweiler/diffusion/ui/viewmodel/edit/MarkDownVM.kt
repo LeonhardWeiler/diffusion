@@ -97,26 +97,18 @@ class MarkDownVM : TextVM {
 
 
 @Composable
-fun newMarkDownVM(editParams: EditParams): MarkDownVM {
-
-    return when (editParams) {
-        is EditParams.Idle -> viewModel<MarkDownVM>(
-            factory = viewModelFactory {
+fun newMarkDownVM(editParams: EditParams, draft: Draft?): MarkDownVM =
+    viewModel<MarkDownVM>(
+        factory = viewModelFactory {
+            if (draft == null) {
                 MarkDownVM(editParams.editType, editParams.note)
+            } else {
+                MarkDownVM(
+                    editType = editParams.editType,
+                    previousNote = editParams.note,
+                    name = draft.name,
+                    content = draft.content,
+                )
             }
-        )
-
-        is EditParams.Saved -> {
-            viewModel<MarkDownVM>(
-                factory = viewModelFactory {
-                    MarkDownVM(
-                        editType = editParams.editType,
-                        previousNote = editParams.note,
-                        name = editParams.name,
-                        content = editParams.content,
-                    )
-                }
-            )
         }
-    }
-}
+    )

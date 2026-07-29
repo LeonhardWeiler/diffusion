@@ -6,8 +6,8 @@ import androidx.room.Fts4
 import androidx.room.Index
 import io.github.leonhardweiler.diffusion.BuildConfig
 import io.github.leonhardweiler.diffusion.data.platform.NodeFs
-import io.github.leonhardweiler.diffusion.data.removeFirstAndLastSlash
-import io.github.leonhardweiler.diffusion.data.requireNotEndOrStartWithSlash
+import io.github.leonhardweiler.diffusion.helper.removeFirstAndLastSlash
+import io.github.leonhardweiler.diffusion.helper.requireNotEndOrStartWithSlash
 import io.github.leonhardweiler.diffusion.ui.model.FileExtension
 import kotlinx.parcelize.Parcelize
 import java.io.Serializable

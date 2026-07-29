@@ -16,7 +16,6 @@ import io.github.leonhardweiler.diffusion.data.platform.NodeFs
 import io.github.leonhardweiler.diffusion.data.room.Note
 import io.github.leonhardweiler.diffusion.helper.EditHistory
 import io.github.leonhardweiler.diffusion.helper.NameValidation
-import io.github.leonhardweiler.diffusion.helper.NoteSaver
 import io.github.leonhardweiler.diffusion.helper.PathProblem
 import io.github.leonhardweiler.diffusion.helper.ResolvedPath
 import io.github.leonhardweiler.diffusion.helper.resolveRepoPath
@@ -39,6 +38,12 @@ import kotlin.Result.Companion.success
 data class History(
     val index: Int,
     val size: Int,
+)
+
+/** The name and the text of an edit that could not be written to disk yet. */
+data class Draft(
+    val name: String,
+    val content: String,
 )
 
 enum class EditExceptionType {
@@ -210,7 +215,6 @@ open class TextVM() : ViewModel() {
 
     private val storageManager: StorageManager = MyApp.appModule.storageManager
     private val uiHelper: UiHelper = MyApp.appModule.uiHelper
-    private val noteSaver: NoteSaver = MyApp.appModule.noteSaver
     private val appScope = MyApp.appModule.appScope
     val prefs = MyApp.appModule.appPreferences
 
@@ -432,43 +436,27 @@ open class TextVM() : ViewModel() {
                 rejectedName = typed
                 uiHelper.makeToast(uiHelper.getString(resolved.problem.message()))
             }
-            writeDraft()
             return
         }
         rejectedName = null
 
         save()
-
-        // the draft is the net for what could not be written yet — an invalid
-        // name, say. Once the note is on disk it would only restore itself.
-        if (isPreviousNoteTheSame()) {
-            appScope.launch { noteSaver.clear() }
-        } else {
-            writeDraft()
-        }
     }
 
     /**
-     * Runs in the app's scope rather than this one: the last thing the editor
-     * does before it is cleared is write a draft, and a scope that dies with
-     * the editor would take that write with it.
+     * What the editor holds that the disk does not, or null when the disk has
+     * it all.
+     *
+     * There is exactly one thing that can be in the first case: text under a
+     * name no file can carry. Everything else is written within a typing pause.
+     * The screen puts this into its saved state when the app is stopped, which
+     * is the same moment Android writes that state out, and hands it back when
+     * the process comes up again — so it costs nothing while somebody types.
      */
-    private fun writeDraft() {
-        val shouldSave = !isPreviousNoteTheSame()
-        val name = name.value.text
-        val content = content.value.text
-        val previousNote = previousNote
-        val editType = editType
+    fun draft(): Draft? {
+        if (isPreviousNoteTheSame()) return null
 
-        appScope.launch {
-            noteSaver.save(
-                shouldSave = shouldSave,
-                name = name,
-                content = content,
-                previousNote = previousNote,
-                editType = editType
-            )
-        }
+        return Draft(name = name.value.text, content = content.value.text)
     }
 
     override fun onCleared() {
@@ -478,27 +466,19 @@ open class TextVM() : ViewModel() {
 
 
 @Composable
-fun newEditViewModel(editParams: EditParams): TextVM {
-
-    return when (editParams) {
-        is EditParams.Idle -> viewModel<TextVM>(
-            factory = viewModelFactory {
+fun newEditViewModel(editParams: EditParams, draft: Draft?): TextVM =
+    viewModel<TextVM>(
+        factory = viewModelFactory {
+            if (draft == null) {
                 TextVM(editParams.editType, editParams.note)
+            } else {
+                TextVM(
+                    editType = editParams.editType,
+                    previousNote = editParams.note,
+                    name = draft.name,
+                    content = draft.content,
+                )
             }
-        )
-
-        is EditParams.Saved -> {
-            viewModel<TextVM>(
-                factory = viewModelFactory {
-                    TextVM(
-                        editType = editParams.editType,
-                        previousNote = editParams.note,
-                        name = editParams.name,
-                        content = editParams.content,
-                    )
-                }
-            )
         }
-    }
-}
+    )
 
