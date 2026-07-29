@@ -131,6 +131,10 @@ android {
             excludes += setOf(
                 "META-INF/{AL2.0,LGPL2.1,LICENSE*,NOTICE*,DEPENDENCIES}",
                 "META-INF/versions/**",
+                // 1,2 MB of lookup tables for Picnic, a post-quantum signature
+                // scheme. Bouncycastle is here for one ed25519 key generator,
+                // and R8 shrinks classes but not the resources beside them.
+                "org/bouncycastle/pqc/**",
             )
         }
     }
