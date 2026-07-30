@@ -1,1 +1,7 @@
-- remove the complete rust code and write everything in kotlin/java. The functionality should be exactly the same, it should just not use rust but just kotlin
+- make the gap even smaller between the input box (or the delete warning, etc.) and the button below
+- why is there a prettier configuration, remove if not necessary
+- the layout looks like its moving upwards when going into the settings
+- sort by last edited, folders first (on top with the last edited file in it) and then files
+- when creating a file it should not open and only Show in the file explorer where you can change the name. Show the newly created file at the top and then sort it accordingly when the creation is finished
+- don't show the file extension when creating a new file, keep it empty and let the user decide, also remove the default file extension from the settings menu
+- remove view or edit from three dot menu and make it individual to each file
