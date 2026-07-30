@@ -25,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -51,6 +52,24 @@ import java.util.Date
  * reserves the height of the taller one.
  */
 private val ListRowMinHeight = 56.dp
+
+/**
+ * The background of a marked row, in a list where every other row is the page it
+ * stands on.
+ *
+ * `surfaceColorAtElevation(6.dp)` did this, and that tints upwards from
+ * `surface` — which in dark mode is real black, so six dp came out as ten per
+ * cent white (#1B1B1B) and a marked row was one shade of black beside another.
+ * The two schemes name this grey themselves (Material's container for a selected
+ * item), so it is the same step away from the page in both: #2B2B2B on black,
+ * #E6E6E6 on white.
+ *
+ * One step and no more: [RowDivider] draws at about #373737 in dark, and a
+ * selected row brighter than that would swallow the lines that say where the row
+ * ends.
+ */
+private val selectedRowColor: Color
+    @Composable get() = MaterialTheme.colorScheme.secondaryContainer
 
 /** The way out of a folder, which is the row above everything in it. */
 @Composable
@@ -125,7 +144,7 @@ internal fun FolderRow(
     }
 
     val rowBackground =
-        if (selected) MaterialTheme.colorScheme.surfaceColorAtElevation(6.dp)
+        if (selected) selectedRowColor
         else MaterialTheme.colorScheme.surface
 
     Column(
@@ -266,7 +285,7 @@ internal fun NoteListRow(
     }
 
     val rowBackground =
-        if (selected) MaterialTheme.colorScheme.surfaceColorAtElevation(6.dp)
+        if (selected) selectedRowColor
         else MaterialTheme.colorScheme.surface
 
     Column(
