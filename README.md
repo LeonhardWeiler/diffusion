@@ -10,9 +10,17 @@
 
 </div>
 
-[![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/LeonhardWeiler/diffusion.svg?logo=github&label=GitHub&cacheSeconds=3600)](https://github.com/LeonhardWeiler/diffusion/releases/latest)
-
 Diffusion is an Android app primarily designed for taking notes and syncing them between devices using a Git repository.
+
+## Download
+
+[<img height="80" src="https://media.githubusercontent.com/media/NeoApplications/Neo-Backup/refs/heads/master/badge_github.png"/>](https://github.com/LeonhardWeiler/diffusion/releases/latest)
+
+[<img height="80" src="https://media.githubusercontent.com/media/organicmaps/organicmaps/refs/heads/master/doc/badges/obtainium.png"/>](https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22io.github.leonhardweiler.diffusion%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2FLeonhardWeiler%2Fdiffusion%22%2C%22author%22%3A%22LeonhardWeiler%22%2C%22name%22%3A%22Diffusion%22%2C%22preferredApkIndex%22%3A0%7D)
+
+## Android signing certificate SHA-256:
+
+71:9D:ED:3C:0C:A8:2E:7B:3C:28:CD:50:78:16:C7:67:04:62:8B:03:49:DE:BB:55:FC:FD:20:94:5C:49:FF:21
 
 ## Why
 
