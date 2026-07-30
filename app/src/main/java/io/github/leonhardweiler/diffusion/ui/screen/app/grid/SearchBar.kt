@@ -34,7 +34,6 @@ import io.github.leonhardweiler.diffusion.R
 import io.github.leonhardweiler.diffusion.manager.SyncState
 import io.github.leonhardweiler.diffusion.ui.component.CustomDropDown
 import io.github.leonhardweiler.diffusion.ui.component.CustomDropDownModel
-import io.github.leonhardweiler.diffusion.ui.component.ExtraBarHeight
 import io.github.leonhardweiler.diffusion.ui.component.SimpleIcon
 
 @Composable
@@ -80,10 +79,7 @@ internal fun SearchBar(
             .fillMaxWidth()
             .padding(padding)
             .padding(horizontal = 10.dp)
-            // the same air every other page carries under its bar, see
-            // ExtraBarHeight — the two have to agree or the list and the
-            // settings begin at different heights
-            .padding(top = ExtraBarHeight)
+            .padding(top = 15.dp)
             .focusRequester(searchFocusRequester),
         value = queryTextField.value,
         onValueChange = {
