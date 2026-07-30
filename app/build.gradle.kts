@@ -57,12 +57,10 @@ android {
 
     signingConfigs {
         create("release") {
-            // on powershell
-            // $env:KEY_ALIAS = "var"
-            keyAlias = System.getenv("KEY_ALIAS")
-            keyPassword = System.getenv("KEY_PASSWORD")
-            storeFile = file("key.jks")
-            storePassword = System.getenv("STORE_PASSWORD")
+          keyAlias = providers.gradleProperty("KEY_ALIAS").get()
+          keyPassword = providers.gradleProperty("KEY_PASSWORD").get()
+          storeFile = file("key.jks")
+          storePassword = providers.gradleProperty("STORE_PASSWORD").get()
         }
 
         // need this because debug key is machine dependent
