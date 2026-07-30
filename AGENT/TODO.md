@@ -1,7 +1,1 @@
-- make the gap even smaller between the input box (or the delete warning, etc.) and the button below
-- why is there a prettier configuration, remove if not necessary
-- the layout looks like its moving upwards when going into the settings
-- sort by last edited, folders first (on top with the last edited file in it) and then files
-- when creating a file it should not open and only Show in the file explorer where you can change the name. Show the newly created file at the top and then sort it accordingly when the creation is finished
-- don't show the file extension when creating a new file, keep it empty and let the user decide, also remove the default file extension from the settings menu
-- remove view or edit from three dot menu and make it individual to each file
+- go through the whole repository and look for possible code minimizations to reduce the attack surface and the possibility for buggy code. Remove all the comments that explain how something works, the code should be good enough to do that. Only keep the absolute necessary comments if they explain how somethings working. Split big files into multiple small ones
