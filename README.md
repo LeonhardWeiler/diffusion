@@ -14,9 +14,9 @@ Diffusion is an Android app primarily designed for taking notes and syncing them
 
 ## Download
 
-[<img height="80" src="https://media.githubusercontent.com/media/NeoApplications/Neo-Backup/refs/heads/master/badge_github.png"/>](https://github.com/LeonhardWeiler/diffusion/releases/latest)
+[GitHub Releases](https://github.com/LeonhardWeiler/diffusion/releases/latest)
 
-[<img height="80" src="https://media.githubusercontent.com/media/organicmaps/organicmaps/refs/heads/master/doc/badges/obtainium.png"/>](https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22io.github.leonhardweiler.diffusion%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2FLeonhardWeiler%2Fdiffusion%22%2C%22author%22%3A%22LeonhardWeiler%22%2C%22name%22%3A%22Diffusion%22%2C%22preferredApkIndex%22%3A0%7D)
+[Obtainium](https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22io.github.leonhardweiler.diffusion%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2FLeonhardWeiler%2Fdiffusion%22%2C%22author%22%3A%22LeonhardWeiler%22%2C%22name%22%3A%22Diffusion%22%2C%22preferredApkIndex%22%3A0%7D)
 
 ## Android signing certificate SHA-256:
 
