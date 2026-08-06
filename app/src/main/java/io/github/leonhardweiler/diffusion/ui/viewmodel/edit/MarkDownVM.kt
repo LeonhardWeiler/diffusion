@@ -36,51 +36,6 @@ class MarkDownVM(previousNote: Note) : TextVM(previousNote) {
         super.onValueChange(content.value.copy(text = toggled))
         save()
     }
-
-    fun onTitle() {
-        val newValue = onTitle(content.value)
-        super.onValueChange(newValue)
-    }
-
-    fun onBold() {
-        val newValue = addOrRemovePatternAtTheExtremitiesOfSelection(content.value, "**")
-        super.onValueChange(newValue)
-    }
-
-    fun onItalic() {
-        val newValue = addOrRemovePatternAtTheExtremitiesOfSelection(content.value, "_")
-        super.onValueChange(newValue)
-    }
-
-    fun onCode() {
-        val newValue = onCode(content.value)
-        super.onValueChange(newValue)
-    }
-
-    fun onQuote() {
-        val newValue = onQuote(content.value)
-        super.onValueChange(newValue)
-    }
-
-    fun onLink() {
-        val newValue = onLink(content.value)
-        super.onValueChange(newValue)
-    }
-
-    fun onUnorderedList() {
-        val newValue = onUnorderedList(content.value)
-        super.onValueChange(newValue)
-    }
-
-    fun onNumberedList() {
-        val newValue = onNumberedList(content.value)
-        super.onValueChange(newValue)
-    }
-
-    fun onTaskList() {
-        val newValue = onTaskList(content.value)
-        super.onValueChange(newValue)
-    }
 }
 
 

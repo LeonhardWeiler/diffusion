@@ -1,7 +1,5 @@
 package io.github.leonhardweiler.diffusion.ui.viewmodel.edit
 
-import androidx.compose.ui.text.TextRange
-
 /**
  * The small amount of arithmetic every editing action needs. Kept apart because
  * an off-by-one here is invisible in the middle of a formatting rule.
@@ -14,6 +12,3 @@ fun String.lineStartAt(index: Int): Int =
 /** Where the line holding [index] ends, the newline itself not counted. */
 fun String.lineEndAt(index: Int): Int =
     indexOf('\n', startIndex = index).let { if (it == -1) length else it }
-
-/** Both ends moved by [offset], which is what inserting or removing text does. */
-fun TextRange.shiftedBy(offset: Int): TextRange = TextRange(start + offset, end + offset)

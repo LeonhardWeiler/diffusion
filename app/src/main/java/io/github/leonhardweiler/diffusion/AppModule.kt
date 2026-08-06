@@ -6,7 +6,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import io.github.leonhardweiler.diffusion.data.AppPreferences
 import io.github.leonhardweiler.diffusion.data.index.NoteIndex
-import io.github.leonhardweiler.diffusion.helper.EditHistoryStore
 import io.github.leonhardweiler.diffusion.helper.NetworkMonitor
 import io.github.leonhardweiler.diffusion.helper.UiHelper
 import io.github.leonhardweiler.diffusion.manager.GitManager
@@ -20,7 +19,6 @@ interface AppModule {
     val storageManager: StorageManager
     val gitManager: GitManager
     val appPreferences: AppPreferences
-    val editHistoryStore: EditHistoryStore
     val networkMonitor: NetworkMonitor
     val context: Context
 
@@ -49,10 +47,6 @@ class AppModuleImpl(
     }
     /** Storage and git writes must not be cancelled when a screen goes away. */
     override val appScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
-    override val editHistoryStore: EditHistoryStore by lazy {
-        EditHistoryStore()
-    }
 
     override val networkMonitor: NetworkMonitor by lazy {
         NetworkMonitor(context)

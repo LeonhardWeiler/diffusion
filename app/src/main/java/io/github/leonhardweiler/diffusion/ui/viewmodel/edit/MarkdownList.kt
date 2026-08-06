@@ -74,18 +74,6 @@ data class ListItemInfo(
         return marker + if (isChecked) "[x] " else "[ ] "
     }
 
-    fun line(numberOp: (Int) -> Int = { it }, minusPaddingInTitle: Boolean = false): String {
-        val body = when {
-            title == null -> ""
-            minusPaddingInTitle -> title.removePrefix(padding)
-            else -> title
-        }
-        return padding + prefix(numberOp) + body
-    }
-
-    /** The line stripped of what makes it a list item. */
-    fun lineWithoutPrefix(): String = padding + title
-
     /** An item nobody filled in, which is what enter on it means to get rid of. */
     fun shouldRemove(): Boolean = title?.isNotBlank() != true
 }

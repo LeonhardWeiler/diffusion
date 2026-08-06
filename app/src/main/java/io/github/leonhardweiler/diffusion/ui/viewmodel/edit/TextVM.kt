@@ -11,22 +11,13 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.leonhardweiler.diffusion.MyApp
 import io.github.leonhardweiler.diffusion.data.index.Note
-import io.github.leonhardweiler.diffusion.helper.EditHistory
 import io.github.leonhardweiler.diffusion.helper.UiHelper
 import io.github.leonhardweiler.diffusion.manager.StorageManager
 import io.github.leonhardweiler.diffusion.ui.viewmodel.viewModelFactory
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.time.Instant
-
-data class History(
-    val index: Int,
-    val size: Int,
-)
 
 private const val TAG = "TextVM"
 
@@ -73,39 +64,14 @@ open class TextVM() : ViewModel() {
     /**
      * The note as it stood when the editor was opened, date and all.
      *
-     * Undoing every change ends at exactly this, and a note that is back to what
-     * it was was not written just now. [previousNote] cannot answer that — it
-     * moves along with every save.
+     * Typing a change back out ends at exactly this, and a note that is back to
+     * what it was was not written just now. [previousNote] cannot answer that —
+     * it moves along with every save.
      */
     private lateinit var openedNote: Note
 
     private val _content = mutableStateOf(TextFieldValue())
     val content: State<TextFieldValue> get() = _content
-
-    /**
-     * Kept by the app, not by this view model, so that leaving a note and
-     * opening it again can still undo what was typed before.
-     */
-    private lateinit var editHistory: EditHistory
-
-    private val _historyManager: MutableStateFlow<History> =
-        MutableStateFlow(History(index = 0, size = 1))
-    val historyManager: StateFlow<History>
-        get() = _historyManager.asStateFlow()
-
-    private fun initHistory(initial: TextFieldValue) {
-        editHistory = MyApp.appModule.editHistoryStore.of(previousNote.id)
-        editHistory.seed(initial)
-        publishHistory()
-    }
-
-    private fun publishHistory() {
-        _historyManager.value = History(
-            size = editHistory.size,
-            index = editHistory.index,
-        )
-    }
-
 
     constructor(previousNote: Note) : this() {
 
@@ -119,7 +85,6 @@ open class TextVM() : ViewModel() {
         )
 
         _content.value = textFieldValue.copy()
-        initHistory(textFieldValue)
 
         Log.d(TAG, "init: $previousNote")
     }
@@ -133,31 +98,13 @@ open class TextVM() : ViewModel() {
      * https://medium.com/androiddevelopers/effective-state-management-for-textfield-in-compose-d6e5b070fbe5
      */
     open fun onValueChange(v: TextFieldValue) {
+        // moving the caret is a value change as well, and it is not one the
+        // file has anything to say about
+        val typed = _content.value.text != v.text
+
         _content.value = v.copy()
 
-        // moving the caret before anything was typed changes nothing worth
-        // saving, and the history says so
-        if (!editHistory.record(v.copy())) return
-
-        publishHistory()
-        scheduleSave()
-    }
-
-    fun undo() {
-        moveInHistory(editHistory.index - 1)
-    }
-
-    fun redo() {
-        moveInHistory(editHistory.index + 1)
-    }
-
-    private fun moveInHistory(index: Int) {
-        val state = editHistory.stateAt(index) ?: return
-
-        editHistory.index = index
-        publishHistory()
-        _content.value = state.copy()
-        scheduleSave()
+        if (typed) scheduleSave()
     }
 
     /**
@@ -200,7 +147,7 @@ open class TextVM() : ViewModel() {
 
         val note = noteAsEdited()
         val previous = previousNote
-        // undone back to what it was, so what was written may be nothing at all
+        // back to what it was, so what was written may be nothing at all
         val restored = isOpenedNoteTheSame()
 
         // through the storage manager rather than straight into the app's scope:
@@ -228,9 +175,9 @@ open class TextVM() : ViewModel() {
      * has been typed into it. Where it stands is not in question — the editor
      * cannot move a note, only write it.
      *
-     * It keeps the id across a save. That is what the undo history and the list
-     * rows are keyed by, and with the editor saving every 500 ms a new id per
-     * keystroke meant moving both along every time.
+     * It keeps the id across a save. That is what the list rows are keyed by,
+     * and with the editor saving every 500 ms a new id per keystroke meant
+     * moving them along every time.
      */
     private fun noteAsEdited(): Note = Note.new(
         relativePath = previousNote.relativePath,
@@ -245,8 +192,8 @@ open class TextVM() : ViewModel() {
 
     /**
      * Whether the editor holds exactly what it was opened with, which is where
-     * undoing everything ends up. Such a note was not written today: it is the
-     * one it already was, and it keeps its date.
+     * every change being taken back out again ends up. Such a note was not
+     * written today: it is the one it already was, and it keeps its date.
      */
     private fun isOpenedNoteTheSame(): Boolean = openedNote.content == content.value.text
 

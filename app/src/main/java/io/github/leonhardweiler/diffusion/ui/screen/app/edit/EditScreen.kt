@@ -20,7 +20,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.TextFormat
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
@@ -37,7 +36,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
@@ -178,78 +176,37 @@ fun EditScreen(
         }
     ) { paddingValues ->
 
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
 
-            Box(
-                modifier = Modifier.weight(1f)
-            ) {
-
-                val textContent = vm.content.value
-
-                when (vm) {
-                    is MarkDownVM -> {
-                        MarkDownContent(
-                            vm = vm,
-                            textFocusRequester = textFocusRequester,
-                            isReadOnlyModeActive = isReadOnlyModeActive,
-                            textContent = textContent,
-                            readScrollState = readScrollState,
-                            writeScrollState = writeScrollState,
-                        )
-                    }
-
-                    else -> {
-                        GenericTextField(
-                            vm = vm,
-                            textFocusRequester = textFocusRequester,
-                            isReadOnlyModeActive = isReadOnlyModeActive,
-                            textContent = textContent,
-                            scrollState = writeScrollState,
-                        )
-                    }
-                }
-            }
+            val textContent = vm.content.value
 
             when (vm) {
                 is MarkDownVM -> {
-                    val textFormatExpanded =
-                        rememberSaveable(isReadOnlyModeActive) { mutableStateOf(false) }
-
-                    if (textFormatExpanded.value) {
-                        TextFormatRow(vm = vm, textFormatExpanded = textFormatExpanded)
-                    } else {
-                        DefaultRow(
-                            vm = vm,
-                            isReadOnlyModeActive = isReadOnlyModeActive,
-                            leftContent = {
-                                SmallButton(
-                                    onClick = {
-                                        textFormatExpanded.value = true
-                                    },
-                                    enabled = !isReadOnlyModeActive,
-                                    imageVector = Icons.Default.TextFormat,
-                                    contentDescription = "text format"
-                                )
-                            }
-                        )
-                    }
-
+                    MarkDownContent(
+                        vm = vm,
+                        textFocusRequester = textFocusRequester,
+                        isReadOnlyModeActive = isReadOnlyModeActive,
+                        textContent = textContent,
+                        readScrollState = readScrollState,
+                        writeScrollState = writeScrollState,
+                    )
                 }
 
                 else -> {
-                    DefaultRow(
+                    GenericTextField(
                         vm = vm,
+                        textFocusRequester = textFocusRequester,
                         isReadOnlyModeActive = isReadOnlyModeActive,
+                        textContent = textContent,
+                        scrollState = writeScrollState,
                     )
                 }
             }
         }
-
-
     }
 }
 
