@@ -32,6 +32,9 @@ import io.github.leonhardweiler.diffusion.R
 import io.github.leonhardweiler.diffusion.manager.SyncState
 import io.github.leonhardweiler.diffusion.ui.component.SimpleIcon
 
+/** Between the gear and the right edge of the search field. */
+private val GearEndPadding = 6.dp
+
 @Composable
 internal fun SearchBar(
     padding: PaddingValues,
@@ -115,13 +118,20 @@ internal fun SearchBar(
                 // a release build, which it was not here.
                 if (isEmpty) {
                     IconButton(
-                        modifier = Modifier.size(ButtonSize),
+                        // Outside the button rather than inside it, so what can
+                        // be tapped stays the size the other one is.
+                        modifier = Modifier
+                            .padding(end = GearEndPadding)
+                            .size(ButtonSize),
                         onClick = onSettingsClick,
                     ) {
+                        // No tint of its own: the sync button beside it draws in
+                        // whatever the text field gives its trailing icons, and
+                        // naming a colour here made this one the darker of two
+                        // icons that belong together.
                         SimpleIcon(
                             imageVector = Icons.Rounded.Settings,
                             contentDescription = stringResource(R.string.settings),
-                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
