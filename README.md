@@ -10,6 +10,10 @@
 
 </div>
 
+![filestructure](./images/structure.jpg)
+![file view](./images/file-view.jpg)
+![file edit](./images/file-edit.jpg)
+
 Diffusion is an Android app primarily designed for taking notes and syncing them between devices using a Git repository.
 
 ## Download
