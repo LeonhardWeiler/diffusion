@@ -20,9 +20,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 
-
-private val TAG = "CustomDropDown"
-
 data class CustomDropDownModel(
     val text: String,
     val onClick: () -> Unit
