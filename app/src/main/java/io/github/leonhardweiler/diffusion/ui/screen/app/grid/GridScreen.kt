@@ -124,9 +124,6 @@ fun GridScreen(
             onSettingsClick = onSettingsClick,
             searchFocusRequester = searchFocusRequester,
             padding = padding,
-            onReloadIndex = {
-                vm.reloadIndex()
-            },
             query = vm.query,
             clearQuery = vm::clearQuery,
             search = vm::search,

@@ -105,19 +105,6 @@ class GridViewModel : ViewModel() {
         Log.d(TAG, "init")
     }
 
-    /** Drops from the selection whatever is no longer in the repository. */
-    private suspend fun refreshSelection() {
-        _selectedNotes.emit(
-            selectedNotes.value.filter { index.hasNote(it.relativePath) }
-        )
-
-        val folders = index.state.value
-            .foldersIn(currentNoteFolderRelativePath.value)
-            .map { it.noteFolder }
-        _selectedFolders.emit(selectedFolders.value.filter { folders.contains(it) })
-    }
-
-
     fun search(query: String) {
         viewModelScope.launch {
             _query.emit(query)
@@ -480,17 +467,4 @@ class GridViewModel : ViewModel() {
             .flowOn(Dispatchers.IO)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    /**
-     * Reads the repository again, which catches whatever changed outside the
-     * app. The remote is not part of it — syncing is the button in the search
-     * bar and nothing else.
-     */
-    fun reloadIndex() {
-        appScope.launch {
-            storageManager.rebuildIndex().onFailure {
-                uiHelper.makeToast("$it")
-            }
-            refreshSelection()
-        }
-    }
 }

@@ -1,7 +1,6 @@
 package io.github.leonhardweiler.diffusion.ui.screen.app.grid
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -10,7 +9,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -29,11 +28,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
-import io.github.leonhardweiler.diffusion.BuildConfig
 import io.github.leonhardweiler.diffusion.R
 import io.github.leonhardweiler.diffusion.manager.SyncState
-import io.github.leonhardweiler.diffusion.ui.component.CustomDropDown
-import io.github.leonhardweiler.diffusion.ui.component.CustomDropDownModel
 import io.github.leonhardweiler.diffusion.ui.component.SimpleIcon
 
 @Composable
@@ -41,7 +37,6 @@ internal fun SearchBar(
     padding: PaddingValues,
     onSettingsClick: () -> Unit,
     searchFocusRequester: FocusRequester,
-    onReloadIndex: () -> Unit,
     query: String,
     clearQuery: () -> Unit,
     search: (String) -> Unit,
@@ -114,39 +109,19 @@ internal fun SearchBar(
                     )
                 }
 
+                // The settings, and no menu in front of them. Reading the
+                // repository again was the only other thing in here, and it is a
+                // row of the settings screen as well — where it is reachable in
+                // a release build, which it was not here.
                 if (isEmpty) {
-                    Box {
-                        val expanded = remember { mutableStateOf(false) }
-                        IconButton(
-                            modifier = Modifier.size(ButtonSize),
-                            onClick = { expanded.value = true },
-                        ) {
-                            SimpleIcon(
-                                imageVector = Icons.Rounded.MoreVert,
-                                contentDescription = stringResource(R.string.more_options),
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-
-
-                        // Reading or writing is not in here anymore: it was one
-                        // switch for every note in the repository, and it is the
-                        // eye above an open note now, remembered per note.
-                        @Suppress("KotlinConstantConditions", "SimplifyBooleanWithConstants")
-                        CustomDropDown(
-                            expanded = expanded,
-                            options = listOf(
-                                CustomDropDownModel(
-                                    text = stringResource(R.string.settings),
-                                    onClick = onSettingsClick
-                                ),
-                                if (BuildConfig.BUILD_TYPE != "release") {
-                                    CustomDropDownModel(
-                                        text = stringResource(R.string.reload_notes),
-                                        onClick = onReloadIndex
-                                    )
-                                } else null
-                            )
+                    IconButton(
+                        modifier = Modifier.size(ButtonSize),
+                        onClick = onSettingsClick,
+                    ) {
+                        SimpleIcon(
+                            imageVector = Icons.Rounded.Settings,
+                            contentDescription = stringResource(R.string.settings),
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
