@@ -177,6 +177,19 @@ internal fun commitAll(git: Git, author: GitAuthor, fallbackMessage: String) {
 internal fun push(git: Git, cred: Cred?) {
     val branch = currentBranch(git.repository)
 
+    // A branch with no commit on it is nothing to push, and saying so is the
+    // whole of it: the refspec below names a ref that resolves to nothing, and
+    // JGit answers that with "Source ref refs/heads/main doesn't resolve to any
+    // object" — a failed sync for a repository that is simply still empty. A
+    // folder that was `git init`ed and never committed to is one, and so is a
+    // clone of a repository nobody has pushed to yet, right up until the first
+    // note is written. The sync that follows the first commit is what puts the
+    // branch on the remote.
+    if (git.repository.resolve("${Constants.R_HEADS}$branch") == null) {
+        Log.d(TAG, "push: nothing on $branch to push yet")
+        return
+    }
+
     val results = git.push()
         .setRemote(REMOTE)
         .setRefSpecs(RefSpec("${Constants.R_HEADS}$branch:${Constants.R_HEADS}$branch"))

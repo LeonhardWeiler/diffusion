@@ -6,6 +6,7 @@ import io.github.leonhardweiler.diffusion.manager.git.UnresolvedConflictExceptio
 import io.github.leonhardweiler.diffusion.manager.git.applyCommitTimestamps
 import io.github.leonhardweiler.diffusion.manager.git.cloneRepository
 import io.github.leonhardweiler.diffusion.manager.git.commitAll
+import io.github.leonhardweiler.diffusion.manager.git.currentBranch
 import io.github.leonhardweiler.diffusion.manager.git.isChange
 import io.github.leonhardweiler.diffusion.manager.git.lastCommit
 import io.github.leonhardweiler.diffusion.manager.git.openRepository
@@ -250,6 +251,53 @@ class GitLayerTest {
         assertEquals(2, git.headParents(), "the merge names both sides")
         assertEquals(RepositoryState.SAFE, git.repository.repositoryState)
         other.close()
+    }
+
+    /**
+     * A repository with no commit on it at all: a folder that was `git init`ed
+     * and never committed to, and a clone of a repository nobody has pushed to
+     * yet. The sync has to go through for one of those — the setup ends in a
+     * sync, so a push that refuses to happen is a repository that cannot be set
+     * up here at all.
+     */
+    @Test
+    fun aRepositoryWithNothingCommittedSyncsWithoutSayingAnything() {
+        assertNull(lastCommit(git.repository))
+
+        pull(git, null, author)
+        push(git, null)
+
+        assertNull(remote.repository.resolve("${Constants.R_HEADS}main"))
+
+        // and the first commit is what puts the branch on the remote
+        git.write("note.md", "one")
+        commitAll(git, author, "fallback")
+        push(git, null)
+
+        assertEquals(lastCommit(git.repository), remote.repository.resolve("${Constants.R_HEADS}main")?.name)
+    }
+
+    /** The branch is whatever this repository stands on, never a name we assume. */
+    @Test
+    fun aBranchThatIsCalledSomethingElseIsPushedAndPulledLikeAnyOther() {
+        val theirs = Git.init()
+            .setDirectory(File(root, "notes-branch"))
+            .setInitialBranch("notes")
+            .call()
+        setRemoteUrl(theirs, remote.repository.directory.absolutePath)
+
+        File(theirs.repository.workTree, "note.md").writeText("one")
+        commitAll(theirs, author, "fallback")
+        push(theirs, null)
+
+        assertEquals("notes", currentBranch(theirs.repository))
+        assertNotNull(remote.repository.resolve("${Constants.R_HEADS}notes"))
+
+        // and the branch this repository stands on is untouched by that
+        pull(git, null, author)
+        assertNull(lastCommit(git.repository))
+
+        theirs.close()
     }
 
     @Test
