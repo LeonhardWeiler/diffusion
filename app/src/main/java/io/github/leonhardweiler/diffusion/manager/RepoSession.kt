@@ -1,10 +1,8 @@
 package io.github.leonhardweiler.diffusion.manager
 
 import android.util.Log
-import io.github.leonhardweiler.diffusion.MyApp
 import io.github.leonhardweiler.diffusion.data.index.NoteIndex
 import io.github.leonhardweiler.diffusion.data.platform.NodeFs
-import io.github.leonhardweiler.diffusion.data.repo.RepoConfig
 import io.github.leonhardweiler.diffusion.data.repo.RepoStore
 import io.github.leonhardweiler.diffusion.data.repo.SshKeyStore
 import io.github.leonhardweiler.diffusion.data.repo.repoNameOf

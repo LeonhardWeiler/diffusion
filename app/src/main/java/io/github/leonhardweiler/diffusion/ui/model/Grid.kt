@@ -1,7 +1,6 @@
 package io.github.leonhardweiler.diffusion.ui.model
 
 import io.github.leonhardweiler.diffusion.data.index.NoteFolder
-import io.github.leonhardweiler.diffusion.manager.extensionType
 import io.github.leonhardweiler.diffusion.manager.isExtensionSupported
 
 data class FolderModel(

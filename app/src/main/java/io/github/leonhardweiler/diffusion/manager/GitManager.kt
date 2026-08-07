@@ -26,41 +26,8 @@ import kotlinx.coroutines.withContext
 import org.eclipse.jgit.api.Git
 import java.io.File
 import java.io.IOException
-import java.net.ConnectException
-import java.net.NoRouteToHostException
-import java.net.SocketException
-import java.net.SocketTimeoutException
-import java.net.UnknownHostException
 import kotlin.Result.Companion.failure
 import kotlin.Result.Companion.success
-
-enum class GitExceptionType {
-    RepoAlreadyInit,
-    RepoNotInit,
-
-    MergeConflict,
-
-    UnresolvedConflict,
-
-    NetworkUnreachable,
-    Other
-}
-
-class GitException(
-    val type: GitExceptionType,
-    message: String?
-) : Exception(getMessage(type, message)) {
-    companion object {
-        private fun getMessage(
-            type: GitExceptionType,
-            message: String?
-        ): String? =
-            message ?: if (type != GitExceptionType.Other) type.name else null
-    }
-
-    constructor(message: String) : this(GitExceptionType.Other, message)
-    constructor(type: GitExceptionType) : this(type, null)
-}
 
 class GitManager {
     companion object {
@@ -114,27 +81,6 @@ class GitManager {
         isNetworkFailure(e) -> GitException(GitExceptionType.NetworkUnreachable, detail(e))
 
         else -> GitException(detail(e))
-    }
-
-    private fun detail(e: Throwable): String =
-        e.message?.takeIf { it.isNotBlank() } ?: e::class.java.simpleName
-
-    private fun isNetworkFailure(e: Throwable): Boolean {
-        var cause: Throwable? = e
-
-        while (cause != null) {
-            when (cause) {
-                is UnknownHostException,
-                is ConnectException,
-                is NoRouteToHostException,
-                is SocketTimeoutException,
-                is SocketException,
-                    -> return true
-            }
-            cause = cause.cause.takeIf { it != cause }
-        }
-
-        return false
     }
 
     suspend fun openRepo(repoPath: String): Result<Unit> = safelyAccessGit {

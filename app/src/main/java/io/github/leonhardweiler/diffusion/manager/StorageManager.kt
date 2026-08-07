@@ -10,7 +10,6 @@ import io.github.leonhardweiler.diffusion.data.index.NoteFolder
 import io.github.leonhardweiler.diffusion.data.index.NoteIndex
 import io.github.leonhardweiler.diffusion.helper.getParentPath
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -23,8 +22,6 @@ private const val TAG = "StorageManager"
 
 private const val GIT_KEEP = ".gitkeep"
 
-private const val RETRY_AFTER_NETWORK_FAILURE_MS = 1_500L
-
 /**
  * The one write path into a repository: its files, its note index and its git
  * repository, in that order and behind one lock. One per [RepoSession], because
@@ -33,8 +30,6 @@ private const val RETRY_AFTER_NETWORK_FAILURE_MS = 1_500L
  */
 class StorageManager(private val repo: RepoSession) {
     private val uiHelper = MyApp.appModule.uiHelper
-
-    private val networkMonitor = MyApp.appModule.networkMonitor
 
     private val index: NoteIndex get() = repo.noteIndex
 
@@ -46,57 +41,54 @@ class StorageManager(private val repo: RepoSession) {
 
     private val locker = Mutex()
 
-    private val _syncState: MutableStateFlow<SyncState> = MutableStateFlow(SyncState.Idle)
-    val syncState: StateFlow<SyncState> = _syncState
+    private val sync = RepoSync(
+        repo = repo,
+        refreshLocalChanges = ::refreshLocalChanges,
+        rebuildIndex = { rebuildIndexWithoutLocker() },
+    )
+
+    val syncState: StateFlow<SyncState> = sync.state
 
     private val _hasLocalChanges: MutableStateFlow<Boolean> = MutableStateFlow(false)
 
+    /**
+     * Whether there is anything the remote has not been told about. Writing a
+     * note does not commit it, so this is the only thing that says the notes
+     * here and the notes on the remote have drifted apart.
+     */
     val hasLocalChanges: StateFlow<Boolean> = _hasLocalChanges
 
     private suspend fun refreshLocalChanges() {
         _hasLocalChanges.value = gitManager.isChange().getOrDefault(false)
     }
 
+    /**
+     * Asks git rather than assuming, for the one write that can take a change
+     * back: a note undone to what it was leaves a working tree that agrees with
+     * the repository again. Too expensive after every typing pause — it walks
+     * the whole working tree — which is why only that one write asks.
+     */
     suspend fun refreshChangeState(): Unit = locker.withLock {
         refreshLocalChanges()
     }
 
-    private var announceSyncErrors = true
+    /** Says a sync is under way, without waiting for anything. */
+    fun announceSyncStart() = sync.announceStart()
 
-    private suspend fun failSync(message: String?) {
-        message?.let { Log.e(TAG, it) }
-        _syncState.emit(SyncState.Error(message, announce = announceSyncErrors))
-    }
-
-    private fun Result<*>.isNetworkFailure(): Boolean =
-        (exceptionOrNull() as? GitException)?.type == GitExceptionType.NetworkUnreachable
-
-    private suspend fun reportSyncFailure(err: Throwable) {
-        val transient = !announceSyncErrors &&
-                err is GitException &&
-                err.type == GitExceptionType.NetworkUnreachable
-
-        if (transient) {
-            Log.d(TAG, "sync: no network, and nobody asked: ${err.message}")
-            _syncState.emit(SyncState.Idle)
-            return
-        }
-
-        failSync(err.message)
-    }
-
+    /**
+     * Commits everything written since the last sync and exchanges it with the
+     * remote. The only thing here that reaches the network.
+     *
+     * @param announceErrors false for the syncs that run on their own when the
+     * app is opened and closed.
+     */
     suspend fun syncWithRemote(announceErrors: Boolean = true): Result<Unit> {
         // leaving the app writes the open note and syncs in the same scope, and
         // whichever reached the lock first won: the last thing typed then went
         // out one sync late
         lastWrite?.join()
 
-        return syncWithRemoteLocked(announceErrors)
-    }
-
-    /** Not suspending, so the tap handler itself can set it. */
-    fun announceSyncStart() {
-        _syncState.value = SyncState.Starting
+        return locker.withLock { sync.run(announceErrors) }
     }
 
     /** Every note write goes through here, for the join above. */
@@ -105,30 +97,6 @@ class StorageManager(private val repo: RepoSession) {
 
     @Volatile
     private var lastWrite: Job? = null
-
-    private suspend fun syncWithRemoteLocked(announceErrors: Boolean): Result<Unit> = locker.withLock {
-        Log.d(TAG, "syncWithRemote")
-
-        // the app is stopped several times during the setup, and the failure
-        // used to stay on the button of the repository that was then cloned
-        if (!gitManager.isRepoInitialized) {
-            Log.d(TAG, "syncWithRemote: no repository open")
-            _syncState.emit(SyncState.Idle)
-            return@withLock success(Unit)
-        }
-
-        announceSyncErrors = announceErrors
-
-        gitManager.commitAll(
-            repo.gitAuthor(),
-            fallbackMessage = "Sync from Diffusion"
-        ).onFailure { err ->
-            failSync(err.message)
-            return@withLock failure(err)
-        }
-
-        return syncWithRemoteWithoutLocker()
-    }
 
     suspend fun rebuildIndex(
         progressCb: ((Progress) -> Unit)? = null
@@ -360,75 +328,5 @@ class StorageManager(private val repo: RepoSession) {
         }.onFailure { err ->
             err.message?.let { Log.e(TAG, it) }
         }
-    }
-
-    private suspend fun syncWithRemoteWithoutLocker(): Result<Unit> {
-        var hasRemote = repo.remoteUrl().isNotEmpty()
-        val cred = repo.cred()
-        var isError = false
-
-        var pulledFiles = false
-
-        if (hasRemote && !networkMonitor.awaitOnline()) {
-            hasRemote = false
-
-            if (announceSyncErrors) {
-                failSync(uiHelper.getString(R.string.error_no_network))
-            } else {
-                Log.d(TAG, "sync: no network, and nobody asked")
-            }
-        }
-
-        if (hasRemote) {
-            _syncState.emit(SyncState.Pull)
-
-            var pulled = gitManager.pull(cred, repo.gitAuthor())
-
-            // the system reports a validated network a moment before this
-            // process can resolve a name, so one more try after a breath
-            if (pulled.isNetworkFailure()) {
-                Log.d(TAG, "pull: no network yet, trying once more")
-                delay(RETRY_AFTER_NETWORK_FAILURE_MS)
-                pulled = gitManager.pull(cred, repo.gitAuthor())
-            }
-
-            pulled.onSuccess {
-                pulledFiles = true
-            }.onFailure { err ->
-                isError = true
-                pulledFiles = err is GitException && err.type == GitExceptionType.MergeConflict
-                reportSyncFailure(err)
-            }
-        }
-
-        // only a pull writes the working tree — a conflict among it, since that
-        // is written into the notes without HEAD moving — and only the
-        // repository on screen has a list worth reading it for
-        if (pulledFiles && repo.showsItsNotes) {
-            rebuildIndexWithoutLocker().onFailure { err ->
-                failSync(err.message)
-                return failure(err)
-            }
-        }
-
-        if (hasRemote && !isError) {
-            _syncState.emit(SyncState.Push)
-            gitManager.push(cred).onFailure { err ->
-                isError = true
-                reportSyncFailure(err)
-            }
-        }
-
-        // before Ok is emitted, or the dot stands under a button that has
-        // already said the notes went out, for as long as this walk takes
-        refreshLocalChanges()
-
-        if (hasRemote && !isError) {
-            _syncState.emit(SyncState.Ok)
-        } else if (_syncState.value is SyncState.Starting) {
-            _syncState.emit(SyncState.Idle)
-        }
-
-        return success(Unit)
     }
 }

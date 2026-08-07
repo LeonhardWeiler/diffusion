@@ -9,9 +9,7 @@ import io.github.leonhardweiler.diffusion.data.platform.NodeFs
 import io.github.leonhardweiler.diffusion.data.index.Note
 import io.github.leonhardweiler.diffusion.data.index.NoteFolder
 import io.github.leonhardweiler.diffusion.data.index.LIMIT_FILE_SIZE
-import io.github.leonhardweiler.diffusion.data.index.IndexState
 import io.github.leonhardweiler.diffusion.data.index.foldersIn
-import io.github.leonhardweiler.diffusion.data.index.notesIn
 import io.github.leonhardweiler.diffusion.data.index.search
 import io.github.leonhardweiler.diffusion.data.index.sortDatesNow
 import io.github.leonhardweiler.diffusion.helper.NameValidation
@@ -22,9 +20,7 @@ import io.github.leonhardweiler.diffusion.helper.keepExtension
 import io.github.leonhardweiler.diffusion.helper.resolveRepoPath
 import io.github.leonhardweiler.diffusion.manager.RepoSession
 import io.github.leonhardweiler.diffusion.manager.StorageManager
-import io.github.leonhardweiler.diffusion.ui.model.FileExtension
 import io.github.leonhardweiler.diffusion.ui.model.GridItem
-import io.github.leonhardweiler.diffusion.ui.model.GridNote
 import io.github.leonhardweiler.diffusion.ui.model.NoteHeader
 import io.github.leonhardweiler.diffusion.ui.model.without
 import io.github.leonhardweiler.diffusion.helper.getParentPath
@@ -258,16 +254,21 @@ class GridViewModel : ViewModel() {
         onResolved("${repoPath}/${note.relativePath}")
     }
 
+    /** The resolved path, or null and a toast saying what is wrong with it. */
+    private fun resolvedOrComplain(parentPath: String, typed: String): String? =
+        when (val resolved = resolveRepoPath(parentPath, typed)) {
+            is ResolvedPath.Ok -> resolved.relativePath
+            is ResolvedPath.Bad -> {
+                uiHelper.makeToast(resolved.problem.describe(uiHelper))
+                null
+            }
+        }
+
     fun renameNote(note: NoteHeader, typed: String) {
-        val resolved = resolveRepoPath(
+        val target = resolvedOrComplain(
             getParentPath(note.relativePath),
             keepExtension(typed.trim(), note.extension())
-        )
-
-        if (resolved !is ResolvedPath.Ok) {
-            uiHelper.makeToast((resolved as ResolvedPath.Bad).problem.describe(uiHelper))
-            return
-        }
+        ) ?: return
 
         appScope.launch {
             val loaded = withContext(Dispatchers.IO) { index.loadNote(note.relativePath) }
@@ -276,7 +277,7 @@ class GridViewModel : ViewModel() {
                 return@launch
             }
 
-            storageManager.renameNote(loaded, resolved.relativePath)
+            storageManager.renameNote(loaded, target)
         }
     }
 
@@ -287,16 +288,10 @@ class GridViewModel : ViewModel() {
     }
 
     fun renameFolder(noteFolder: NoteFolder, typed: String) {
-        val parentPath = getParentPath(noteFolder.relativePath)
-
-        val resolved = resolveRepoPath(parentPath, typed)
-        if (resolved !is ResolvedPath.Ok) {
-            uiHelper.makeToast((resolved as ResolvedPath.Bad).problem.describe(uiHelper))
-            return
-        }
+        val target = resolvedOrComplain(getParentPath(noteFolder.relativePath), typed) ?: return
 
         appScope.launch {
-            storageManager.renameNoteFolder(noteFolder, resolved.relativePath)
+            storageManager.renameNoteFolder(noteFolder, target)
         }
     }
 
@@ -304,13 +299,10 @@ class GridViewModel : ViewModel() {
         query.value.let { if (NameValidation.check(it)) it else "" }
 
     fun createNote(typed: String): Boolean {
-        val resolved = resolveRepoPath(currentNoteFolderRelativePath.value, typed.trim())
-        if (resolved !is ResolvedPath.Ok) {
-            uiHelper.makeToast((resolved as ResolvedPath.Bad).problem.describe(uiHelper))
-            return false
-        }
+        val target =
+            resolvedOrComplain(currentNoteFolderRelativePath.value, typed.trim()) ?: return false
 
-        val note = Note.new(relativePath = resolved.relativePath)
+        val note = Note.new(relativePath = target)
 
         if (note.parentPath.isNotEmpty() &&
             !NodeFs.Folder.fromPath(repoPath, note.parentPath).exist()
@@ -333,6 +325,7 @@ class GridViewModel : ViewModel() {
         return true
     }
 
+    /** mapLatest, so a search is dropped the moment another letter is typed. */
     @OptIn(ExperimentalCoroutinesApi::class)
     val gridItems: StateFlow<List<GridItem>> =
         combine(
@@ -340,49 +333,9 @@ class GridViewModel : ViewModel() {
             currentNoteFolderRelativePath,
             query,
             _sortDates,
-        ) { state, folderPath, query, sortDates ->
-            ListInput(state, folderPath, query, sortDates)
-        }
-            .mapLatest { (state, folderPath, query, sortDates) ->
-
-                val notes = if (query.isEmpty()) {
-                    state.notesIn(folderPath, sortDates)
-                } else {
-                    state.search(folderPath, query, sortDates)
-                }
-
-                val duplicated = notes
-                    .groupingBy { it.fileName }
-                    .eachCount()
-
-                buildList {
-                    if (query.isEmpty()) {
-                        if (folderPath.isNotEmpty()) {
-                            add(GridItem.ParentFolder(getParentPath(folderPath)))
-                        }
-                        state.foldersIn(folderPath, sortDates)
-                            .forEach { add(GridItem.Folder(it)) }
-                    }
-
-                    notes.forEach { note ->
-                        add(
-                            GridItem.Note(
-                                GridNote(
-                                    note = note,
-                                    isUnique = duplicated[note.fileName] == 1,
-                                )
-                            )
-                        )
-                    }
-                }
-            }
+            ::ListInput,
+        )
+            .mapLatest { it.gridItems() }
             .flowOn(Dispatchers.IO)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 }
-
-private data class ListInput(
-    val state: IndexState,
-    val folderPath: String,
-    val query: String,
-    val sortDates: Map<Int, Long>,
-)
