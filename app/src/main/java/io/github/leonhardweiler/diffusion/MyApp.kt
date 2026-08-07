@@ -22,9 +22,14 @@ class MyApp : Application() {
         appModule = AppModuleImpl(this)
 
         // The first read of a preference is a read of the disk, and the first
-        // thing to ask for one is the theme, on the way to the first frame.
+        // two things to ask for one are the theme and the list of repositories,
+        // both on the way to the first frame — the second of them from a
+        // runBlocking, which is the main thread waiting on that disk.
         scope.launch {
             appModule.appPreferences.preload()
+        }
+        scope.launch {
+            appModule.repoStore.preload()
         }
     }
 }

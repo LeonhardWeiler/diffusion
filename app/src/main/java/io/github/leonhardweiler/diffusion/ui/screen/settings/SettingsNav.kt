@@ -18,7 +18,8 @@ import io.github.leonhardweiler.diffusion.ui.viewmodel.SettingsViewModel
 fun SettingsNav(
     destination: SettingsDestination,
     onBackClick: () -> Unit,
-    onCloseRepo: () -> Unit,
+    onAddRepo: () -> Unit,
+    onRepoChanged: () -> Unit,
 ) {
 
     val backstack = rememberBackstack(destination)
@@ -42,7 +43,8 @@ fun SettingsNav(
                 SettingsScreen(
                     onBackClick = onBackClick,
                     onShowLogs = { backstack.navigate(SettingsDestination.Logs) },
-                    onCloseRepo = onCloseRepo,
+                    onAddRepo = onAddRepo,
+                    onRepoChanged = onRepoChanged,
                     vm = vm
                 )
             }

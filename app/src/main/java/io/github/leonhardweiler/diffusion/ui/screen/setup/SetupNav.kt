@@ -16,6 +16,12 @@ private const val TAG = "SetupNav"
 fun SetupNav(
     startDestination: SetupDestination,
     onSetupSuccess: () -> Unit,
+    /**
+     * The way out of a setup that was reached from the settings, for a
+     * repository beside the ones there already are. Null for the first one:
+     * there is nothing underneath it to go back to.
+     */
+    onBackClick: (() -> Unit)? = null,
 ) {
 
     val vm: SetupViewModel = viewModel()
@@ -24,6 +30,7 @@ fun SetupNav(
 
     NavHost(
         backstack = backstack,
+        onBack = onBackClick,
         transition = { _, _, wentBack -> slide(backWard = wentBack) },
     ) { setupDestination ->
         when (setupDestination) {
@@ -31,9 +38,11 @@ fun SetupNav(
             SetupDestination.Main -> NewRepoMethodScreen(
                 openRepo = vm::openRepo,
                 checkPathForClone = vm::checkPathForClone,
+                finishWithoutRemote = vm::finishWithoutRemote,
                 makeToast = vm.uiHelper::makeToast,
                 navigate = backstack::navigate,
                 onSetupSuccess = onSetupSuccess,
+                onBackClick = onBackClick,
                 initState = vm.initState.collectAsState().value,
             )
 

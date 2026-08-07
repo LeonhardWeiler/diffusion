@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.leonhardweiler.diffusion.MyApp
 import io.github.leonhardweiler.diffusion.R
-import io.github.leonhardweiler.diffusion.data.AppPreferences
 import io.github.leonhardweiler.diffusion.data.platform.NodeFs
 import io.github.leonhardweiler.diffusion.data.index.Note
 import io.github.leonhardweiler.diffusion.data.index.NoteFolder
@@ -21,6 +20,7 @@ import io.github.leonhardweiler.diffusion.helper.ResolvedPath
 import io.github.leonhardweiler.diffusion.helper.describe
 import io.github.leonhardweiler.diffusion.helper.keepExtension
 import io.github.leonhardweiler.diffusion.helper.resolveRepoPath
+import io.github.leonhardweiler.diffusion.manager.RepoSession
 import io.github.leonhardweiler.diffusion.manager.StorageManager
 import io.github.leonhardweiler.diffusion.ui.model.FileExtension
 import io.github.leonhardweiler.diffusion.ui.model.GridItem
@@ -50,11 +50,18 @@ class GridViewModel : ViewModel() {
     }
 
 
-    private val storageManager: StorageManager = MyApp.appModule.storageManager
+    /**
+     * The repository this list is about, read once: the destination the screen
+     * hangs off carries the repository's id, so switching to another one builds
+     * a new view model rather than pointing this one somewhere else.
+     */
+    private val repo: RepoSession = MyApp.appModule.activeRepo
+
+    private val storageManager: StorageManager = repo.storageManager
     private val appScope = MyApp.appModule.appScope
 
-    val prefs: AppPreferences = MyApp.appModule.appPreferences
-    private val index = MyApp.appModule.noteIndex
+    private val repoPath: String = repo.path
+    private val index = repo.noteIndex
     val uiHelper = MyApp.appModule.uiHelper
 
     private val _query = MutableStateFlow("")
@@ -190,7 +197,7 @@ class GridViewModel : ViewModel() {
             relativePath = relativePath
         )
 
-        if (noteFolder.toFolderFs(prefs.repoPathBlocking()).exist()) {
+        if (noteFolder.toFolderFs(repoPath).exist()) {
             uiHelper.makeToast(uiHelper.getString(R.string.error_folder_already_exist, name))
             return false
         }
@@ -303,7 +310,7 @@ class GridViewModel : ViewModel() {
         }
 
         val size = withContext(Dispatchers.IO) {
-            runCatching { NodeFs.File.fromPath(prefs.repoPath(), note.relativePath).fileSize() }
+            runCatching { NodeFs.File.fromPath(repoPath, note.relativePath).fileSize() }
                 .getOrDefault(0L)
         }
         if (size > LIMIT_FILE_SIZE) {
@@ -324,7 +331,7 @@ class GridViewModel : ViewModel() {
      * starting an activity belongs.
      */
     fun openExternally(note: NoteHeader, onResolved: (String) -> Unit) = viewModelScope.launch {
-        onResolved("${prefs.repoPath()}/${note.relativePath}")
+        onResolved("${repoPath}/${note.relativePath}")
     }
 
     /**
@@ -429,7 +436,6 @@ class GridViewModel : ViewModel() {
         }
 
         val note = Note.new(relativePath = resolved.relativePath)
-        val repoPath = prefs.repoPathBlocking()
 
         if (note.parentPath.isNotEmpty() &&
             !NodeFs.Folder.fromPath(repoPath, note.parentPath).exist()

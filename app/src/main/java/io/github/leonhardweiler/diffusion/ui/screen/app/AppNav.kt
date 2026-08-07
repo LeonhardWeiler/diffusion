@@ -17,7 +17,14 @@ import io.github.leonhardweiler.diffusion.ui.utils.slide
 @Composable
 fun AppScreen(
     appDestination: AppDestination,
-    onCloseRepo: () -> Unit,
+    /** The settings' way into the setup, for a repository beside the ones there are. */
+    onAddRepo: () -> Unit,
+    /**
+     * Another repository is the one being looked at now — switched to, or the
+     * one this screen was about having been let go of. Either way this screen is
+     * about a repository that is not the current one anymore.
+     */
+    onRepoChanged: () -> Unit,
 ) {
 
     val backstack = rememberBackstack(appDestination)
@@ -53,7 +60,8 @@ fun AppScreen(
             is AppDestination.Settings -> SettingsNav(
                 onBackClick = { backstack.pop() },
                 destination = it.settingsDestination,
-                onCloseRepo = onCloseRepo
+                onAddRepo = onAddRepo,
+                onRepoChanged = onRepoChanged,
             )
         }
     }

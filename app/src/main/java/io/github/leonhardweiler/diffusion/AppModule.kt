@@ -5,46 +5,57 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import io.github.leonhardweiler.diffusion.data.AppPreferences
-import io.github.leonhardweiler.diffusion.data.index.NoteIndex
+import io.github.leonhardweiler.diffusion.data.repo.RepoStore
+import io.github.leonhardweiler.diffusion.data.repo.SshKeyStore
 import io.github.leonhardweiler.diffusion.helper.NetworkMonitor
 import io.github.leonhardweiler.diffusion.helper.UiHelper
-import io.github.leonhardweiler.diffusion.manager.GitManager
-import io.github.leonhardweiler.diffusion.manager.StorageManager
+import io.github.leonhardweiler.diffusion.manager.RepoManager
+import io.github.leonhardweiler.diffusion.manager.RepoSession
 
 
 interface AppModule {
     val appScope: CoroutineScope
-    val noteIndex: NoteIndex
     val uiHelper: UiHelper
-    val storageManager: StorageManager
-    val gitManager: GitManager
+    val repoStore: RepoStore
+    val sshKeyStore: SshKeyStore
+    val repoManager: RepoManager
     val appPreferences: AppPreferences
     val networkMonitor: NetworkMonitor
     val context: Context
 
+    /**
+     * The repository the note list is showing. Never null — see
+     * [RepoSession.none] — so that a screen composed while the last repository
+     * is being let go of has something to read rather than a null to guard.
+     */
+    val activeRepo: RepoSession get() = repoManager.active.value
 }
 
 class AppModuleImpl(
     override val context: Context
 ) : AppModule {
 
-    /** What the note list reads, built from the files at every start. */
-    override val noteIndex: NoteIndex by lazy {
-        NoteIndex()
-    }
-
     override val uiHelper: UiHelper by lazy {
         UiHelper(context)
     }
-    override val storageManager: StorageManager by lazy {
-        StorageManager()
-    }
-    override val gitManager: GitManager by lazy {
-        GitManager()
-    }
+
     override val appPreferences: AppPreferences by lazy {
         AppPreferences(context)
     }
+
+    override val repoStore: RepoStore by lazy {
+        RepoStore(context)
+    }
+
+    override val sshKeyStore: SshKeyStore by lazy {
+        SshKeyStore(context)
+    }
+
+    /** The repositories, one open session each, one of them being looked at. */
+    override val repoManager: RepoManager by lazy {
+        RepoManager(repoStore, sshKeyStore, appPreferences)
+    }
+
     /** Storage and git writes must not be cancelled when a screen goes away. */
     override val appScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 

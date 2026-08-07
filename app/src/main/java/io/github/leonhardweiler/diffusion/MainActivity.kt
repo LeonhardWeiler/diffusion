@@ -12,7 +12,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.leonhardweiler.diffusion.ui.navigation.NavHost
 import io.github.leonhardweiler.diffusion.ui.navigation.rememberBackstack
-import io.github.leonhardweiler.diffusion.ui.destination.AppDestination
 import io.github.leonhardweiler.diffusion.ui.destination.Destination
 import io.github.leonhardweiler.diffusion.ui.destination.SetupDestination
 import io.github.leonhardweiler.diffusion.ui.screen.app.AppScreen
@@ -66,7 +65,7 @@ class MainActivity : ComponentActivity() {
                 // what a new build installed over the old one used to cost.
                 val startDestination: Destination = remember {
                     when {
-                        repoOpened -> Destination.App(AppDestination.Grid)
+                        repoOpened -> vm.currentDestination()
 
                         else -> runBlocking { vm.repoAwaitingPermission() }
                             ?.let { Destination.MissingPermission(it) }
@@ -97,17 +96,31 @@ class MainActivity : ComponentActivity() {
                     when (destination) {
                         is Destination.Setup -> SetupNav(
                             startDestination = destination.setupDestination,
+                            // Adding a second repository is the setup reached
+                            // from the settings, and it is a screen to be able
+                            // to walk out of again. The first one is not: there
+                            // is nothing underneath it.
+                            onBackClick = if (backstack.entries.size > 1) {
+                                { backstack.pop() }
+                            } else {
+                                null
+                            },
                             onSetupSuccess = {
-                                backstack.replaceAll(Destination.App(AppDestination.Grid))
+                                backstack.replaceAll(vm.currentDestination())
                             }
                         )
 
                         is Destination.App -> AppScreen(
                             appDestination = destination.appDestination,
-                            onCloseRepo = {
-                                backstack.replaceAll(
-                                    Destination.Setup(SetupDestination.Main)
-                                )
+                            onAddRepo = {
+                                backstack.navigate(Destination.Setup(SetupDestination.Main))
+                            },
+                            // Switching repositories and letting go of the last
+                            // one are the same move as far as this is
+                            // concerned: whatever the app stands on now, it is
+                            // not the screen that asked.
+                            onRepoChanged = {
+                                backstack.replaceAll(vm.currentDestination())
                             }
                         )
 
@@ -122,9 +135,7 @@ class MainActivity : ComponentActivity() {
                                         // hand, which is what decides whether
                                         // that was all that was missing
                                         if (vm.tryInit()) {
-                                            backstack.replaceAll(
-                                                Destination.App(AppDestination.Grid)
-                                            )
+                                            backstack.replaceAll(vm.currentDestination())
                                         } else {
                                             vm.uiHelper.makeToast(
                                                 vm.uiHelper.getString(
@@ -166,10 +177,10 @@ class MainActivity : ComponentActivity() {
         super.onStop()
         Log.d(TAG, "onStop")
 
+        // Every repository that was told to, not only the one on screen: a note
+        // written into one of them is a note that has not gone out either.
         MyApp.appModule.appScope.launch {
-            if (!MyApp.appModule.appPreferences.syncOnOpenAndClose.get()) return@launch
-
-            MyApp.appModule.storageManager.syncWithRemote(announceErrors = false)
+            MyApp.appModule.repoManager.syncAllQuietly()
         }
     }
 

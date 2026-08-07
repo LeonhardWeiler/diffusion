@@ -63,7 +63,7 @@ fun RemoteScreen(
     }
 
     val initState = vm.initState.collectAsState().value
-    val storedSshKey = vm.storedSshKey.collectAsState().value
+    val storedSshKey = vm.storedSshKeys.collectAsState().value.firstOrNull()?.cred()
 
     NavHost(
         backstack = backstack,

@@ -6,11 +6,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.leonhardweiler.diffusion.MyApp
 import io.github.leonhardweiler.diffusion.R
-import io.github.leonhardweiler.diffusion.data.AppPreferences
 import io.github.leonhardweiler.diffusion.data.platform.NodeFs
+import io.github.leonhardweiler.diffusion.data.repo.RepoConfig
+import io.github.leonhardweiler.diffusion.data.repo.StoredSshKey
 import io.github.leonhardweiler.diffusion.helper.SshKeyValidation
 import io.github.leonhardweiler.diffusion.helper.UiHelper
 import io.github.leonhardweiler.diffusion.manager.Progress
+import io.github.leonhardweiler.diffusion.manager.RepoSession
 import io.github.leonhardweiler.diffusion.ui.model.Cred
 import io.github.leonhardweiler.diffusion.ui.model.StorageConfiguration
 import kotlinx.coroutines.Dispatchers
@@ -28,11 +30,9 @@ private const val GIT_DIR = ".git"
 
 class SetupViewModel : ViewModel() {
 
-    val prefs: AppPreferences = MyApp.appModule.appPreferences
-    private val gitManager = MyApp.appModule.gitManager
+    private val repoManager = MyApp.appModule.repoManager
+    private val keyStore = MyApp.appModule.sshKeyStore
     val uiHelper: UiHelper = MyApp.appModule.uiHelper
-
-    private val storageManager = MyApp.appModule.storageManager
 
     // Setting up a repository must not be cancelled by leaving the screen.
     private val appScope = MyApp.appModule.appScope
@@ -40,25 +40,50 @@ class SetupViewModel : ViewModel() {
     private val _initState: MutableStateFlow<InitState> = MutableStateFlow(InitState.Idle)
     val initState: StateFlow<InitState> = _initState.asStateFlow()
 
-    private val _storedSshKey: MutableStateFlow<Cred.Ssh?> = MutableStateFlow(null)
+    private val _storedSshKeys: MutableStateFlow<List<StoredSshKey>> = MutableStateFlow(emptyList())
 
     /**
-     * The key pair the app already holds, if it holds a usable one.
+     * The key pairs the app already holds.
      *
-     * closeRepo() only forgets that a repository was set up; the credentials
-     * stay in the store and a repository opened without new ones uses them. But
-     * nothing led back to them: setting up again meant either generating a
-     * fresh pair or fetching one off the disk, so every attempt cost the
-     * repository another deploy key and the old ones piled up there.
+     * Letting go of a repository leaves its key in the store when another
+     * repository still takes it; nothing led back to those keys otherwise, so
+     * setting a repository up meant either generating a fresh pair or fetching
+     * one off the disk, and every attempt cost the remote another deploy key.
      */
-    val storedSshKey: StateFlow<Cred.Ssh?> = _storedSshKey.asStateFlow()
+    val storedSshKeys: StateFlow<List<StoredSshKey>> = _storedSshKeys.asStateFlow()
 
     init {
         viewModelScope.launch {
-            val cred = prefs.cred()
-            _storedSshKey.value = (cred as? Cred.Ssh)
-                ?.takeIf { SshKeyValidation.isKeyPair(it.publicKey, it.privateKey) }
+            _storedSshKeys.value = keyStore.all()
+                .filter { SshKeyValidation.isKeyPair(it.publicKey, it.privateKey) }
         }
+    }
+
+    /**
+     * The repository being set up, which is not one of the app's yet.
+     *
+     * A setup opens or clones into a folder long before it is known whether that
+     * ends in a repository — the url can be wrong, the key can be refused, the
+     * clone can be cancelled — and all of it happens through an open git
+     * repository. So it works on a session of its own, and only a setup that
+     * goes through hands it over ([io.github.leonhardweiler.diffusion.manager.RepoManager.adopt]).
+     */
+    @Volatile
+    private var draft: RepoSession? = null
+
+    /**
+     * The session for [path], reusing the one already in hand when the setup is
+     * still about the same folder. Backing out of the credential screens and
+     * picking a different folder must not leave the first one open — notes
+     * written into one repository, commits made in another.
+     */
+    private suspend fun draftFor(path: String): RepoSession {
+        draft?.let { existing ->
+            if (existing.path == path) return existing
+            existing.close()
+        }
+
+        return repoManager.draft(path).also { draft = it }
     }
 
     /**
@@ -71,12 +96,13 @@ class SetupViewModel : ViewModel() {
 
     /**
      * Written on the main thread by the cancel button and read from the clone's
-     * progress callback, which runs wherever libgit2 is. Volatile, or the loop
+     * progress callback, which runs wherever JGit is. Volatile, or the loop
      * that is meant to stop reading it can keep reading the value it had when
      * it started.
      */
     @Volatile
     private var shouldCancel = false
+
     fun cancelClone(): Boolean {
         // Nothing is being downloaded for a repository that was already here,
         // so there is nothing to cancel and nothing to throw away — but the way
@@ -87,7 +113,7 @@ class SetupViewModel : ViewModel() {
             return true
         }
 
-        if (gitManager.isRepoInitialized) {
+        if (draft?.gitManager?.isRepoInitialized == true) {
             return false
         }
         shouldCancel = true
@@ -102,16 +128,14 @@ class SetupViewModel : ViewModel() {
      */
     fun openRepo(
         storageConfig: StorageConfiguration,
-        onSuccess: () -> Unit,
         onRemoteFound: (String) -> Unit,
         onNoRemote: () -> Unit,
     ) {
 
         appScope.launch {
-            // Everything below can take a second or two — libgit2 opening the
-            // repository, and the whole working tree being read into the
-            // database. Until this said so, the tap on the folder looked like it
-            // had been ignored.
+            // Everything below can take a second or two — JGit opening the
+            // repository, and the whole working tree being read. Until this said
+            // so, the tap on the folder looked like it had been ignored.
             _initState.emit(InitState.OpeningRepo)
 
             val folder = NodeFs.Folder.fromPath(storageConfig.repoPath())
@@ -122,7 +146,7 @@ class SetupViewModel : ViewModel() {
                 return@launch
             }
 
-            // libgit2 would answer this with "could not find repository", which
+            // JGit would answer this with "could not find repository", which
             // names the symptom rather than what to do about it
             if (!NodeFs.Folder.fromPath(folder.path, GIT_DIR).exist()) {
                 uiHelper.makeToast(uiHelper.getString(R.string.error_not_a_repository))
@@ -130,16 +154,9 @@ class SetupViewModel : ViewModel() {
                 return@launch
             }
 
-            // A repository may still be open from an earlier attempt in this
-            // same setup: the credential screens can be backed out of, and
-            // nothing closes what was opened on the way in. openRepoLib returns
-            // at once when one is open, so without this the app would have gone
-            // on holding the first folder while the preferences moved to the
-            // second — notes written into one repository, commits made in the
-            // other.
-            gitManager.closeRepo()
+            val session = draftFor(storageConfig.repoPath())
 
-            gitManager.openRepo(storageConfig.repoPath()).onFailure {
+            session.gitManager.openRepo(session.path).onFailure {
                 uiHelper.makeToast(it.message)
                 _initState.emit(InitState.Idle)
                 return@launch
@@ -150,18 +167,12 @@ class SetupViewModel : ViewModel() {
             // dated every note to the moment it arrived. A clone and a pull do
             // this themselves, and every later start reads the dates as they
             // now stand on disk.
-            gitManager.applyCommitTimestamps()
+            session.gitManager.applyCommitTimestamps()
 
             // what the repository already knows about itself, rather than
             // asking for it again
-            val remoteUrl = gitManager.remoteUrl().orEmpty()
-
-            prefs.applyGitAuthorDefaults(gitManager.currentSignature())
-            prefs.initRepo(storageConfig, remoteUrl)
-
-            // the repo has just been opened, so the list is read from whatever
-            // is on disk, committed or not
-            storageManager.rebuildIndex(progressCb = { announceProgress(it) })
+            val remoteUrl = session.gitManager.remoteUrl().orEmpty()
+            session.applyGitAuthorDefaults()
 
             // whether it already syncs somewhere or not, the setup goes on from
             // here rather than finishing: a repository without a remote is a
@@ -256,12 +267,9 @@ class SetupViewModel : ViewModel() {
     ) {
         shouldCancel = false
 
-        if (!repoIsAlreadyOnDevice) {
-            // Same reason as in openRepo: an "open" earlier in this setup can
-            // have been backed out of and still holds a repository, and cloning
-            // while one is open is refused outright.
-            gitManager.closeRepo()
+        val session = draftFor(storageConfig.repoPath())
 
+        if (!repoIsAlreadyOnDevice) {
             storageConfig.prepareStorageRepoPath().onFailure {
                 _initState.emit(InitState.Error(it.message))
                 return
@@ -276,8 +284,8 @@ class SetupViewModel : ViewModel() {
 
             _initState.emit(InitState.Cloning(0))
 
-            gitManager.cloneRepo(
-                repoPath = storageConfig.repoPath(),
+            session.gitManager.cloneRepo(
+                repoPath = session.path,
                 repoUrl = remoteUrl,
                 cred = cred,
                 progressCallback = {
@@ -298,11 +306,13 @@ class SetupViewModel : ViewModel() {
         // an opened repository may not have had a remote at all, and push reads
         // it from the repository rather than from the preferences
         if (repoIsAlreadyOnDevice) {
-            gitManager.setRemoteUrl(remoteUrl).onFailure {
+            session.gitManager.setRemoteUrl(remoteUrl).onFailure {
                 _initState.emit(InitState.Error(it.message))
                 return
             }
+        }
 
+        if (repoIsAlreadyOnDevice) {
             // There is nothing to clone, so nothing has tried the key yet — and
             // a setup that ends here would be finished without ever having
             // reached the remote, leaving the first real sync to say that the
@@ -310,22 +320,61 @@ class SetupViewModel : ViewModel() {
             // same commit, pull and push the button does, which is what makes
             // it an answer about writing as well as about reading. Only when
             // the remote takes all three does the setup go through.
-            syncOnce(cred).onFailure {
+            //
+            // Before the repository is one of the app's, so that a refusal
+            // leaves nothing behind to take back out of the list again.
+            syncOnce(session, cred).onFailure {
                 _initState.emit(InitState.Error(it.message))
                 return
             }
         }
 
-        prefs.initRepo(storageConfig, remoteUrl)
-        prefs.updateCred(cred)
-        prefs.applyGitAuthorDefaults(gitManager.currentSignature())
-
-        // what was just cloned, or just given a remote, is a working tree
-        // nothing has read yet
-        storageManager.rebuildIndex(progressCb = { announceProgress(it) })
-
+        adopt(session, remoteUrl, cred)
         finishSetup(onSuccess)
+    }
 
+    /**
+     * Finishes a setup that opened a repository and was told it needs no remote.
+     * Nothing here has a network to reach, so there is nothing to try first.
+     */
+    fun finishWithoutRemote(storageConfig: StorageConfiguration, onSuccess: () -> Unit) {
+        appScope.launch {
+            _initState.emit(InitState.OpeningRepo)
+
+            adopt(draftFor(storageConfig.repoPath()), remoteUrl = "", cred = null)
+            finishSetup(onSuccess)
+        }
+    }
+
+    /**
+     * Hands the repository being set up over to the app: its key into the key
+     * store, itself into the list, and its notes onto the screen the setup ends
+     * on.
+     */
+    private suspend fun adopt(session: RepoSession, remoteUrl: String, cred: Cred?) {
+        val keyId = (cred as? Cred.Ssh)?.let { keyStore.put(it) }.orEmpty()
+
+        repoManager.adopt(
+            session,
+            RepoConfig(
+                id = session.id,
+                path = session.path,
+                remoteUrl = remoteUrl,
+                sshKeyId = keyId,
+            )
+        )
+
+        // A freshly cloned repository has an author in it that this device has
+        // never been told about; one that was opened was asked back when it was
+        // opened, and this fills in nothing it already has.
+        session.applyGitAuthorDefaults()
+
+        // what was just cloned, or just opened, is a working tree nothing has
+        // read yet
+        session.startShowingItsNotes(progressCb = { announceProgress(it) })
+
+        draft = null
+        _initState.emit(InitState.Idle)
     }
 
     /**
@@ -340,21 +389,23 @@ class SetupViewModel : ViewModel() {
      * tree with changes in it cannot be merged into — and the push is what says
      * whether the key may write, which a read-only deploy key is refused for.
      */
-    private suspend fun syncOnce(cred: Cred?): Result<Unit> {
+    private suspend fun syncOnce(session: RepoSession, cred: Cred?): Result<Unit> {
         _initState.emit(InitState.SyncingRepo)
 
-        gitManager.commitAll(
-            prefs.gitAuthor(),
+        val git = session.gitManager
+
+        git.commitAll(
+            session.gitAuthor(),
             fallbackMessage = "Sync from Diffusion"
         ).onFailure { return failure(it) }
 
-        gitManager.pull(cred, prefs.gitAuthor()).onFailure { return failure(it) }
+        git.pull(cred, session.gitAuthor()).onFailure { return failure(it) }
 
-        return gitManager.push(cred)
+        return git.push(cred)
     }
 
     /**
-     * Says which folder the database is being built from. In the app's scope
+     * Says which folder the note list is being built from. In the app's scope
      * rather than this view model's: the setup screen is left while this is
      * still running, and a report that dies with it would take the last state
      * the screen was shown in with it.

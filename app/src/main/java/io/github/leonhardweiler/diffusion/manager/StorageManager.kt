@@ -4,7 +4,6 @@ import android.util.Log
 import androidx.annotation.StringRes
 import io.github.leonhardweiler.diffusion.MyApp
 import io.github.leonhardweiler.diffusion.R
-import io.github.leonhardweiler.diffusion.data.AppPreferences
 import io.github.leonhardweiler.diffusion.data.platform.NodeFs
 import io.github.leonhardweiler.diffusion.data.index.Note
 import io.github.leonhardweiler.diffusion.data.index.NoteFolder
@@ -34,18 +33,27 @@ private const val GIT_KEEP = ".gitkeep"
  */
 private const val RETRY_AFTER_NETWORK_FAILURE_MS = 1_500L
 
-class StorageManager {
-
-
-    val prefs: AppPreferences = MyApp.appModule.appPreferences
+/**
+ * The one write path into a repository: its files, its note index and its git
+ * repository, in that order and behind one lock.
+ *
+ * One of these per [RepoSession] rather than one for the app. A repository that
+ * is not the one being looked at still commits, pulls and pushes, and it does
+ * that to its own files with its own credentials — so the thing that knows how
+ * to do it belongs to the repository and not to the app.
+ */
+class StorageManager(private val repo: RepoSession) {
 
     private val uiHelper = MyApp.appModule.uiHelper
 
     private val networkMonitor = MyApp.appModule.networkMonitor
 
-    private val index: NoteIndex = MyApp.appModule.noteIndex
+    private val index: NoteIndex get() = repo.noteIndex
 
-    private val gitManager: GitManager = MyApp.appModule.gitManager
+    private val gitManager: GitManager get() = repo.gitManager
+
+    /** Where this repository's files are, which is the one thing that cannot change. */
+    private val repoPath: String get() = repo.path
 
     /** Writes must not be cancelled by the screen that started them going away. */
     private val appScope = MyApp.appModule.appScope
@@ -199,7 +207,7 @@ class StorageManager {
         // Only a fallback: the message a commit really carries is the notes it
         // is about, and only the rust side, which stages them, knows those.
         gitManager.commitAll(
-            prefs.gitAuthor(),
+            repo.gitAuthor(),
             fallbackMessage = "Sync from Diffusion"
         ).onFailure { err ->
             failSync(err.message)
@@ -230,7 +238,12 @@ class StorageManager {
     private suspend fun rebuildIndexWithoutLocker(
         progressCb: ((Progress) -> Unit)? = null
     ): Result<Unit> {
-        val repoPath = runCatching { prefs.repoPath() }.getOrElse { return failure(it) }
+        // The placeholder session that stands in for having no repository at
+        // all, and every repository that is synced without being looked at:
+        // there is no list being drawn from either of them, and walking a
+        // working tree to build one nobody sees is the one expensive thing a
+        // background sync could do.
+        if (!repo.exists) return success(Unit)
 
         index.rebuild(repoPath, progressCb)
 
@@ -247,8 +260,7 @@ class StorageManager {
         val renamed = new.relativePath != previous.relativePath
 
         update {
-            val rootPath = prefs.repoPath()
-
+            val rootPath = repoPath
             if (renamed) {
                 val previousFile = previous.toFileFs(rootPath)
                 previousFile.delete().orComplain(R.string.error_delete_file, previousFile.path)
@@ -281,7 +293,7 @@ class StorageManager {
         Log.d(TAG, "createNote: $note")
 
         update {
-            val file = note.toFileFs(prefs.repoPath())
+            val file = note.toFileFs(repoPath)
 
             file.create().orComplain(R.string.error_create_file)
             file.write(note.content).orComplain(R.string.error_write_file)
@@ -302,7 +314,7 @@ class StorageManager {
 
         Log.d(TAG, "deleteNote: $relativePath")
         update {
-            val file = NodeFs.File.fromPath(prefs.repoPath(), relativePath)
+            val file = NodeFs.File.fromPath(repoPath, relativePath)
             file.delete().orComplain(R.string.error_delete_file, file.path)
 
             index.removeNoteAt(relativePath)
@@ -314,7 +326,6 @@ class StorageManager {
         Log.d(TAG, "deleteNotes: ${relativePaths.size}")
 
         update {
-            val repoPath = prefs.repoPath()
             relativePaths.forEach { relativePath ->
 
                 Log.d(TAG, "deleting $relativePath")
@@ -345,8 +356,6 @@ class StorageManager {
         Log.d(TAG, "renameNote: ${note.relativePath} -> $newRelativePath")
 
         if (note.relativePath == newRelativePath) return@withLock success(Unit)
-
-        val repoPath = prefs.repoPath()
 
         val target = NodeFs.File.fromPath(repoPath, newRelativePath)
         if (target.exist()) {
@@ -385,7 +394,7 @@ class StorageManager {
         Log.d(TAG, "createNoteFolder: $noteFolder")
 
         update {
-            val folder = noteFolder.toFolderFs(prefs.repoPath())
+            val folder = noteFolder.toFolderFs(repoPath)
             folder.create().orComplain(R.string.error_create_folder)
 
             // Git has no concept of an empty directory, so without a file in it the
@@ -429,8 +438,6 @@ class StorageManager {
             return@withLock complain(R.string.error_folder_into_itself)
         }
 
-        val repoPath = prefs.repoPath()
-
         val target = NodeFs.Folder.fromPath(repoPath, newRelativePath)
         if (target.exist()) {
             return@withLock complain(R.string.error_folder_already_exist, newRelativePath)
@@ -473,7 +480,6 @@ class StorageManager {
         Log.d(TAG, "deleteNoteFolders: ${noteFolders.size}")
 
         update {
-            val repoPath = prefs.repoPath()
             noteFolders.forEach { noteFolder ->
                 val folder = noteFolder.toFolderFs(repoPath)
                 folder.delete().orComplain(R.string.error_delete_folder)
@@ -485,15 +491,6 @@ class StorageManager {
 
             success(Unit)
         }
-    }
-
-    suspend fun closeRepo() = locker.withLock {
-        prefs.closeRepo()
-        gitManager.closeRepo()
-        index.clear()
-        // the next repository starts without the last one's sync result, which
-        // otherwise greets it as an error it never had
-        _syncState.emit(SyncState.Idle)
     }
 
 
@@ -552,8 +549,8 @@ class StorageManager {
     }
 
     private suspend fun syncWithRemoteWithoutLocker(): Result<Unit> {
-        var hasRemote = prefs.remoteUrl.get().isNotEmpty()
-        val cred = prefs.cred()
+        var hasRemote = repo.remoteUrl().isNotEmpty()
+        val cred = repo.cred()
         var isError = false
 
         // Whether the working tree was written to, which only a pull does here.
@@ -583,7 +580,7 @@ class StorageManager {
         if (hasRemote) {
             _syncState.emit(SyncState.Pull)
 
-            var pulled = gitManager.pull(cred, prefs.gitAuthor())
+            var pulled = gitManager.pull(cred, repo.gitAuthor())
 
             // The wait beforehand asks the system whether there is a network,
             // and the system answers yes a moment before this process can
@@ -596,7 +593,7 @@ class StorageManager {
             if (pulled.isNetworkFailure()) {
                 Log.d(TAG, "pull: no network yet, trying once more")
                 delay(RETRY_AFTER_NETWORK_FAILURE_MS)
-                pulled = gitManager.pull(cred, prefs.gitAuthor())
+                pulled = gitManager.pull(cred, repo.gitAuthor())
             }
 
             pulled.onSuccess {
@@ -614,7 +611,12 @@ class StorageManager {
         // here that touches the working tree. A conflict counts as well — it is
         // written into the notes without HEAD moving, and without this it would
         // be in the files and nowhere on screen.
-        if (pulledFiles) {
+        //
+        // And only for the repository whose notes are on screen. The others
+        // sync too — that is what the button beside each of them in the settings
+        // is — but reading a whole working tree to build a list nobody is
+        // drawing is work for nothing; switching to one reads it then.
+        if (pulledFiles && repo.showsItsNotes) {
             rebuildIndexWithoutLocker().onFailure { err ->
                 failSync(err.message)
                 return failure(err)

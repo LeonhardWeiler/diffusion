@@ -36,11 +36,14 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewRepoMethodScreen(
-    openRepo: (StorageConfiguration, () -> Unit, (String) -> Unit, () -> Unit) -> Unit,
+    openRepo: (StorageConfiguration, (String) -> Unit, () -> Unit) -> Unit,
     checkPathForClone: (String) -> Result<Unit>,
+    /** Ends the setup for a repository that was opened and is to stay local. */
+    finishWithoutRemote: (StorageConfiguration, () -> Unit) -> Unit,
     makeToast: (String) -> Unit,
     navigate: (SetupDestination) -> Unit,
     onSetupSuccess: () -> Unit,
+    onBackClick: (() -> Unit)? = null,
     initState: InitState = InitState.Idle,
 ) {
 
@@ -74,7 +77,6 @@ fun NewRepoMethodScreen(
             when (newRepoMethod.value!!) {
                 NewRepoMethod.Open -> openRepo(
                     storageConfig,
-                    onSetupSuccess,
                     { remoteUrl ->
                         navigate(
                             SetupDestination.Remote(
@@ -116,7 +118,12 @@ fun NewRepoMethodScreen(
 
     AppPage(
         verticalArrangement = Arrangement.spacedBy(80.dp, Alignment.CenterVertically),
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
+        // Only when this setup was reached from the settings, for a repository
+        // beside the ones there already are. The first one has nothing behind it
+        // to go back to.
+        onBackClick = onBackClick,
+        onBackClickEnabled = !initState.isLoading(),
     ) {
 
         // Opening a repository is a second or two of libgit2 and of reading the
@@ -172,7 +179,9 @@ fun NewRepoMethodScreen(
                 navigate(SetupDestination.Remote(it, alreadyOnDevice = true))
             }
         },
-        onDecline = onSetupSuccess,
+        onDecline = {
+            repoWithoutRemote.value?.let { finishWithoutRemote(it, onSetupSuccess) }
+        },
     )
 
 }
@@ -182,8 +191,9 @@ fun NewRepoMethodScreen(
 private fun NewRepoMethodScreenPreview() {
 
     NewRepoMethodScreen(
-        openRepo = { _, _, _, _ -> },
+        openRepo = { _, _, _ -> },
         checkPathForClone = { Result.success(Unit) },
+        finishWithoutRemote = { _, _ -> },
         makeToast = {},
         navigate = {},
         onSetupSuccess = {}

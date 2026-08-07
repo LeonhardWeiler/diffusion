@@ -12,6 +12,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.leonhardweiler.diffusion.MyApp
 import io.github.leonhardweiler.diffusion.data.index.Note
 import io.github.leonhardweiler.diffusion.helper.UiHelper
+import io.github.leonhardweiler.diffusion.manager.RepoSession
 import io.github.leonhardweiler.diffusion.manager.StorageManager
 import io.github.leonhardweiler.diffusion.ui.viewmodel.viewModelFactory
 import kotlinx.coroutines.Job
@@ -77,7 +78,7 @@ open class TextVM() : ViewModel() {
 
         this.previousNote = previousNote
         this.openedNote = previousNote
-        _isReading.value = prefs.opensInReadingMode(previousNote.relativePath)
+        _isReading.value = prefs.opensInReadingMode(repo.id, previousNote.relativePath)
 
         val textFieldValue = TextFieldValue(
             previousNote.content,
@@ -121,11 +122,14 @@ open class TextVM() : ViewModel() {
         _isReading.value = value
 
         viewModelScope.launch {
-            prefs.setReadingMode(previousNote.relativePath, value)
+            prefs.setReadingMode(repo.id, previousNote.relativePath, value)
         }
     }
 
-    private val storageManager: StorageManager = MyApp.appModule.storageManager
+    /** The repository this note is in — the one the list it was opened from shows. */
+    private val repo: RepoSession = MyApp.appModule.activeRepo
+
+    private val storageManager: StorageManager = repo.storageManager
     private val uiHelper: UiHelper = MyApp.appModule.uiHelper
     private val appScope = MyApp.appModule.appScope
     val prefs = MyApp.appModule.appPreferences

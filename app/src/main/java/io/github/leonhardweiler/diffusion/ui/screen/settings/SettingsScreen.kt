@@ -6,6 +6,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Palette
@@ -40,9 +41,11 @@ import kotlinx.coroutines.launch
 fun SettingsScreen(
     onBackClick: () -> Unit,
     onShowLogs: () -> Unit,
-    onCloseRepo: () -> Unit,
+    onAddRepo: () -> Unit,
+    onRepoChanged: () -> Unit,
     vm: SettingsViewModel
 ) {
+    val repo = vm.activeRepo
 
     AppPage(
         title = stringResource(id = R.string.settings),
@@ -70,33 +73,33 @@ fun SettingsScreen(
             title = stringResource(R.string.repository)
         ) {
 
-            val gitAuthorName by vm.prefs.gitAuthorName.getAsState()
+            val gitAuthorName by repo.prefs.authorName.getAsState()
             StringSettings(
                 title = stringResource(R.string.git_author_name),
                 subtitle = gitAuthorName.ifEmpty { stringResource(id = R.string.none) },
                 stringValue = gitAuthorName,
                 onChange = { updated ->
-                    vm.update { vm.prefs.gitAuthorName.update(updated.trim()) }
+                    vm.update { repo.prefs.authorName.update(updated.trim()) }
                 }
             )
 
-            val gitAuthorEmail by vm.prefs.gitAuthorEmail.getAsState()
+            val gitAuthorEmail by repo.prefs.authorEmail.getAsState()
             StringSettings(
                 title = stringResource(R.string.git_author_email),
                 subtitle = gitAuthorEmail.ifEmpty { stringResource(id = R.string.none) },
                 stringValue = gitAuthorEmail,
                 onChange = { updated ->
-                    vm.update { vm.prefs.gitAuthorEmail.update(updated.trim()) }
+                    vm.update { repo.prefs.authorEmail.update(updated.trim()) }
                 },
                 keyboardType = KeyboardType.Email
             )
 
-            val remoteUrl by vm.prefs.remoteUrl.getAsState()
+            val remoteUrl by repo.prefs.remoteUrl.getAsState()
             StringSettings(
                 title = stringResource(R.string.remote_url),
                 subtitle = remoteUrl.ifEmpty { stringResource(id = R.string.none) },
                 stringValue = remoteUrl,
-                onChange = { vm.updateRemoteUrl(it) },
+                onChange = { vm.updateRemoteUrl(repo, it) },
                 endContent = {
                     val uriHandler = LocalUriHandler.current
                     Button(
@@ -126,19 +129,25 @@ fun SettingsScreen(
                 keyboardType = KeyboardType.Uri
             )
 
-            val syncOnOpenAndClose by vm.prefs.syncOnOpenAndClose.getAsState()
+            val syncOnOpenAndClose by repo.prefs.syncOnOpenAndClose.getAsState()
             ToggleableSettings(
                 title = stringResource(R.string.sync_automatically),
                 subtitle = stringResource(R.string.sync_automatically_subtitle),
                 checked = syncOnOpenAndClose,
                 onCheckedChange = {
-                    vm.update { vm.prefs.syncOnOpenAndClose.update(it) }
+                    vm.update { repo.prefs.syncOnOpenAndClose.update(it) }
                 }
             )
 
             val expanded = rememberSaveable {
                 mutableStateOf(false)
             }
+
+            DefaultSettingsRow(
+                title = stringResource(R.string.add_repository),
+                startIcon = Icons.Default.Add,
+                onClick = onAddRepo
+            )
 
             DefaultSettingsRow(
                 title = stringResource(R.string.close_repository),
@@ -152,8 +161,7 @@ fun SettingsScreen(
                 expanded = expanded,
                 text = stringResource(R.string.close_repository_confirmation),
                 onConfirmation = {
-                    vm.closeRepo()
-                    onCloseRepo()
+                    vm.removeRepo(repo, onRepoChanged)
                 }
             )
         }

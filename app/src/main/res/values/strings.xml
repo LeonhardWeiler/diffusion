@@ -31,6 +31,7 @@
     <string name="git_author_email">Git author email</string>
     <string name="sync_automatically">Sync when opening and closing</string>
     <string name="sync_automatically_subtitle">Commits, pulls and pushes on its own when the app is opened and when it is left. The cloud button does the same at any time.</string>
+    <string name="add_repository">Add a repository</string>
     <string name="close_repository">Close repository</string>
     <string name="close_repository_confirmation">Do you really want to close the repository?</string>
     <string name="version">Version</string>
