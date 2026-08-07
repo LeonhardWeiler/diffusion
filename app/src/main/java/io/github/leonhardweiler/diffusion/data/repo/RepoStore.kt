@@ -17,25 +17,11 @@ import java.util.UUID
 
 private const val TAG = "RepoStore"
 
-/**
- * The repositories the app knows about, and which of them is being looked at.
- *
- * Everything a repository carries is a preference keyed by its id — there is no
- * serialised blob here. A repository is six values, DataStore stores exactly
- * those types, and the per-repository settings screen wants each of them as its
- * own flow anyway ([RepoPrefs]).
- */
 class RepoStore(context: Context) : PreferencesManager(context, "repositories") {
-
     private val repoIds = stringPreference("repoIds")
 
     private val activeId = stringPreference("activeRepoId")
 
-    /**
-     * Whether the one repository the app used to hold has been carried over.
-     * Written even when there was nothing to carry, so that a user who removes
-     * every repository is not handed the old one back at the next start.
-     */
     private val migrated = booleanPreference("migratedToRepoList", false)
 
     private val perRepo = mutableMapOf<String, RepoPrefs>()
@@ -43,11 +29,6 @@ class RepoStore(context: Context) : PreferencesManager(context, "repositories") 
     @Synchronized
     fun prefsOf(id: String): RepoPrefs = perRepo.getOrPut(id) { RepoPrefs(id) }
 
-    /**
-     * What one repository is made of, as preferences rather than as a value: the
-     * settings screen of a repository shows each of these and writes each of
-     * them on its own.
-     */
     inner class RepoPrefs(val id: String) {
         val path: StringPreference = stringPreference("repo.$id.path")
         val remoteUrl: StringPreference = stringPreference("repo.$id.remoteUrl")
@@ -71,7 +52,6 @@ class RepoStore(context: Context) : PreferencesManager(context, "repositories") 
     private fun idsIn(preferences: Preferences): List<String> =
         repoIds.valueIn(preferences).lineSequence().filter { it.isNotEmpty() }.toList()
 
-    /** Every repository, in the order they were set up. */
     val configs: Flow<List<RepoConfig>> = dataStore.data
         .map { preferences -> idsIn(preferences).map { prefsOf(it).read(preferences) } }
         .distinctUntilChanged()
@@ -82,11 +62,6 @@ class RepoStore(context: Context) : PreferencesManager(context, "repositories") 
 
     suspend fun setActive(id: String) = activeId.update(id)
 
-    /**
-     * Writes a repository down and answers with the id it is known by. The first
-     * one to be added is also the one being looked at, so that setting up an app
-     * that had none ends on its note list.
-     */
     suspend fun add(config: RepoConfig): String {
         val id = config.id.ifEmpty { UUID.randomUUID().toString() }
         val current = all()
@@ -108,12 +83,6 @@ class RepoStore(context: Context) : PreferencesManager(context, "repositories") 
         return id
     }
 
-    /**
-     * Forgets a repository, and hands back what is left so the caller can decide
-     * which of them to look at now. Nothing on disk is touched: removing a
-     * repository here is the app letting go of a folder, not the folder going
-     * away.
-     */
     suspend fun remove(id: String): List<RepoConfig> {
         val kept = all().filter { it.id != id }
         val prefs = prefsOf(id)
@@ -134,14 +103,6 @@ class RepoStore(context: Context) : PreferencesManager(context, "repositories") 
         return kept
     }
 
-    /**
-     * Carries the one repository the app used to hold into the list, once.
-     *
-     * Everything about it was a preference of its own — the path, the remote,
-     * the key, the author — because there was only ever one of it. The old
-     * values are left where they are rather than deleted: they cost a few
-     * hundred bytes, and a build that is rolled back still finds its repository.
-     */
     suspend fun migrateFrom(appPreferences: AppPreferences, keyStore: SshKeyStore) {
         if (migrated.get()) return
 

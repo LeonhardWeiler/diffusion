@@ -35,13 +35,6 @@ import io.github.leonhardweiler.diffusion.ui.utils.conditional
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppPage(
-    /**
-     * The heading of the bar above the page — and null for a page that has no
-     * bar. The setup is all of those: its screens say what they are in the
-     * sentence at the top of the page itself, and a second heading above that
-     * repeating "Choose method" or "SSH keys" was a strip of chrome saying
-     * nothing twice. What is left of the bar there is the way back.
-     */
     title: String? = null,
     titleStyle: TextStyle = MaterialTheme.typography.titleLarge,
     onBackClick: (() -> Unit)? = null,
@@ -54,7 +47,6 @@ fun AppPage(
     bottomBar: @Composable () -> Unit = {},
     content: @Composable ColumnScope.() -> Unit
 ) {
-
     Scaffold(
         modifier = Modifier
             .imePadding(),
@@ -75,8 +67,6 @@ fun AppPage(
             }
 
             if (title == null) {
-                // no bar, no background, no heading: an arrow standing on the
-                // page, and the page beginning where the screen does
                 Row(content = { back() })
             } else {
                 TopAppBar(
@@ -114,7 +104,6 @@ fun AppPage(
                 horizontalAlignment = horizontalAlignment
             ) {
                 content()
-
             }
             bottomBar()
         }

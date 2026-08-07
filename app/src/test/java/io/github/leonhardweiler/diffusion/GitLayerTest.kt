@@ -36,16 +36,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * The git layer against real repositories.
- *
- * Everything but the ssh transport is exercised here: the remote is a bare
- * repository beside the two working ones, which is a path rather than a host and
- * needs no key. What ssh does with that path is the one part a device has to say
- * whether it works.
- */
 class GitLayerTest {
-
     private val author = GitAuthor(name = "Tester", email = "tester@example.com")
     private val zone: ZoneId = ZoneId.systemDefault()
 
@@ -57,8 +48,6 @@ class GitLayerTest {
     fun setUp() {
         root = Files.createTempDirectory("diffusion-git").toFile()
 
-        // Also what keeps the developer's own ~/.gitconfig out of these
-        // repositories: it is where the app points git at its own directory.
         GitEnvironment.install(File(root, "home"))
 
         remote = Git.init()
@@ -104,8 +93,6 @@ class GitLayerTest {
     private fun Git.headParents(): Int = RevWalk(repository).use { walk ->
         walk.parseCommit(repository.resolve(Constants.HEAD)).parentCount
     }
-
-    // -- what a commit is called ------------------------------------------------
 
     @Test
     fun theCommitNamesTheNoteItHolds() {
@@ -154,8 +141,6 @@ class GitLayerTest {
         assertEquals("Sync from Diffusion", git.headMessage().trim())
     }
 
-    // -- what the repository says about itself -----------------------------------
-
     @Test
     fun theRemoteIsReadBackFromTheRepository() {
         assertEquals(remote.repository.directory.absolutePath, remoteUrl(git.repository))
@@ -180,12 +165,6 @@ class GitLayerTest {
         assertEquals(author.name to author.email, signature(git.repository))
     }
 
-    /**
-     * A repository with no `user.name` in its config and no commit to read an
-     * author off leaves both fields empty, and so do the settings when they are
-     * cleared. JGit writes `author  <> …` for that without a word — a history
-     * nothing can be attributed in, on a remote shared with other people.
-     */
     @Test
     fun aCommitIsNeverByNobody() {
         git.write("note.md", "one")
@@ -209,8 +188,6 @@ class GitLayerTest {
         commitAll(git, author, "fallback")
         assertFalse(isChange(git))
     }
-
-    // -- sync --------------------------------------------------------------------
 
     @Test
     fun whatWasPushedIsWhatTheOtherSidePulls() {
@@ -272,13 +249,6 @@ class GitLayerTest {
         other.close()
     }
 
-    /**
-     * A repository with no commit on it at all: a folder that was `git init`ed
-     * and never committed to, and a clone of a repository nobody has pushed to
-     * yet. The sync has to go through for one of those — the setup ends in a
-     * sync, so a push that refuses to happen is a repository that cannot be set
-     * up here at all.
-     */
     @Test
     fun aRepositoryWithNothingCommittedSyncsWithoutSayingAnything() {
         assertNull(lastCommit(git.repository))
@@ -288,7 +258,6 @@ class GitLayerTest {
 
         assertNull(remote.repository.resolve("${Constants.R_HEADS}main"))
 
-        // and the first commit is what puts the branch on the remote
         git.write("note.md", "one")
         commitAll(git, author, "fallback")
         push(git, null)
@@ -296,7 +265,6 @@ class GitLayerTest {
         assertEquals(lastCommit(git.repository), remote.repository.resolve("${Constants.R_HEADS}main")?.name)
     }
 
-    /** The branch is whatever this repository stands on, never a name we assume. */
     @Test
     fun aBranchThatIsCalledSomethingElseIsPushedAndPulledLikeAnyOther() {
         val theirs = Git.init()
@@ -312,7 +280,6 @@ class GitLayerTest {
         assertEquals("notes", currentBranch(theirs.repository))
         assertNotNull(remote.repository.resolve("${Constants.R_HEADS}notes"))
 
-        // and the branch this repository stands on is untouched by that
         pull(git, null, author)
         assertNull(lastCommit(git.repository))
 
@@ -338,8 +305,6 @@ class GitLayerTest {
         other.close()
     }
 
-    // -- conflicts ----------------------------------------------------------------
-
     @Test
     fun aConflictIsWrittenIntoTheNoteAndStopsTheSyncUntilItIsRead() {
         git.write("note.md", "one\n")
@@ -358,22 +323,17 @@ class GitLayerTest {
         val conflict = assertFailsWith<MergeConflictException> { pull(git, null, author) }
         assertEquals(listOf("note.md"), conflict.paths)
 
-        // both versions are in the note now, which is what makes it something
-        // that can be read and fixed
         val text = git.read("note.md")
         assertContains(text, "<<<<<<<")
         assertContains(text, "mine")
         assertContains(text, "theirs")
         assertEquals(RepositoryState.MERGING, git.repository.repositoryState)
 
-        // committing that would write the markers into the history
         val unresolved = assertFailsWith<UnresolvedConflictException> {
             commitAll(git, author, "fallback")
         }
         assertEquals(listOf("note.md"), unresolved.paths)
 
-        // edited down, the same commit ends the merge — and it names both sides,
-        // or the next pull would fetch the same conflict again
         git.write("note.md", "mine and theirs\n")
         commitAll(git, author, "fallback")
 
@@ -395,13 +355,10 @@ class GitLayerTest {
         assertContains(git.headMessage(), "note.md")
     }
 
-    // -- dates ---------------------------------------------------------------------
-
     @Test
     fun aNoteIsDatedByTheCommitThatWroteIt() {
         val written = commitAt("note.md", "one", secondsAgo = 60 * 60 * 24 * 30)
 
-        // what a checkout would have left behind
         git.file("note.md").setLastModified(System.currentTimeMillis())
 
         applyCommitTimestamps(git)
@@ -435,15 +392,11 @@ class GitLayerTest {
 
     @Test
     fun aPullDatesWhatItWroteAndNothingElse() {
-        // a note written here, whose own date is the truth about it: it was
-        // typed on this device, and the sync it went out with says nothing
-        // about when
         git.write("mine.md", "mine")
         commitAll(git, author, "fallback")
         push(git, null)
         val mineWritten = git.file("mine.md").lastModified()
 
-        // and one written on the other device a week ago
         val other = workingRepo("there")
         pull(other, null, author)
 
@@ -460,8 +413,6 @@ class GitLayerTest {
         assertEquals(mineWritten, git.file("mine.md").lastModified(), "not touched by the pull")
         other.close()
     }
-
-    // -- opening and cloning ---------------------------------------------------------
 
     @Test
     fun aClonedRepositoryCarriesTheDatesOfItsCommits() {
@@ -501,7 +452,6 @@ class GitLayerTest {
         reopened.close()
     }
 
-    /** A note committed [secondsAgo] ago, as one written on another day would be. */
     private fun commitAt(path: String, text: String, secondsAgo: Long): Long {
         git.write(path, text)
         git.add().addFilepattern(".").call()

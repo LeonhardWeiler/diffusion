@@ -44,69 +44,35 @@ import kotlinx.coroutines.launch
 
 private const val TAG = "GenerateNewSshKeysScreen"
 
-/**
- * How long the copy button says that it copied something. Long enough to be
- * read, short enough that the button is a button again by the time the key has
- * been pasted somewhere.
- */
 private const val KEY_COPIED_LABEL_MS = 2_000L
 
 @Composable
 fun GenerateNewSshKeysScreen(
     onBackClick: () -> Unit,
     cloneState: InitState,
-    /** The clone url this setup is about, so that its page can be offered. */
     remoteUrl: String,
-    /**
-     * Whether the repository is already on the device. Then there is nothing to
-     * download and the last step is a sync — which is also what finds out
-     * whether the remote takes this key, and takes it for writing.
-     */
     alreadyOnDevice: Boolean,
     generateSshKeys: () -> Pair<String, String>,
-    /** Starts the clone with these credentials and goes to the clone screen. */
     cloneWith: (Cred) -> Unit,
-    /**
-     * The pair the app already holds, when the user chose to reuse it. Nothing
-     * is generated then, and the clone is not made to wait for a copy: a key
-     * that has been here before is one the repository has most likely been told
-     * about already.
-     */
     storedKey: Cred.Ssh? = null,
 ) {
-
     AppPage(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
         onBackClick = onBackClick,
         onBackClickEnabled = !cloneState.isLoading()
     ) {
-
         val scope = rememberCoroutineScope()
 
         val publicKey = rememberSaveable { mutableStateOf(storedKey?.publicKey.orEmpty()) }
         val privateKey = rememberSaveable { mutableStateOf(storedKey?.privateKey.orEmpty()) }
 
-        // Only ever the stored one's: a pair generated here has none, and
-        // regenerating drops it along with the key it belonged to.
         val passphrase = rememberSaveable { mutableStateOf(storedKey?.passphrase) }
 
-        // A clone with a key the far end has never seen fails with an
-        // authentication error that says nothing about the one step that was
-        // skipped, so the clone waits until the key has at least been taken
-        // away from here. A stored key has been through that once already.
         val keyCopied = rememberSaveable { mutableStateOf(storedKey != null) }
 
-        // What the button says is not what the clone goes by: the key is copied
-        // again and again while a deploy key is being set up, and a button that
-        // reads "Key copied" for good reads as something that has happened
-        // rather than something to press. It says so for a moment and is a copy
-        // button again after that, while the clone stays unlocked.
         val justCopied = remember { mutableStateOf(false) }
 
-        // Every press starts the two seconds over rather than adding a second
-        // timer next to the one already running, which would end the label
-        // early.
         val copyCount = remember { mutableIntStateOf(0) }
 
         LaunchedEffect(copyCount.intValue) {
@@ -150,9 +116,9 @@ fun GenerateNewSshKeysScreen(
             )
         }
 
-        // the keys are generated off the composition, so for a moment there is
-        // nothing here to authenticate with — and until the key has been copied
-        // it is nowhere the remote could know it
+        // waits for the copy: a key generated here and never taken away is one
+        // the remote has never seen, and the authentication error that follows
+        // says nothing about the step that was skipped
         val canStart = keyCopied.value &&
                 SshKeyValidation.isKeyPair(publicKey.value, privateKey.value)
 
@@ -165,15 +131,7 @@ fun GenerateNewSshKeysScreen(
                 }
             )
         ) {
-
-            // A key that is already on this device has one thing left to be
-            // done with it and one thing to try afterwards. Copying it and
-            // handing it to the provider are the same step then — it is very
-            // likely there already, and the step says so — and there is nothing
-            // to regenerate, which is what the button on the screen before this
-            // one is for.
             if (storedKey != null) {
-
                 SetupLine(text = "1. " + stringResource(R.string.add_key_if_missing)) {
                     KeyBox(publicKey = publicKey.value)
                     CopyKeyButton(justCopied = justCopied, onCopy = ::copyKey)
@@ -206,8 +164,6 @@ fun GenerateNewSshKeysScreen(
                         publicKey.value = public
                         privateKey.value = private
                         passphrase.value = null
-                        // the key that was copied is not this one anymore, and
-                        // a label still saying so would be about the old pair
                         keyCopied.value = false
                         justCopied.value = false
                         copyCount.intValue = 0
@@ -224,12 +180,6 @@ fun GenerateNewSshKeysScreen(
                     if (alreadyOnDevice) R.string.try_syncing else R.string.try_cloning
                 )
             ) {
-
-                // Always here, whether the key has been copied or not: copying
-                // it is one of the two steps this sentence is about, and the
-                // other one happens on a different device entirely. A clone that
-                // fails after the key was copied but never pasted is exactly the
-                // case that needs the sentence still standing.
                 Text(
                     modifier = Modifier.padding(bottom = 8.dp),
                     text = stringResource(R.string.copy_key_first),
@@ -247,7 +197,6 @@ fun GenerateNewSshKeysScreen(
     }
 }
 
-/** The public key as it stands, on one line and scrollable sideways. */
 @Composable
 private fun KeyBox(publicKey: String) {
     Surface(
@@ -278,11 +227,6 @@ private fun CopyKeyButton(justCopied: MutableState<Boolean>, onCopy: () -> Unit)
     )
 }
 
-/**
- * The way to where the key belongs, which is the settings of one particular
- * repository — and its address is the one thing this setup already knows.
- * Nothing is shown for an address with no page behind it.
- */
 @Composable
 private fun ColumnScope.OpenRepositoryButton(remoteUrl: String) {
     val webUrl = remember(remoteUrl) { repoWebUrl(remoteUrl) } ?: return
@@ -296,7 +240,6 @@ private fun ColumnScope.OpenRepositoryButton(remoteUrl: String) {
     )
 }
 
-/** What the whole screen leads to: the first thing that reaches the remote. */
 @Composable
 private fun StartButton(alreadyOnDevice: Boolean, enabled: Boolean, onClick: () -> Unit) {
     SetupButton(
@@ -319,7 +262,6 @@ private fun GenerateNewSshKeysScreenPreview() {
         generateSshKeys = { "aaaaaaaaaaaabbbbbbbbbbbbb" to "aaaaaaaaaaaabbbbbbbbbbbbb" },
         cloneWith = {},
     )
-
 }
 
 @Preview

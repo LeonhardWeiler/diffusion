@@ -13,18 +13,6 @@ import java.io.File
 
 private const val TAG = "OpenExternally"
 
-/**
- * Hands a file in the repository to whatever app on the device knows what to do
- * with it.
- *
- * The list shows every file, not only the ones this app can read: a photo, a
- * pdf, a spreadsheet next to the notes about it. Tapping one of those opens the
- * system chooser rather than an editor that would show its bytes as text.
- *
- * It goes out as a `content://` uri from [FileProvider] and not as the path we
- * have: another app has no business with our storage permission, and since
- * Android 7 handing over a `file://` uri is refused outright.
- */
 fun openFileWithAnotherApp(context: Context, path: String) {
     val file = File(path)
 
@@ -58,12 +46,6 @@ fun openFileWithAnotherApp(context: Context, path: String) {
     }
 }
 
-/**
- * Opens a web address in whatever the device browses with.
- *
- * No chooser: a link is a thing the user has already picked a browser for, and
- * the setup step this sits in is one tap in the middle of something else.
- */
 fun openUrlInBrowser(context: Context, url: String) {
     val intent = Intent(Intent.ACTION_VIEW, url.toUri())
 
@@ -77,11 +59,6 @@ fun openUrlInBrowser(context: Context, url: String) {
     }
 }
 
-/**
- * What the system thinks a name of that shape holds. The wildcard type when it
- * has no idea, which leaves the choice to the user instead of ending the tap in
- * nothing.
- */
 private fun mimeTypeOf(fileName: String): String {
     val extension = fileName.substringAfterLast('.', missingDelimiterValue = "")
 

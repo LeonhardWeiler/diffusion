@@ -8,29 +8,15 @@ import java.io.ByteArrayOutputStream
 import java.security.SecureRandom
 import java.util.Base64
 
-/** What a key made here is called, in the comment both halves carry. */
 private const val KEY_COMMENT = "Diffusion"
 
 private const val KEY_TYPE = "ssh-ed25519"
 
-/** The header and footer OpenSSH wraps a private key in. */
 private const val PRIVATE_KEY_HEADER = "-----BEGIN OPENSSH PRIVATE KEY-----"
 private const val PRIVATE_KEY_FOOTER = "-----END OPENSSH PRIVATE KEY-----"
 
-/** What `ssh-keygen` wraps the base64 of a private key at. */
 private const val PRIVATE_KEY_LINE_LENGTH = 70
 
-/**
- * A new ed25519 pair, as OpenSSH writes them: the public half is one line, the
- * private half is the `openssh-key-v1` container, unencrypted.
- *
- * ed25519 because it is short enough to be copied by hand off a phone screen,
- * and because every forge that takes a deploy key takes one. Written out here
- * rather than handed to a library: the format is a length-prefixed blob and a
- * base64 wrapper, and the alternative was a second crypto dependency for it.
- *
- * @return the public key first, the private key second.
- */
 fun generateSshKeys(): Pair<String, String> {
     val generator = Ed25519KeyPairGenerator()
     generator.init(Ed25519KeyGenerationParameters(SecureRandom()))
@@ -47,16 +33,12 @@ private fun openSshPublicKey(public: ByteArray): String {
     return "$KEY_TYPE $blob $KEY_COMMENT"
 }
 
-/** `string(type) string(key)`, which is what a public key is on the wire. */
 private fun publicKeyBlob(public: ByteArray): ByteArray = sshBytes {
     writeString(KEY_TYPE)
     writeBlock(public)
 }
 
 private fun openSshPrivateKey(public: ByteArray, private: ByteArray): String {
-    // The two halves of the check are compared after decryption to tell a wrong
-    // passphrase from a right one. Nothing here is encrypted, but the reader
-    // still looks at them.
     val check = ByteArray(4).also { SecureRandom().nextBytes(it) }
 
     val secret = sshBytes {
@@ -64,12 +46,11 @@ private fun openSshPrivateKey(public: ByteArray, private: ByteArray): String {
         write(check)
         writeString(KEY_TYPE)
         writeBlock(public)
-        // OpenSSH keeps the public half inside the private one as well
         writeBlock(private + public)
         writeString(KEY_COMMENT)
 
-        // Padded to the block size of the cipher, which is 8 even for "none",
-        // with bytes counting up from one.
+        // padded to the cipher block size, which is 8 even for "none", with
+        // bytes counting up from one
         var pad = 1
         while (size() % 8 != 0) write(pad++)
     }
@@ -93,12 +74,7 @@ private fun openSshPrivateKey(public: ByteArray, private: ByteArray): String {
     return "$PRIVATE_KEY_HEADER\n$body\n$PRIVATE_KEY_FOOTER\n"
 }
 
-/**
- * The one shape everything in an ssh key file has: a four byte length in front
- * of the bytes it counts.
- */
 private class SshWriter : ByteArrayOutputStream() {
-
     fun writeInt(value: Int) {
         write(value ushr 24)
         write(value ushr 16)

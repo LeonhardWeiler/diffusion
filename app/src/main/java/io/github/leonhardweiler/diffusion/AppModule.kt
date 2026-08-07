@@ -13,7 +13,6 @@ import io.github.leonhardweiler.diffusion.manager.RepoManager
 import io.github.leonhardweiler.diffusion.manager.RepoSession
 
 class AppModule(val context: Context) {
-
     val uiHelper: UiHelper by lazy { UiHelper(context) }
 
     val appPreferences: AppPreferences by lazy { AppPreferences(context) }
@@ -26,11 +25,9 @@ class AppModule(val context: Context) {
         RepoManager(repoStore, sshKeyStore, appPreferences)
     }
 
-    /** Storage and git writes must not be cancelled when a screen goes away. */
     val appScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     val networkMonitor: NetworkMonitor by lazy { NetworkMonitor(context) }
 
-    /** Never null, see [RepoSession.none]. */
     val activeRepo: RepoSession get() = repoManager.active.value
 }

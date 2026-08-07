@@ -32,18 +32,12 @@ fun RequestConfirmationDialog(
     expanded: MutableState<Boolean>,
     text: String,
     onConfirmation: () -> Unit,
-    /** What saying no means, when it means more than closing the dialog. */
     onDecline: () -> Unit = {},
 ) {
-
     BaseDialog(
         expanded = expanded,
         onDismiss = onDecline
     ) {
-
-        // No padding of its own: the dialog already frames it, and what the card
-        // added on the outside came on top of DialogSeparation — the warning
-        // stood half a finger away from the buttons that answer it.
         Card {
             Text(
                 modifier = Modifier
@@ -63,7 +57,6 @@ fun RequestConfirmationDialog(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-
             Button(
                 onClick = {
                     expanded.value = false
@@ -80,7 +73,6 @@ fun RequestConfirmationDialog(
                 Spacer(Modifier.size(ButtonDefaults.IconSpacing))
                 SimpleIcon(
                     imageVector = Icons.Default.Close,
-                    // decorative, the button already reads "No"
                     contentDescription = null
                 )
             }
@@ -101,15 +93,12 @@ fun RequestConfirmationDialog(
                 Spacer(Modifier.size(ButtonDefaults.IconSpacing))
                 SimpleIcon(
                     imageVector = Icons.Default.Done,
-                    // decorative, the button already reads "Yes"
                     contentDescription = null
                 )
             }
         }
-
     }
 }
-
 
 @Preview
 @Composable

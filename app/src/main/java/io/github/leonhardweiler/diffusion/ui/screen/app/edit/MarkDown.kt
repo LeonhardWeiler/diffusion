@@ -48,10 +48,8 @@ import org.intellij.markdown.flavours.gfm.GFMTokenTypes
 
 private val CheckBoxSize = 20.dp
 
-/** Between the box and the words belonging to it, which otherwise touch. */
 private val CheckBoxTextGap = 8.dp
 
-/** The most a column is given before what stands in it is made to wrap. */
 private val MaxTableColumnWidth = 280.dp
 
 @Composable
@@ -63,16 +61,9 @@ fun MarkDownContent(
     readScrollState: LazyListState,
     writeScrollState: ScrollState,
 ) {
-    // What the reading mode shows, which is the text as it stood when it was
-    // last entered. Kept outside the branch below so that it survives a switch
-    // to writing and back: rememberMarkdownState re-parses whenever its input
-    // changes, and while it does the reader shows nothing at all. Coming back
-    // to a note that was not edited therefore costs no parse at all, and typing
-    // costs none until the reading mode is asked for again.
-    //
-    // It starts empty when the note is opened to be written in, because then
-    // nobody has asked to read it: parsing the whole of a long note anyway is
-    // the wait between tapping a row and being able to type in it.
+    // the parser shows nothing while it runs, so what it is given only follows
+    // the note when the reading mode is entered — and the state lives out here
+    // so that it survives switching to writing and back
     var readText by remember {
         mutableStateOf(if (isReadOnlyModeActive) textContent.text else "")
     }
@@ -83,10 +74,9 @@ fun MarkDownContent(
 
     val markdownState = rememberMarkdownState(readText)
 
-    // A checkbox that was ticked is written to the note but not parsed again:
-    // the whole tree would be thrown away and rebuilt for one character, and the
-    // reader would go blank while it happened. "[ ]" and "[x]" are the same
-    // length, so the offsets the parser handed us still point at the right box.
+    // a tick must not reach the parser: it is remembered per offset here and
+    // written to the note separately, and "[ ]" and "[x]" are the same length
+    // so the offsets stay valid
     val ticked = remember(readText) { mutableStateMapOf<Int, Boolean>() }
 
     if (isReadOnlyModeActive) {
@@ -103,8 +93,6 @@ fun MarkDownContent(
                             .contains('x', ignoreCase = true)
 
                         Checkbox(
-                            // padding before size: the other way round the gap
-                            // would be taken out of the box instead of beside it
                             modifier = Modifier
                                 .padding(end = CheckBoxTextGap)
                                 .size(CheckBoxSize),
@@ -125,27 +113,11 @@ fun MarkDownContent(
                     LazyColumn(
                         modifier = modifier.fillMaxSize(),
                         state = readScrollState,
-                        // The same inset the field types into, asked of the same
-                        // place the field asks: reading and writing are two views
-                        // of one note, and a first line that sat a little higher
-                        // in one of them made switching look like a change to the
-                        // note rather than to the way it is shown.
                         contentPadding = TextFieldDefaults.contentPaddingWithoutLabel(),
                     ) {
                         items(
                             items = state.node.children,
-                            // Where a block starts names it for as long as the
-                            // text stands still, which it does here — the
-                            // reader parses once and is not typed into. Without
-                            // it a block is known by its position in the list,
-                            // so scrolling threw away and rebuilt blocks that
-                            // had not changed at all.
                             key = { node -> node.startOffset },
-                            // A paragraph and a heading lay out differently, two
-                            // paragraphs do not: saying which is which lets one
-                            // that scrolled off the top be filled in again with
-                            // the one coming in at the bottom instead of built
-                            // from nothing.
                             contentType = { node -> node.type },
                         ) { node ->
                             MarkdownElement(
@@ -168,22 +140,8 @@ fun MarkDownContent(
     }
 }
 
-
-/**
- * A table whose columns are as wide as what stands in them.
- *
- * The renderer's own table gives every column the same share of the screen and
- * cuts whatever does not fit on one line off with an ellipsis, so a column of
- * dates and a column of sentences were given the same room and neither could be
- * read. Here every column is measured by its widest cell, text too long for the
- * widest a column may get wraps instead of disappearing, and a table wider than
- * the screen is moved sideways rather than squeezed into it.
- */
 @Composable
 private fun WideTable(model: MarkdownComponentModel) {
-
-    // The header is the first of the rows, not something beside them: it is laid
-    // out with the same columns and only reads differently.
     val rows = remember(model.node) {
         model.node.children
             .filter { it.type == GFMElementTypes.HEADER || it.type == GFMElementTypes.ROW }
@@ -204,8 +162,6 @@ private fun WideTable(model: MarkdownComponentModel) {
             modifier = Modifier.background(background, RoundedCornerShape(cornerSize)),
             content = {
                 rows.forEachIndexed { rowIndex, cells ->
-                    // every row lays out the same number of cells, so that a
-                    // short one does not shift the columns of the whole table
                     repeat(columnCount) { columnIndex ->
                         Box(modifier = Modifier.padding(cellPadding)) {
                             cells.getOrNull(columnIndex)?.let { cell ->
@@ -225,8 +181,6 @@ private fun WideTable(model: MarkdownComponentModel) {
                     }
                 }
 
-                // last, so that the cells stay one block of children the index
-                // arithmetic below can walk
                 HorizontalDivider()
             }
         ) { measurables, constraints ->
@@ -236,8 +190,6 @@ private fun WideTable(model: MarkdownComponentModel) {
 
             val maxColumnWidth = MaxTableColumnWidth.roundToPx()
 
-            // what the widest cell of a column asks for, up to the point where
-            // one long sentence would push the rest of the table off the screen
             val columnWidths = IntArray(columnCount) { column ->
                 rows.indices.maxOf { row ->
                     cells[row * columnCount + column].maxIntrinsicWidth(Constraints.Infinity)
@@ -246,9 +198,6 @@ private fun WideTable(model: MarkdownComponentModel) {
 
             val tableWidth = columnWidths.sum()
 
-            // measured again against the column they ended up in: a cell that
-            // was given less than it asked for wraps, and only then is its
-            // height known
             val placeables = cells.mapIndexed { index, measurable ->
                 measurable.measure(Constraints.fixedWidth(columnWidths[index % columnCount]))
             }
@@ -274,8 +223,6 @@ private fun WideTable(model: MarkdownComponentModel) {
                     }
                     y += rowHeight
 
-                    // under the header, where the line of dashes stands in the
-                    // note itself
                     if (row == 0) {
                         dividerPlaceable.place(0, y)
                         y += dividerPlaceable.height

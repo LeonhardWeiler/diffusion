@@ -1,6 +1,5 @@
 package io.github.leonhardweiler.diffusion.ui.viewmodel
 
-
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -25,16 +24,13 @@ import kotlin.Result.Companion.failure
 
 private const val TAG = "SetupViewModel"
 
-/** What makes a folder a repository. */
 private const val GIT_DIR = ".git"
 
 class SetupViewModel : ViewModel() {
-
     private val repoManager = MyApp.appModule.repoManager
     private val keyStore = MyApp.appModule.sshKeyStore
     val uiHelper: UiHelper = MyApp.appModule.uiHelper
 
-    // Setting up a repository must not be cancelled by leaving the screen.
     private val appScope = MyApp.appModule.appScope
 
     private val _initState: MutableStateFlow<InitState> = MutableStateFlow(InitState.Idle)
@@ -42,14 +38,6 @@ class SetupViewModel : ViewModel() {
 
     private val _storedSshKeys: MutableStateFlow<List<StoredSshKey>> = MutableStateFlow(emptyList())
 
-    /**
-     * The key pairs the app already holds.
-     *
-     * Letting go of a repository leaves its key in the store when another
-     * repository still takes it; nothing led back to those keys otherwise, so
-     * setting a repository up meant either generating a fresh pair or fetching
-     * one off the disk, and every attempt cost the remote another deploy key.
-     */
     val storedSshKeys: StateFlow<List<StoredSshKey>> = _storedSshKeys.asStateFlow()
 
     init {
@@ -59,24 +47,9 @@ class SetupViewModel : ViewModel() {
         }
     }
 
-    /**
-     * The repository being set up, which is not one of the app's yet.
-     *
-     * A setup opens or clones into a folder long before it is known whether that
-     * ends in a repository — the url can be wrong, the key can be refused, the
-     * clone can be cancelled — and all of it happens through an open git
-     * repository. So it works on a session of its own, and only a setup that
-     * goes through hands it over ([io.github.leonhardweiler.diffusion.manager.RepoManager.adopt]).
-     */
     @Volatile
     private var draft: RepoSession? = null
 
-    /**
-     * The session for [path], reusing the one already in hand when the setup is
-     * still about the same folder. Backing out of the credential screens and
-     * picking a different folder must not leave the first one open — notes
-     * written into one repository, commits made in another.
-     */
     private suspend fun draftFor(path: String): RepoSession {
         draft?.let { existing ->
             if (existing.path == path) return existing
@@ -86,28 +59,13 @@ class SetupViewModel : ViewModel() {
         return repoManager.draft(path).also { draft = it }
     }
 
-    /**
-     * Set when a repository that was opened turns out to have a remote. The
-     * credential screens are the same ones the clone uses, but there is nothing
-     * left to clone — only the credentials for that remote are missing.
-     */
     @Volatile
     private var repoIsAlreadyOnDevice = false
 
-    /**
-     * Written on the main thread by the cancel button and read from the clone's
-     * progress callback, which runs wherever JGit is. Volatile, or the loop
-     * that is meant to stop reading it can keep reading the value it had when
-     * it started.
-     */
     @Volatile
     private var shouldCancel = false
 
     fun cancelClone(): Boolean {
-        // Nothing is being downloaded for a repository that was already here,
-        // so there is nothing to cancel and nothing to throw away — but the way
-        // back to the key screen has to work all the same, and after a sync the
-        // remote refused it is the only thing left to do.
         if (repoIsAlreadyOnDevice) {
             _initState.value = InitState.Idle
             return true
@@ -121,21 +79,15 @@ class SetupViewModel : ViewModel() {
     }
 
     /**
-     * @param onRemoteFound called with the url when the repository already has a
-     * remote, so the setup can go on and ask for credentials for it.
-     * @param onNoRemote called when it has none, so the user can be asked whether
-     * to give it one.
+     * Every way out of this has to put [_initState] back, or the screen that
+     * shows it keeps spinning where the two buttons should be.
      */
     fun openRepo(
         storageConfig: StorageConfiguration,
         onRemoteFound: (String) -> Unit,
         onNoRemote: () -> Unit,
     ) {
-
         appScope.launch {
-            // Everything below can take a second or two — JGit opening the
-            // repository, and the whole working tree being read. Until this said
-            // so, the tap on the folder looked like it had been ignored.
             _initState.emit(InitState.OpeningRepo)
 
             val folder = NodeFs.Folder.fromPath(storageConfig.repoPath())
@@ -146,8 +98,6 @@ class SetupViewModel : ViewModel() {
                 return@launch
             }
 
-            // JGit would answer this with "could not find repository", which
-            // names the symptom rather than what to do about it
             if (!NodeFs.Folder.fromPath(folder.path, GIT_DIR).exist()) {
                 uiHelper.makeToast(uiHelper.getString(R.string.error_not_a_repository))
                 _initState.emit(InitState.Idle)
@@ -162,47 +112,26 @@ class SetupViewModel : ViewModel() {
                 return@launch
             }
 
-            // Once, for a repository the app is seeing for the first time: it
-            // may have been checked out by something else, which would have
-            // dated every note to the moment it arrived. A clone and a pull do
-            // this themselves, and every later start reads the dates as they
-            // now stand on disk.
             session.gitManager.applyCommitTimestamps()
 
-            // what the repository already knows about itself, rather than
-            // asking for it again
             val remoteUrl = session.gitManager.remoteUrl().orEmpty()
             session.applyGitAuthorDefaults()
 
-            // whether it already syncs somewhere or not, the setup goes on from
-            // here rather than finishing: a repository without a remote is a
-            // choice, not a conclusion
             repoIsAlreadyOnDevice = true
             _initState.emit(InitState.Idle)
             withContext(Dispatchers.Main) {
                 if (remoteUrl.isEmpty()) onNoRemote() else onRemoteFound(remoteUrl)
             }
         }
-
     }
 
-    /**
-     * The callback leaves the setup and changes the navigation backstack, which
-     * is compose snapshot state. All the callers run on [Dispatchers.IO], so it
-     * has to be handed back to the main thread first.
-     */
     private suspend fun finishSetup(onSuccess: () -> Unit) {
         withContext(Dispatchers.Main) {
             onSuccess()
         }
     }
 
-
     fun checkPathForClone(repoPath: String): Result<Unit> {
-        // The one place the clone route is taken, so the one place to take back
-        // what an earlier "open" in the same setup decided: it is the flag that
-        // says there is nothing left to clone, and left standing it turned a
-        // clone into "set a remote url on the folder that is still open".
         repoIsAlreadyOnDevice = false
 
         val result = NodeFs.Folder.fromPath(repoPath).isEmptyDirectory()
@@ -212,11 +141,6 @@ class SetupViewModel : ViewModel() {
         return result
     }
 
-    /**
-     * Setting up a repository writes to disk and to the preferences. Leaving the
-     * screen must not tear that down half way, so it does not run in
-     * viewModelScope. The clone has [cancelClone] for the explicit way out.
-     */
     private fun runCloneJob(f: suspend () -> Unit) {
         appScope.launch {
             f()
@@ -229,7 +153,6 @@ class SetupViewModel : ViewModel() {
         cred: Cred?,
         onSuccess: () -> Unit
     ) {
-
         runCloneJob {
             cloneRepoInternal(
                 storageConfig = storageConfig,
@@ -240,13 +163,6 @@ class SetupViewModel : ViewModel() {
         }
     }
 
-    /**
-     * Throws away what a canceled or failed clone left in the repo directory.
-     * Safe to delete: the directory was verified to be empty right before the
-     * clone started, so everything in it now was written by that clone. The
-     * empty directory itself is kept, so the next attempt starts out the same
-     * way this one did.
-     */
     private fun discardPartialClone(storageConfig: StorageConfiguration) {
         val folder = NodeFs.Folder.fromPath(storageConfig.repoPath())
 
@@ -275,8 +191,6 @@ class SetupViewModel : ViewModel() {
                 return
             }
 
-            // Checked again here, not only when the folder was chosen: the whole
-            // remote setup happens in between and could have filled it.
             NodeFs.Folder.fromPath(storageConfig.repoPath()).isEmptyDirectory().onFailure {
                 _initState.emit(InitState.Error(it.message))
                 return
@@ -303,8 +217,6 @@ class SetupViewModel : ViewModel() {
             }
         }
 
-        // an opened repository may not have had a remote at all, and push reads
-        // it from the repository rather than from the preferences
         if (repoIsAlreadyOnDevice) {
             session.gitManager.setRemoteUrl(remoteUrl).onFailure {
                 _initState.emit(InitState.Error(it.message))
@@ -313,16 +225,6 @@ class SetupViewModel : ViewModel() {
         }
 
         if (repoIsAlreadyOnDevice) {
-            // There is nothing to clone, so nothing has tried the key yet — and
-            // a setup that ends here would be finished without ever having
-            // reached the remote, leaving the first real sync to say that the
-            // deploy key was never added. So the sync happens now: it is the
-            // same commit, pull and push the button does, which is what makes
-            // it an answer about writing as well as about reading. Only when
-            // the remote takes all three does the setup go through.
-            //
-            // Before the repository is one of the app's, so that a refusal
-            // leaves nothing behind to take back out of the list again.
             syncOnce(session, cred).onFailure {
                 _initState.emit(InitState.Error(it.message))
                 return
@@ -333,10 +235,6 @@ class SetupViewModel : ViewModel() {
         finishSetup(onSuccess)
     }
 
-    /**
-     * Finishes a setup that opened a repository and was told it needs no remote.
-     * Nothing here has a network to reach, so there is nothing to try first.
-     */
     fun finishWithoutRemote(storageConfig: StorageConfiguration, onSuccess: () -> Unit) {
         appScope.launch {
             _initState.emit(InitState.OpeningRepo)
@@ -346,11 +244,6 @@ class SetupViewModel : ViewModel() {
         }
     }
 
-    /**
-     * Hands the repository being set up over to the app: its key into the key
-     * store, itself into the list, and its notes onto the screen the setup ends
-     * on.
-     */
     private suspend fun adopt(session: RepoSession, remoteUrl: String, cred: Cred?) {
         val keyId = (cred as? Cred.Ssh)?.let { keyStore.put(it) }.orEmpty()
 
@@ -364,31 +257,14 @@ class SetupViewModel : ViewModel() {
             )
         )
 
-        // A freshly cloned repository has an author in it that this device has
-        // never been told about; one that was opened was asked back when it was
-        // opened, and this fills in nothing it already has.
         session.applyGitAuthorDefaults()
 
-        // what was just cloned, or just opened, is a working tree nothing has
-        // read yet
         session.startShowingItsNotes(progressCb = { announceProgress(it) })
 
         draft = null
         _initState.emit(InitState.Idle)
     }
 
-    /**
-     * Commit, pull, push — once, for a repository that was already here.
-     *
-     * Not [io.github.leonhardweiler.diffusion.manager.StorageManager.syncWithRemote]:
-     * that one answers on the cloud button of a screen this setup has not
-     * reached yet, and its failures are reported there. Here the failure is the
-     * answer, and it belongs on the screen the key was set up on.
-     *
-     * The commit comes first for the same reason it does in a sync — a working
-     * tree with changes in it cannot be merged into — and the push is what says
-     * whether the key may write, which a read-only deploy key is refused for.
-     */
     private suspend fun syncOnce(session: RepoSession, cred: Cred?): Result<Unit> {
         _initState.emit(InitState.SyncingRepo)
 
@@ -404,12 +280,6 @@ class SetupViewModel : ViewModel() {
         return git.push(cred)
     }
 
-    /**
-     * Says which folder the note list is being built from. In the app's scope
-     * rather than this view model's: the setup screen is left while this is
-     * still running, and a report that dies with it would take the last state
-     * the screen was shown in with it.
-     */
     private fun announceProgress(progress: Progress) {
         appScope.launch {
             when (progress) {

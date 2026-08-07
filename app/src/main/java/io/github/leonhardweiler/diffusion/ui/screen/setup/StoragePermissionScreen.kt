@@ -18,29 +18,12 @@ import io.github.leonhardweiler.diffusion.ui.component.SetupButton
 import io.github.leonhardweiler.diffusion.ui.component.SetupLine
 import io.github.leonhardweiler.diffusion.ui.component.SetupPage
 
-/**
- * The one screen a repository that is already set up can still end at.
- *
- * Reading a repository needs the permission to read all files, and that
- * permission can be gone while everything else is still here — a new build
- * installed over the old one is the usual way. What is stored says exactly
- * where the notes are, so there is nothing to choose and nothing to set up
- * again: the way back in is the permission and the folder it names.
- *
- * @param repoPath the repository the app is holding on to, shown so that the
- * screen is about something rather than about a permission in general.
- * @param onGranted asked again with the permission in hand — which is what
- * decides whether this was all that was missing.
- * @param onGiveUp forgets the repository and starts the setup over. For the
- * case this screen cannot fix: the folder is really gone.
- */
 @Composable
 fun StoragePermissionScreen(
     repoPath: String,
     onGranted: () -> Unit,
     onGiveUp: () -> Unit,
 ) {
-
     val permissionLauncher =
         rememberLauncherForActivityResult(StoragePermissionHelper.contract) { granted ->
         if (granted) onGranted()
@@ -50,17 +33,14 @@ fun StoragePermissionScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-
         SetupPage(
             title = stringResource(R.string.storage_permission_needed_title),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-
             SetupLine(
                 text = stringResource(R.string.storage_permission_needed_text),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-
                 Text(
                     modifier = Modifier.padding(top = 8.dp, bottom = 16.dp),
                     text = repoPath,

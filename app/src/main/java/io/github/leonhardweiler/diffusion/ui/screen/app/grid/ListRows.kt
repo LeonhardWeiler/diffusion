@@ -47,32 +47,11 @@ import io.github.leonhardweiler.diffusion.ui.viewmodel.GridViewModel
 import java.text.DateFormat
 import java.util.Date
 
-/**
- * A note row is two lines high, a folder row only one. Without a common floor
- * the list would look ragged wherever the two kinds of row meet, so every row
- * reserves the height of the taller one.
- */
 private val ListRowMinHeight = 56.dp
 
-/**
- * The background of a marked row, in a list where every other row is the page it
- * stands on.
- *
- * `surfaceColorAtElevation(6.dp)` did this, and that tints upwards from
- * `surface` — which in dark mode is real black, so six dp came out as ten per
- * cent white (#1B1B1B) and a marked row was one shade of black beside another.
- * The two schemes name this grey themselves (Material's container for a selected
- * item), so it is the same step away from the page in both: #2B2B2B on black,
- * #E6E6E6 on white.
- *
- * One step and no more: [RowDivider] draws at about #373737 in dark, and a
- * selected row brighter than that would swallow the lines that say where the row
- * ends.
- */
 private val selectedRowColor: Color
     @Composable get() = MaterialTheme.colorScheme.secondaryContainer
 
-/** The way out of a folder, which is the row above everything in it. */
 @Composable
 internal fun ParentFolderRow(
     onClick: () -> Unit,
@@ -81,7 +60,6 @@ internal fun ParentFolderRow(
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surface)
-            // ".." alone says nothing when read out, so the row carries the label
             .clickable(
                 onClickLabel = stringResource(R.string.parent_folder),
                 onClick = onClick
@@ -121,8 +99,6 @@ internal fun FolderRow(
     val deleteExpanded = remember { mutableStateOf(false) }
     val clickPosition = remember { mutableStateOf(Offset.Zero) }
 
-    // Deleting a folder is recursive on disk as well as in the database, so
-    // what a mistap costs here is everything under it.
     if (deleteExpanded.value) {
         RequestConfirmationDialog(
             expanded = deleteExpanded,
@@ -154,9 +130,6 @@ internal fun FolderRow(
             .background(rowBackground)
             .combinedClickable(
                 onLongClick = { dropDownExpanded.value = true },
-                // while something is selected, tapping a row is how the
-                // selection is changed — opening the folder would take the list
-                // out from under what was marked
                 onClick = { if (isSelecting) onSelect(!selected) else onClick() }
             )
             .pointerInteropFilter {
@@ -165,14 +138,11 @@ internal fun FolderRow(
             }
     ) {
         Box {
-            // need this box for clickPosition
             Box {
                 if (dropDownExpanded.value) CustomDropDown(
                     expanded = dropDownExpanded,
                     shape = MaterialTheme.shapes.medium,
                     options = listOfNotNull(
-                        // gone while a selection is on, for the same reason it
-                        // is gone from a note's menu: it is about this one row
                         if (!isSelecting) CustomDropDownModel(
                             text = stringResource(R.string.rename_or_move),
                             onClick = { renameExpanded.value = true }
@@ -241,7 +211,6 @@ internal fun NoteListRow(
     val clickPosition = remember { mutableStateOf(Offset.Zero) }
     val context = LocalContext.current
 
-    // Deleting a note takes the file with it, and the only way back is git.
     if (deleteExpanded.value) {
         RequestConfirmationDialog(
             expanded = deleteExpanded,
@@ -250,9 +219,6 @@ internal fun NoteListRow(
         )
     }
 
-    // Renaming is here rather than above the open note, and it is the same
-    // dialog a folder gets: what is typed is a path, so this is also how a note
-    // is moved. Its state belongs to the row, which outlives the menu.
     if (renameExpanded.value) {
         GetStringDialog(
             expanded = renameExpanded,
@@ -263,22 +229,14 @@ internal fun NoteListRow(
         )
     }
 
-    // Asked of the selection here rather than folded into the row by the view
-    // model: a PagingData may be collected once, and combining the selection
-    // into the paged list re-wrapped a stream that had already been read.
     val selected = selectedNotes.holds(gridNote.note)
 
     val formattedDate = remember(gridNote.note.lastModifiedTimeMillis) {
         dateFormat.format(Date(gridNote.note.lastModifiedTimeMillis))
     }
 
-    // Everything in the repository is a row, not only what this app can read.
     val isNote = remember(gridNote.note.fileName) { gridNote.note.isNote() }
 
-    // A search spans the whole repository, so the name alone does not say which
-    // note was found: results are named by their path. A file that is not a
-    // note keeps its extension either way — a row saying "holiday" for a jpeg
-    // is a row that lies about what tapping it will do.
     val title = when {
         isSearching || !gridNote.isUnique -> gridNote.note.relativePath
         isNote -> gridNote.note.nameWithoutExtension()

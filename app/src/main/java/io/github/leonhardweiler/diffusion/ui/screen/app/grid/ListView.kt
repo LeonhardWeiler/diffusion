@@ -18,10 +18,6 @@ import io.github.leonhardweiler.diffusion.ui.model.holds
 import io.github.leonhardweiler.diffusion.ui.viewmodel.GridViewModel
 import java.text.DateFormat
 
-/**
- * The note list: the way out of the folder, its subfolders and its notes, all
- * of them rows of the one list. The rows themselves are in ListRows.kt.
- */
 @Composable
 internal fun NoteListView(
     gridItems: List<GridItem>,
@@ -36,11 +32,8 @@ internal fun NoteListView(
     isSearching: Boolean,
     vm: GridViewModel,
 ) {
-
-    /** While anything is marked, a tap marks rather than opens. */
     val isSelecting = selectedNotes.isNotEmpty() || selectedFolders.isNotEmpty()
 
-    // one formatter for the whole list rather than one per row
     val dateFormat = remember { DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT) }
 
     LazyColumn(
@@ -54,8 +47,6 @@ internal fun NoteListView(
         items(
             items = gridItems,
             key = { it.key() },
-            // folders and notes lay out differently; telling them apart lets a
-            // scrolled row be reused instead of built again
             contentType = { it::class }
         ) { gridItem ->
             when (gridItem) {

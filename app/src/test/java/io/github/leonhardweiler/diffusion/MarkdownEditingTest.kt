@@ -4,12 +4,7 @@ import io.github.leonhardweiler.diffusion.ui.viewmodel.edit.markdownSmartEditor
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/**
- * What typing does on its own: continuing a list on enter, dropping an item that
- * was left empty, and carrying indentation to the next line.
- */
 class MarkdownSmartEditorTest {
-
     private fun check(before: String, after: String, expected: String) {
         assertEquals(expected, show(markdownSmartEditor(edit(before), edit(after))), after)
     }
@@ -67,5 +62,4 @@ class MarkdownSmartEditorTest {
 
     @Test
     fun selection() = check("abc|", "[abc]", "[abc]")
-
 }

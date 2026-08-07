@@ -8,19 +8,12 @@ import io.github.leonhardweiler.diffusion.ui.viewmodel.viewModelFactory
 
 private const val TAG = "MarkDownVM"
 
-
 class MarkDownVM(previousNote: Note) : TextVM(previousNote) {
-
     override fun onValueChange(v: TextFieldValue) {
         val newValue = markdownSmartEditor(content.value, v)
         super.onValueChange(newValue)
     }
 
-    /**
-     * [nodeStart] and [nodeEnd] delimit the checkbox node of the parsed
-     * markdown, which is the only reliable way to find the right one when the
-     * same line appears twice.
-     */
     fun toggleCheckBox(nodeStart: Int, nodeEnd: Int) {
         val text = content.value.text
 
@@ -37,7 +30,6 @@ class MarkDownVM(previousNote: Note) : TextVM(previousNote) {
         save()
     }
 }
-
 
 @Composable
 fun newMarkDownVM(note: Note): MarkDownVM =

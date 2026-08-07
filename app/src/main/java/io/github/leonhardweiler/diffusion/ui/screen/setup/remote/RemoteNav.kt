@@ -16,9 +16,7 @@ import io.github.leonhardweiler.diffusion.ui.screen.settings.LogsScreen
 import io.github.leonhardweiler.diffusion.ui.utils.slide
 import io.github.leonhardweiler.diffusion.ui.viewmodel.SetupViewModel
 
-
 private const val TAG = "RemoteScreen"
-
 
 @Composable
 fun RemoteScreen(
@@ -27,15 +25,8 @@ fun RemoteScreen(
     onInitSuccess: () -> Unit,
     onBackClick: () -> Unit,
     openedRemoteUrl: String? = null,
-    /** Whether the files are already here, so the last step syncs rather than clones. */
     alreadyOnDevice: Boolean = false,
 ) {
-
-    // A repository that is already on the device brings its remote with it, so
-    // the questions leading up to a url have nothing left to ask — unless that
-    // remote is an https one, which this app cannot use: then it goes through
-    // the url screen with the old address in the field, and setting the ssh one
-    // writes it into the repository.
     val startDestination = when {
         openedRemoteUrl == null -> EnterUrl()
         isCloneUrlSupported(openedRemoteUrl) -> SelectGenerateNewSshKeys(url = openedRemoteUrl)
@@ -44,14 +35,10 @@ fun RemoteScreen(
 
     val backstack = rememberBackstack(startDestination)
 
-    // a credential screen can be the first thing shown, and popping the only
-    // entry would leave an empty backstack behind
     fun back() {
         if (!backstack.pop()) onBackClick()
     }
 
-    // The two key screens differ in where the credentials come from and in
-    // nothing else, so this is all they are given of the setup.
     fun clone(url: String, cred: Cred) {
         vm.cloneRepo(
             storageConfig = storageConfig,
@@ -146,12 +133,9 @@ fun RemoteScreen(
         }
     }
 
-    // After the NavHost, not before it: of two back handlers the one composed
-    // last is the one asked first, and while a clone is running the answer has
-    // to be "nothing happens" rather than "go back a screen".
+    // refuses to abandon a running clone, and sits below the NavHost because of
+    // two back handlers the one composed last wins
     BackHandler(enabled = initState.isLoading()) {
-        // a clone is not a thing to walk out of half way
     }
 }
-
 

@@ -19,22 +19,6 @@ import java.time.Instant
 
 private const val TAG = "CommitTimestamps"
 
-/**
- * Gives every unchanged note the time of the commit that last wrote it.
- *
- * The note list reads its dates off the filesystem, which is the only place a
- * note that was never committed has one. A checkout does not honour that: it
- * stamps every file it writes with the moment it ran, so without this a clone
- * would show a repository of years of notes as all written just now.
- *
- * Files the working tree disagrees with HEAD about are left alone. Their own
- * timestamp is the true one — it is when the user typed, which is later than any
- * commit that could speak for them.
- *
- * [only] names the notes to date, null every one of them. A pull passes the ones
- * it wrote: the rest of the working tree it did not touch, and a date it did not
- * touch is not one it may move.
- */
 internal fun applyCommitTimestamps(git: Git, only: Set<String>? = null) {
     val repo = git.repository
     val workTree = repo.workTree ?: return
@@ -45,8 +29,6 @@ internal fun applyCommitTimestamps(git: Git, only: Set<String>? = null) {
     for ((path, seconds) in commitTimestamps(repo, only)) {
         if (path in dirty) continue
 
-        // Best effort: a note whose date could not be written still reads fine,
-        // it only carries the time of the checkout.
         val file = File(workTree, path)
         if (file.setLastModified(seconds * 1000L)) {
             dated += path
@@ -59,13 +41,9 @@ internal fun applyCommitTimestamps(git: Git, only: Set<String>? = null) {
 }
 
 /**
- * Writes the new dates into the index as well.
- *
- * The index remembers when it last saw each file, and that is what tells git
- * whether the working tree still agrees with it — a file whose date does not
- * match is one it has to read to find out. Left alone, dating a freshly cloned
- * repository would make every note in it look changed, which is a dot on the sync
- * button and a commit of nothing at the next sync.
+ * The index remembers when it last saw each file, and that is what decides
+ * whether the working tree still agrees with it. Without this a fresh clone
+ * reads as changed all over: a dot on the sync button and a commit of nothing.
  */
 private fun refreshIndex(repo: Repository, workTree: File, dated: Set<String>) {
     if (dated.isEmpty()) return
@@ -78,8 +56,6 @@ private fun refreshIndex(repo: Repository, workTree: File, dated: Set<String>) {
             val entry = cache.getEntry(i)
             if (entry.pathString !in dated) continue
 
-            // Read back rather than assumed: a filesystem stores what precision
-            // it stores, and the index has to hold what a later stat will find.
             entry.setLastModified(Instant.ofEpochMilli(File(workTree, entry.pathString).lastModified()))
         }
 
@@ -92,35 +68,18 @@ private fun refreshIndex(repo: Repository, workTree: File, dated: Set<String>) {
     }
 }
 
-/**
- * Dates the notes a pull brought in, and only those.
- *
- * The sync commits before it pulls, so by the time the merge is done the notes
- * written on this device agree with HEAD as well — and dating those by their
- * commit would move every one of them to the minute the sync ran. A note written
- * on Monday and synced on Friday is from Monday. What the pull itself wrote is
- * the exception: the checkout stamped it with the moment it ran, and nothing but
- * the commit behind it can say when it was written.
- */
 internal fun datePulledNotes(git: Git, before: ObjectId?) {
     val repo = git.repository
 
-    // No commit before the pull means no working tree before it either, so
-    // everything standing in it now arrived with the pull.
     if (before == null) return applyCommitTimestamps(git)
 
     val head = repo.resolve(Constants.HEAD) ?: return
 
-    // the pull brought nothing, so it wrote nothing
     if (head == before) return
 
     applyCommitTimestamps(git, changedPaths(repo, before, head))
 }
 
-/**
- * The paths the working tree does not agree with HEAD about, whether they are
- * changed, staged or not tracked at all.
- */
 private fun dirtyPaths(git: Git): Set<String> {
     val status = git.status().call()
 
@@ -135,15 +94,7 @@ private fun dirtyPaths(git: Git): Set<String> {
     }
 }
 
-/**
- * When each note was last changed by a commit, in seconds since the epoch.
- *
- * [only] narrows that to the paths named in it, which also ends the walk over the
- * history as soon as those have been found.
- */
 private fun commitTimestamps(repo: Repository, only: Set<String>?): Map<String, Long> {
-    // A repository without commits has no HEAD to walk. It has no timestamps to
-    // offer either, so the files keep the ones the filesystem gives them.
     val head = repo.resolve(Constants.HEAD) ?: return emptyMap()
 
     val timestamps = mutableMapOf<String, Long>()
@@ -155,8 +106,6 @@ private fun commitTimestamps(repo: Repository, only: Set<String>?): Map<String, 
         if (only != null) pending.retainAll(only)
         if (pending.isEmpty()) return emptyMap()
 
-        // One walk over the history, taking the first commit that touches a
-        // path. Walking it once per file does the same work again for every file.
         walk.markStart(headCommit)
         walk.sort(RevSort.COMMIT_TIME_DESC)
 
@@ -175,11 +124,6 @@ private fun commitTimestamps(repo: Repository, only: Set<String>?): Map<String, 
     return timestamps
 }
 
-/**
- * Every blob of a commit, not only the ones the app can read itself: the list
- * shows every file in the repository with a date beside it, and a photo that was
- * committed a year ago should not read as written the minute it was cloned.
- */
 private fun blobPaths(repo: Repository, commit: RevCommit): Set<String> =
     TreeWalk(repo).use { walk ->
         walk.addTree(commit.tree)
@@ -192,11 +136,6 @@ private fun blobPaths(repo: Repository, commit: RevCommit): Set<String> =
         }
     }
 
-/**
- * The files two commits disagree about, named as they stand in [to]. A commit
- * given as null is the empty tree, which is what the first commit is compared
- * against.
- */
 private fun changedPaths(repo: Repository, from: ObjectId?, to: ObjectId?): Set<String> =
     DiffFormatter(DisabledOutputStream.INSTANCE).use { formatter ->
         formatter.setRepository(repo)

@@ -25,18 +25,15 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 class MainActivity : ComponentActivity() {
-
     companion object {
         private const val TAG = "MainActivity"
     }
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d(TAG, "onCreate")
 
         setContent {
-
             val vm: MainViewModel = viewModel()
 
             val theme by vm.prefs.theme.getAsState()
@@ -44,25 +41,11 @@ class MainActivity : ComponentActivity() {
             DiffusionTheme(
                 darkTheme = (theme == Theme.SYSTEM && isSystemInDarkTheme()) || theme == Theme.DARK,
             ) {
-
-                // Opening the repository belongs to the process and not to the
-                // saved state, so this is remembered rather than saved: what
-                // tryInit builds — libgit2's open repository and the note index
-                // — is held in memory and is gone when the process is killed,
-                // while the backstack below comes back out of the bundle still
-                // pointing at the app. Held in rememberSaveable, it was a note
-                // list that came up empty with a sync button that could not do
-                // anything, because nothing had opened the repository again.
-                // After the first time it costs nothing: tryInit answers at
-                // once for a repository it has already opened.
+                // remember, never rememberSaveable: the open repository and the
+                // note index are process state while the backstack survives in
+                // the bundle, so a killed process came back to an empty list
                 val repoOpened = remember { runBlocking { vm.tryInit() } }
 
-                // A repository that is set up but cannot be read is not one to
-                // set up again: everything about it is stored, and what is
-                // missing is the permission to read the files. Being sent back
-                // to "open or clone" for that meant picking the same folder
-                // again to arrive at what was already written down — which is
-                // what a new build installed over the old one used to cost.
                 val startDestination: Destination = remember {
                     when {
                         repoOpened -> vm.currentDestination()
@@ -75,12 +58,6 @@ class MainActivity : ComponentActivity() {
 
                 val backstack = rememberBackstack(startDestination)
 
-                // The other half of that: a restored backstack can be showing
-                // the app while this process failed to open anything at all —
-                // the folder is gone, the permission is not there. The screen
-                // to be on instead has just been worked out. Only ever in that
-                // one direction: a setup that has already opened its repository
-                // is mid-flight and stays where it is.
                 LaunchedEffect(Unit) {
                     if (!repoOpened && backstack.current is Destination.App) {
                         backstack.replaceAll(startDestination)
@@ -89,17 +66,11 @@ class MainActivity : ComponentActivity() {
 
                 NavHost(
                     backstack = backstack,
-                    // The setup and the app are not two steps of one path, so
-                    // neither slides into the other.
                     transition = { _, _, _ -> crossFade() },
                 ) { destination ->
                     when (destination) {
                         is Destination.Setup -> SetupNav(
                             startDestination = destination.setupDestination,
-                            // Adding a second repository is the setup reached
-                            // from the settings, and it is a screen to be able
-                            // to walk out of again. The first one is not: there
-                            // is nothing underneath it.
                             onBackClick = if (backstack.entries.size > 1) {
                                 { backstack.pop() }
                             } else {
@@ -115,10 +86,6 @@ class MainActivity : ComponentActivity() {
                             onAddRepo = {
                                 backstack.navigate(Destination.Setup(SetupDestination.Main))
                             },
-                            // Switching repositories and letting go of the last
-                            // one are the same move as far as this is
-                            // concerned: whatever the app stands on now, it is
-                            // not the screen that asked.
                             onRepoChanged = {
                                 backstack.replaceAll(vm.currentDestination())
                             }
@@ -131,9 +98,6 @@ class MainActivity : ComponentActivity() {
                                 repoPath = destination.repoPath,
                                 onGranted = {
                                     scope.launch {
-                                        // asked again with the permission in
-                                        // hand, which is what decides whether
-                                        // that was all that was missing
                                         if (vm.tryInit()) {
                                             backstack.replaceAll(vm.currentDestination())
                                         } else {
@@ -162,23 +126,10 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /**
-     * The other half of syncing when the app opens: what was written here goes
-     * out when it is left, so that a note does not sit on one device until
-     * somebody remembers the button.
-     *
-     * super first, so that the editor has been told to write what it holds
-     * before the sync goes looking for it — the sync itself then waits for that
-     * write to finish. It runs in the app's scope, which outlives the activity —
-     * being stopped is what starts it, so a scope tied to the activity would end
-     * it at the same moment.
-     */
     override fun onStop() {
         super.onStop()
         Log.d(TAG, "onStop")
 
-        // Every repository that was told to, not only the one on screen: a note
-        // written into one of them is a note that has not gone out either.
         MyApp.appModule.appScope.launch {
             MyApp.appModule.repoManager.syncAllQuietly()
         }

@@ -36,16 +36,6 @@ import io.github.leonhardweiler.diffusion.ui.component.ToggleableSettings
 import io.github.leonhardweiler.diffusion.ui.viewmodel.SettingsViewModel
 import kotlinx.coroutines.launch
 
-/**
- * Everything that belongs to one repository and to no other: who its commits
- * are by, where it pushes to, which key it takes, where its folder is and
- * whether it syncs by itself.
- *
- * These used to be the settings, because there was one repository. They are
- * reached from that repository's row now — the gear beside it — and the settings
- * screen itself is left with the things that are the app's rather than a
- * repository's.
- */
 @Composable
 fun RepoSettingsScreen(
     repo: RepoSession,
@@ -53,17 +43,14 @@ fun RepoSettingsScreen(
     onRemoved: (wasShown: Boolean) -> Unit,
     vm: SettingsViewModel,
 ) {
-
     AppPage(
         title = repo.name,
         onBackClick = onBackClick,
     ) {
-
         SettingsSection(
             title = stringResource(R.string.repository),
             isLast = true,
         ) {
-
             val authorName by repo.prefs.authorName.getAsState()
             StringSettings(
                 title = stringResource(R.string.git_author_name),
@@ -99,9 +86,6 @@ fun RepoSettingsScreen(
                 keyboardType = KeyboardType.Uri
             )
 
-            // Where the notes are. Not something to type: the folder was chosen
-            // with the system picker, and moving a repository is moving a
-            // directory, which is not this app's to do.
             DefaultSettingsRow(
                 title = stringResource(R.string.repository_folder),
                 subTitle = repo.path,
@@ -136,14 +120,6 @@ fun RepoSettingsScreen(
     }
 }
 
-/**
- * The public key this repository authenticates with, with the two things there
- * are to do with it: take it away to paste as a deploy key, and replace it.
- *
- * Regenerating asks first, and says what it costs — the pair is written over,
- * every repository that takes this key gets the new one, and none of them can
- * reach its remote again until the new key has been added there.
- */
 @Composable
 private fun SshKeyRow(
     repo: RepoSession,
@@ -164,8 +140,6 @@ private fun SshKeyRow(
         title = stringResource(R.string.ssh_key),
         subTitle = publicKey.ifEmpty { stringResource(R.string.none) },
         showFullText = false,
-        // One child of the row, not three: what a settings row puts on the
-        // right is a single thing, and three of them would be spread across it.
         endContent = {
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 Button(
@@ -210,11 +184,6 @@ private fun SshKeyRow(
     )
 }
 
-/**
- * The way to the repository's page, which is where a deploy key is added. An
- * ssh remote is not an address a browser can follow, so it is offered the https
- * form of it, and nothing is shown for an address with no page behind it.
- */
 @Composable
 private fun OpenRepositoryButton(remoteUrl: String, vm: SettingsViewModel) {
     val uriHandler = LocalUriHandler.current

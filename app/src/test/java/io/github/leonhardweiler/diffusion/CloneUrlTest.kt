@@ -7,7 +7,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class CloneUrlTest {
-
     @Test
     fun sshUrlsAreRecognisedInBothShapes() {
         val ssh = listOf(

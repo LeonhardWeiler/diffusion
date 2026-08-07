@@ -31,14 +31,11 @@ import io.github.leonhardweiler.diffusion.ui.model.StorageConfiguration
 import io.github.leonhardweiler.diffusion.ui.viewmodel.InitState
 import kotlinx.coroutines.launch
 
-
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewRepoMethodScreen(
     openRepo: (StorageConfiguration, (String) -> Unit, () -> Unit) -> Unit,
     checkPathForClone: (String) -> Result<Unit>,
-    /** Ends the setup for a repository that was opened and is to stay local. */
     finishWithoutRemote: (StorageConfiguration, () -> Unit) -> Unit,
     makeToast: (String) -> Unit,
     navigate: (SetupDestination) -> Unit,
@@ -46,18 +43,12 @@ fun NewRepoMethodScreen(
     onBackClick: (() -> Unit)? = null,
     initState: InitState = InitState.Idle,
 ) {
-
-
     val newRepoMethod: MutableState<NewRepoMethod?> =
         remember { mutableStateOf(null) }
 
-    // an opened repository without a remote: it works as it is, but nothing it
-    // holds would ever leave the device
     val repoWithoutRemote: MutableState<StorageConfiguration?> = remember { mutableStateOf(null) }
     val askAboutRemote = remember { mutableStateOf(false) }
 
-    // The system picker only says which folder was chosen; reading and writing it
-    // is what the storage permission is for, so both are still needed.
     val folderPicker =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
             if (uri == null) return@rememberLauncherForActivityResult
@@ -87,7 +78,6 @@ fun NewRepoMethodScreen(
                     },
                 )
 
-                // said now rather than after the remote has been set up
                 NewRepoMethod.Clone ->
                     if (checkPathForClone(storageConfig.repoPath()).isSuccess) {
                         navigate(SetupDestination.Remote(storageConfig))
@@ -114,17 +104,9 @@ fun NewRepoMethodScreen(
     AppPage(
         verticalArrangement = Arrangement.spacedBy(80.dp, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
-        // Only when this setup was reached from the settings, for a repository
-        // beside the ones there already are. The first one has nothing behind it
-        // to go back to.
         onBackClick = onBackClick,
         onBackClickEnabled = !initState.isLoading(),
     ) {
-
-        // Opening a repository is a second or two of libgit2 and of reading the
-        // whole working tree, and it happens after the folder picker has closed
-        // — so without this the app was back on this screen doing nothing
-        // visible, and the obvious thing to do was to tap again.
         if (initState.isLoading()) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -152,7 +134,6 @@ fun NewRepoMethodScreen(
             )
         }
 
-
         Button(
             onClick = {
                 newRepoMethod.value = NewRepoMethod.Clone
@@ -164,7 +145,6 @@ fun NewRepoMethodScreen(
             )
         }
     }
-
 
     RequestConfirmationDialog(
         expanded = askAboutRemote,
@@ -178,13 +158,11 @@ fun NewRepoMethodScreen(
             repoWithoutRemote.value?.let { finishWithoutRemote(it, onSetupSuccess) }
         },
     )
-
 }
 
 @Preview
 @Composable
 private fun NewRepoMethodScreenPreview() {
-
     NewRepoMethodScreen(
         openRepo = { _, _, _ -> },
         checkPathForClone = { Result.success(Unit) },

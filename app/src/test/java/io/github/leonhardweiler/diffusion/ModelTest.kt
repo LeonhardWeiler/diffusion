@@ -6,15 +6,7 @@ import io.github.leonhardweiler.diffusion.helper.movedUnder
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/**
- * What a note derives from its path, and the path arithmetic a folder move does
- * to everything under it.
- *
- * parentPath and fileName are worked out once and carried, so anything that
- * builds a Note by hand has to leave them agreeing with relativePath.
- */
 class ModelTest {
-
     @Test
     fun a_note_at_the_root_has_no_parent() {
         val note = Note.new(relativePath = "notes.md")
@@ -34,7 +26,6 @@ class ModelTest {
 
     @Test
     fun a_file_without_an_extension_keeps_its_whole_name() {
-        // every file in the repository is listed now, and a LICENSE has no dot
         assertEquals("LICENSE", Note.new(relativePath = "LICENSE").nameWithoutExtension())
         assertEquals("a", Note.new(relativePath = "a").nameWithoutExtension())
     }
@@ -64,7 +55,6 @@ class ModelTest {
 
         assertEquals("c", after.parentPath)
         assertEquals("note.md", after.fileName)
-        // and it is the same note as far as the list and the undo history know
         assertEquals(before.id, after.id)
     }
 }

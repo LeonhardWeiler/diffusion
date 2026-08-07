@@ -12,17 +12,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * Trust on first use, per host **and** key type.
- *
- * A host has several host keys — github.com answers with an ed25519, an ecdsa and
- * an rsa one — and which of them is presented is whatever the two sides agree on.
- * Pinned by host alone, the fingerprint of one was compared against the
- * fingerprint of another, and every connection read as a host key that had
- * changed.
- */
 class PinnedHostKeysTest {
-
     private lateinit var root: File
     private lateinit var file: File
     private lateinit var pins: PinnedHostKeys
@@ -39,7 +29,6 @@ class PinnedHostKeysTest {
         root.deleteRecursively()
     }
 
-    /** A host key blob: its type, then the key, each behind its length. */
     private fun hostKey(type: String, key: String): ByteArray {
         val out = ByteArrayOutputStream()
 
@@ -117,12 +106,6 @@ class PinnedHostKeysTest {
         )
     }
 
-    /**
-     * The failure that sent this app back to the setup screen: the old line was
-     * written from whichever key libssh2 negotiated, and jsch negotiates another.
-     * Both are github's, and neither can be told apart from a key that changed —
-     * so the new one is pinned rather than refused.
-     */
     @Test
     fun anOldPinOfAnotherKeyDoesNotRefuseTheHost() {
         file.parentFile.mkdirs()
@@ -135,7 +118,6 @@ class PinnedHostKeysTest {
         )
     }
 
-    /** Once there is a typed line, a key that does not match it is refused. */
     @Test
     fun anOldPinDoesNotWeakenTheOnesWrittenSince() {
         file.parentFile.mkdirs()

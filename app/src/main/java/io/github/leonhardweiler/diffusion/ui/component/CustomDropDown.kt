@@ -37,8 +37,8 @@ fun CustomDropDown(
         mutableStateOf(Offset.Zero)
     }
 ) {
-    // A closed menu is invisible but not free: it provides its own MaterialTheme
-    // and composes a DropdownMenu. On a list that is one of each per row.
+    // one closed menu per row would otherwise be one MaterialTheme and one
+    // DropdownMenu per row
     if (!expanded.value) return
 
     val density = LocalDensity.current
@@ -60,7 +60,6 @@ fun CustomDropDown(
                 .clip(shape = shape),
             offset = offset,
         ) {
-
             options.filterNotNull().forEach { model ->
                 DropdownMenuItem(
                     text = { Text(text = model.text) },

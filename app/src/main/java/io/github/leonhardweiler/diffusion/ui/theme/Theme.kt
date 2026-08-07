@@ -40,9 +40,6 @@ private val LightColors = lightColorScheme(
     surfaceTint = md_theme_light_surfaceTint,
     outlineVariant = md_theme_light_outlineVariant,
     scrim = md_theme_light_scrim,
-    // The container family is what Material draws menus and sheets on. Left at
-    // its defaults it is a tinted grey of its own, which is the one place a
-    // colour would have come back in.
     surfaceDim = md_theme_light_surfaceDim,
     surfaceBright = md_theme_light_surfaceBright,
     surfaceContainerLowest = md_theme_light_surfaceContainerLowest,
@@ -51,7 +48,6 @@ private val LightColors = lightColorScheme(
     surfaceContainerHigh = md_theme_light_surfaceContainerHigh,
     surfaceContainerHighest = md_theme_light_surfaceContainerHighest,
 )
-
 
 private val DarkColors = darkColorScheme(
     primary = md_theme_dark_primary,
@@ -92,16 +88,6 @@ private val DarkColors = darkColorScheme(
     surfaceContainerHighest = md_theme_dark_surfaceContainerHighest,
 )
 
-/**
- * Two schemes and nothing to choose between them but light and dark.
- *
- * There is no dynamic colour: what the wallpaper is has nothing to say about a
- * page of text, and the app was the same shapes in somebody else's blue. There
- * is no pure-black setting either — dark *is* black now, which is what it was
- * offering, and the elevated surfaces stay derived from it
- * ([surfaceColorAtElevation] tints upwards from `surface`) so a bar above a
- * black page still reads as a bar.
- */
 @Composable
 fun DiffusionTheme(
     darkTheme: Boolean,

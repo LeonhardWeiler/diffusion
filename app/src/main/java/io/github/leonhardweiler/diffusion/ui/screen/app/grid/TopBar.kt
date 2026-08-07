@@ -16,14 +16,8 @@ import io.github.leonhardweiler.diffusion.manager.SyncState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
-/** The bar above the note list: the search, or what to do with a selection. */
 internal val ButtonSize = 35.dp
 
-/**
- * Below the bar, inside its background rather than under it. The bar floats
- * over the list, and without this a row scrolling past stops being covered the
- * moment it clears the search field itself, which reads as the two touching.
- */
 private val BarBottomPadding = 8.dp
 
 @Composable
@@ -44,10 +38,7 @@ fun TopBar(
     selectAll: () -> Unit,
     deleteSelection: () -> Unit,
 ) {
-
     AnimatedContent(
-        // the bar floats above the list, so without a background of its own the
-        // rows would be readable through it as they scroll past underneath
         modifier = modifier
             .background(MaterialTheme.colorScheme.background)
             .padding(bottom = BarBottomPadding),
@@ -55,9 +46,6 @@ fun TopBar(
         label = "",
     ) { shouldShowSearchBar ->
         if (shouldShowSearchBar) {
-            // collected here rather than by the caller: the query changes with
-            // every keystroke, and reading it further up would recompose the
-            // whole screen, list included, for each one
             SearchBar(
                 padding = padding,
                 onSettingsClick = onSettingsClick,

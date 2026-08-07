@@ -16,7 +16,6 @@ import io.github.leonhardweiler.diffusion.ui.component.CustomDropDownModel
 import io.github.leonhardweiler.diffusion.ui.component.GetStringDialog
 import io.github.leonhardweiler.diffusion.ui.viewmodel.GridViewModel
 
-
 @Composable
 fun FloatingActionButtons(
     vm: GridViewModel,
@@ -36,11 +35,6 @@ fun FloatingActionButtons(
         }
     }
 
-    // The name of a note is asked for here, and the note is written and left in
-    // the list. Creating one used to open the editor on a note with no file
-    // behind it yet — see GridViewModel.createNote.
-    //
-    // Composed only while it is open, the way the dialogs of a row are.
     if (showCreateNote.value) {
         GetStringDialog(
             expanded = showCreateNote,

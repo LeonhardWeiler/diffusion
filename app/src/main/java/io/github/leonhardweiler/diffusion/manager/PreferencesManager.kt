@@ -50,14 +50,6 @@ class EditorContext(private val prefs: MutablePreferences) {
         get() = prefs.run { read() }
         set(value) = prefs.run { write(value) }
 
-    /**
-     * Takes the key out of the store rather than writing a default over it.
-     *
-     * For the preferences that belong to something that can go away — a
-     * repository, an ssh key. They are keyed by an id nothing will use again, so
-     * a value left behind is one nothing would ever read and nothing would ever
-     * clean up.
-     */
     fun <T> Preference<T>.forget() = prefs.run { erase() }
 }
 
@@ -69,11 +61,6 @@ abstract class Preference<T>(
     internal abstract fun MutablePreferences.write(value: T)
     internal abstract fun MutablePreferences.erase()
 
-    /**
-     * What this says in a snapshot that has already been read, for the callers
-     * that read several preferences out of the same one — a whole repository, a
-     * whole key — rather than collecting each of them separately.
-     */
     internal fun valueIn(preferences: Preferences): T = with(preferences) { read() }
 
     private val flow = dataStore.data.map { with(it) { read() } ?: default }.distinctUntilChanged()
@@ -140,5 +127,4 @@ class BooleanPreference(
 ) : BasePreference<Boolean>(dataStore, default) {
     override val key = booleanPreferencesKey(key)
 }
-
 

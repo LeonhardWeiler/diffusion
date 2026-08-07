@@ -33,7 +33,6 @@ import kotlin.io.path.readText
 import kotlin.io.path.setLastModifiedTime
 import kotlin.io.path.writeText
 
-
 private const val TAG = "FileSystem"
 
 sealed class NodeFs(
@@ -41,7 +40,6 @@ sealed class NodeFs(
     open val fullName: String,
     protected val pathFs: Path = Paths.get(path)
 ) {
-
     fun fileSize(): Long {
         return pathFs.fileSize()
     }
@@ -66,13 +64,11 @@ sealed class NodeFs(
 
     abstract fun create(): Result<Unit>
 
-
     class File(
         override val path: String,
         override val fullName: String,
         val extension: FileExtension,
     ) : NodeFs(path, fullName) {
-
         companion object {
             fun fromPath(path: String): File = Paths.get(path).toFileFs()
             fun fromPath(prefix: String, suffix: String): File {
@@ -81,7 +77,6 @@ sealed class NodeFs(
         }
 
         override fun delete(): Result<Unit> {
-
             return toResult { pathFs.deleteExisting() }
         }
 
@@ -92,19 +87,10 @@ sealed class NodeFs(
             }
         }
 
-
         fun write(text: String): Result<Unit> {
             return toResult { pathFs.writeText(text) }
         }
 
-        /**
-         * Says when the note was written.
-         *
-         * Writing a file dates it to the moment of the write, which is not
-         * always when the note was written: one that was undone back to what it
-         * was has not changed at all. The list reads its dates off the file and
-         * nowhere else, so this is where such a note gets its own date back.
-         */
         fun setLastModifiedTime(timeMillis: Long): Result<Unit> {
             return toResult { pathFs.setLastModifiedTime(FileTime.fromMillis(timeMillis)) }
         }
@@ -113,16 +99,6 @@ sealed class NodeFs(
             return pathFs.readText()
         }
 
-        /**
-         * Renames the file, which is what moving one is.
-         *
-         * The bytes are not read and not written again, so the file keeps the
-         * date it had — a note that was only renamed was not written today.
-         *
-         * ATOMIC_MOVE is not asked for, for the same reason the folder does not
-         * ask for it: a target on what the filesystem considers another store
-         * would fail outright instead of falling back to a copy.
-         */
         fun moveTo(target: String): Result<Unit> {
             return toResult {
                 Paths.get(target).createParentDirectories()
@@ -130,15 +106,12 @@ sealed class NodeFs(
                 Unit
             }
         }
-
     }
-
 
     class Folder(
         override val path: String,
         override val fullName: String,
     ) : NodeFs(path, fullName) {
-
         companion object {
             private const val TAG = "FolderFs"
 
@@ -146,15 +119,9 @@ sealed class NodeFs(
             fun fromPath(prefix: String, suffix: String): Folder {
                 return Paths.get(prefix).resolve(removeFirstAndLastSlash(suffix)).toFolderFs()
             }
-
         }
 
-        /**
-         * Returns success if the folder is
-         * and existing empty directory
-         */
         fun isEmptyDirectory(): Result<Unit> {
-
             try {
                 if (!pathFs.isDirectory()) {
                     return failure(Exception(MyApp.appModule.context.getString(R.string.error_path_not_directory)))
@@ -163,7 +130,6 @@ sealed class NodeFs(
                 if (pathFs.listDirectoryEntries().isNotEmpty()) {
                     return failure(Exception(MyApp.appModule.context.getString(R.string.error_path_not_empty)))
                 }
-
             } catch (e: Exception) {
                 return failure(e)
             }
@@ -180,21 +146,12 @@ sealed class NodeFs(
             }
         }
 
-
         fun createFile(name: String): Result<Unit> {
             return toResult {
                 pathFs.resolve(name).createFile()
             }
         }
 
-        /**
-         * Renames the directory, which is what moving one is: everything under
-         * it comes along without being read, let alone rewritten.
-         *
-         * ATOMIC_MOVE would be the stronger promise, but a folder can be moved
-         * to a place the filesystem does not consider the same store, and there
-         * it fails outright rather than falling back.
-         */
         fun moveTo(target: String): Result<Unit> {
             return toResult {
                 Paths.get(target).createParentDirectories()
@@ -215,10 +172,8 @@ sealed class NodeFs(
                 pathFs.createDirectories()
             }
         }
-
     }
 }
-
 
 private fun Path.toFolderFs(): NodeFs.Folder {
     return NodeFs.Folder(
@@ -226,7 +181,6 @@ private fun Path.toFolderFs(): NodeFs.Folder {
         path = this.pathString
     )
 }
-
 
 private fun Path.toFileFs(): NodeFs.File {
     val extension = this.extension.run {
@@ -239,7 +193,6 @@ private fun Path.toFileFs(): NodeFs.File {
         extension = extension
     )
 }
-
 
 private fun Path.toNodeFs(): NodeFs {
     return if (this.isDirectory()) {

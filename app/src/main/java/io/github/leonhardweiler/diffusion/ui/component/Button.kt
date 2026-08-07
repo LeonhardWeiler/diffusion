@@ -28,7 +28,6 @@ fun SimpleButton(
     }
 }
 
-
 @Composable
 fun BoxScope.CenteredButton(
     modifier: Modifier = Modifier,

@@ -27,9 +27,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import io.github.leonhardweiler.diffusion.R
 
-
 private val padding = 10.dp
-
 
 @Composable
 fun SettingsSection(
@@ -37,12 +35,10 @@ fun SettingsSection(
     isLast: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
     ) {
-
         Text(
             modifier = Modifier
                 .padding(padding),
@@ -59,7 +55,6 @@ fun SettingsSection(
             HorizontalDivider()
         }
     }
-
 }
 
 @Composable
@@ -74,8 +69,6 @@ fun DefaultSettingsRow(
     val modifier = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
 
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-
-
         Row(
             modifier = modifier
                 .fillMaxWidth()
@@ -84,7 +77,6 @@ fun DefaultSettingsRow(
             horizontalArrangement = if (endContent != null) Arrangement.SpaceBetween else Arrangement.End
         ) {
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-
                 endContent?.invoke()
 
                 Row(
@@ -95,7 +87,6 @@ fun DefaultSettingsRow(
                             modifier = Modifier
                                 .padding(end = padding),
                             imageVector = it,
-                            // decorative, the settings row right next to it carries the title
                             contentDescription = null
                         )
                     }
@@ -130,7 +121,6 @@ fun DefaultSettingsRow(
     }
 }
 
-
 @Composable
 fun <T> MultipleChoiceSettings(
     title: String,
@@ -140,7 +130,6 @@ fun <T> MultipleChoiceSettings(
     options: List<T>,
     onOptionClick: (T) -> Unit,
 ) {
-
     val expanded = rememberSaveable {
         mutableStateOf(false)
     }
@@ -172,7 +161,6 @@ fun <T> MultipleChoiceSettings(
     }
 }
 
-
 @Composable
 fun ToggleableSettings(
     title: String,
@@ -181,7 +169,6 @@ fun ToggleableSettings(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
 ) {
-
     DefaultSettingsRow(
         title = title,
         subTitle = subtitle,
@@ -209,7 +196,6 @@ fun StringSettings(
     keyboardType: KeyboardType = KeyboardType.Text,
     onChange: (String) -> Unit,
 ) {
-
     val expanded = rememberSaveable {
         mutableStateOf(false)
     }
@@ -233,5 +219,4 @@ fun StringSettings(
         keyboardType = keyboardType,
         onValidation = onChange
     )
-
 }

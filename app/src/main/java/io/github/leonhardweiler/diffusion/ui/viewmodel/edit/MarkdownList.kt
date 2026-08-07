@@ -4,7 +4,6 @@ import android.util.Log
 
 private const val TAG = "MarkdownList"
 
-/** Everything before the first non-blank character, or null if there is none. */
 fun getPadding(line: String): String? = Regex("^\\s+").find(line)?.value
 
 sealed class ListType {
@@ -19,12 +18,6 @@ sealed class ListType {
     }
 }
 
-/**
- * One line of a markdown list, taken apart: what marks it as an item, whether it
- * carries a checkbox, how far it is indented and what it says. The editor works
- * on this rather than on the line, so continuing, renumbering and converting a
- * list are all the same operation with a different piece swapped out.
- */
 data class ListItemInfo(
     val listType: ListType = ListType.Dash,
     val isTaskList: Boolean = false,
@@ -32,12 +25,9 @@ data class ListItemInfo(
     val padding: String = "",
     val title: String? = null,
 ) {
-
     companion object {
-
         private val LINE = Regex("""^(\s*)(?:(-)|(\*)|(\d+)\.)\s(?:\[([ xX])]\s)?(.+)?""")
 
-        /** Null when the line is not a list item at all. */
         fun parse(line: String): ListItemInfo? {
             val match = LINE.matchEntire(line) ?: return null
 
@@ -59,7 +49,6 @@ data class ListItemInfo(
             )
         }
 
-        /** For the editing paths, where a malformed line is not worth a crash. */
         fun parseSafely(line: String): ListItemInfo? = try {
             parse(line)
         } catch (e: Exception) {
@@ -74,6 +63,5 @@ data class ListItemInfo(
         return marker + if (isChecked) "[x] " else "[ ] "
     }
 
-    /** An item nobody filled in, which is what enter on it means to get rid of. */
     fun shouldRemove(): Boolean = title?.isNotBlank() != true
 }

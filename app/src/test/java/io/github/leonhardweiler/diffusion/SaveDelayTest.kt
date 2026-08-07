@@ -5,13 +5,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * How long a note goes unwritten while somebody types. Nothing is at risk here
- * — leaving the editor, leaving the app and the view model being cleared all
- * write straight away — so the only question is how often the disk is asked.
- */
 class SaveDelayTest {
-
     @Test
     fun an_ordinary_note_is_written_after_the_usual_pause() {
         assertEquals(500L, saveDelayMillis(0))
@@ -30,7 +24,6 @@ class SaveDelayTest {
 
     @Test
     fun and_stops_growing() {
-        // a book pasted into a note is written every three seconds, not less often
         assertEquals(3_000L, saveDelayMillis(200 * 1024))
         assertEquals(3_000L, saveDelayMillis(Int.MAX_VALUE))
     }

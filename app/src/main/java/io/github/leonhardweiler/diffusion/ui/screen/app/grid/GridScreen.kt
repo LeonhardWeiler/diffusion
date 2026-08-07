@@ -51,8 +51,6 @@ import io.github.leonhardweiler.diffusion.ui.model.NoteHeader
 import io.github.leonhardweiler.diffusion.ui.viewmodel.GridViewModel
 import io.github.leonhardweiler.diffusion.helper.getParentPath
 
-
-
 internal val topBarHeight = 80.dp
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -61,7 +59,6 @@ fun GridScreen(
     onSettingsClick: () -> Unit,
     onEditClick: (Note) -> Unit,
 ) {
-
     val vm: GridViewModel = viewModel()
 
     val selectedNotes by vm.selectedNotes.collectAsState()
@@ -79,20 +76,14 @@ fun GridScreen(
         }
     }
 
-    // The list keeps the order it was in while somebody is looking at it, so a
-    // note written now shows its new date where it already stood. Leaving the
-    // app is one of the moments it may be put in order again — ON_STOP rather
-    // than ON_START, because coming back from the editor adds this observer to
-    // a lifecycle that is already started, and that dispatches ON_START to it:
-    // the one return that must not reorder anything would have been the one
-    // that did.
+    // ON_STOP and not ON_START: returning from the editor adds the observer to
+    // a lifecycle that is already started, and that one return must not reorder
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
         vm.resort()
     }
 
     val searchFocusRequester = remember { FocusRequester() }
 
-    // the bar floats above the list, so the list needs to start below it
     var topBarSize by remember { mutableStateOf(IntSize.Zero) }
     val topSpacerHeight = with(LocalDensity.current) { topBarSize.height.toDp() }
 
@@ -100,11 +91,9 @@ fun GridScreen(
         contentWindowInsets = WindowInsets.safeContent,
         containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
-
             if (selectionSize == 0) {
                 FloatingActionButtons(vm = vm)
             }
-
         }) { padding ->
 
         val nestedScrollConnection = rememberNestedScrollConnection()
@@ -121,15 +110,6 @@ fun GridScreen(
 
         TopBar(
             modifier = Modifier.onSizeChanged { size ->
-                // The list begins below the bar, and the two bars are not the
-                // same height to the pixel — the search bar is a text field
-                // with its own padding, the selection bar a fixed row. Letting
-                // the spacer follow whichever is showing meant the whole list
-                // slid up a little the moment a row was selected, and back down
-                // when the selection was cleared.
-                //
-                // So the offset is the search bar's, which is the one the list
-                // is under for all but a moment.
                 if (selectionSize == 0) topBarSize = size
             },
             selectionSize = selectionSize,
@@ -150,7 +130,6 @@ fun GridScreen(
     }
 }
 
-
 @OptIn(
     ExperimentalFoundationApi::class,
     ExperimentalMaterial3Api::class,
@@ -168,7 +147,6 @@ private fun GridView(
 ) {
     val gridItems by vm.gridItems.collectAsState()
     val query = vm.query.collectAsState()
-
 
     val listState = rememberLazyListState()
 
@@ -193,44 +171,31 @@ private fun GridView(
     )
 }
 
-
 @Composable
 internal fun NoteActionsDropdown(
     vm: GridViewModel,
     gridNote: GridNote,
     isSelecting: Boolean,
     dropDownExpanded: MutableState<Boolean>,
-    /** Asks, rather than deletes: the dialog belongs to the row, which outlives this menu. */
     onDeleteRequest: () -> Unit,
-    /** Same again for the rename dialog, which is the row's as well. */
     onRenameRequest: () -> Unit,
     clickPosition: MutableState<Offset>,
 ) {
-
-    // building the options means reading strings, which is worth doing only for
-    // the row whose menu is actually open
     if (!dropDownExpanded.value) return
 
     val context = LocalContext.current
 
-    // need this box for clickPosition
     Box {
         CustomDropDown(
             expanded = dropDownExpanded,
             shape = MaterialTheme.shapes.medium,
             options = listOf(
-                // Not while a selection is on: a rename is about one note, and
-                // the marked rows are the ones every other entry here is about.
                 if (!isSelecting) CustomDropDownModel(
                     text = stringResource(R.string.rename_or_move),
                     onClick = onRenameRequest) else null,
                 CustomDropDownModel(
                     text = stringResource(R.string.delete_this_file),
                     onClick = onDeleteRequest),
-                // On every row, not only on the ones this app cannot read: a
-                // note above the size limit is opened here by nobody, and a
-                // markdown file is something a user may well want to hand to
-                // something else.
                 CustomDropDownModel(
                     text = stringResource(R.string.open_with_another_app_action),
                     onClick = {
@@ -245,23 +210,14 @@ internal fun NoteActionsDropdown(
     }
 }
 
-/**
- * Hides the keyboard once the user starts scrolling the list. The scroll that
- * carries a fling is left alone, otherwise the keyboard would close again right
- * after the user reopened it by tapping the search field.
- *
- * https://stackoverflow.com/questions/73079388/android-jetpack-compose-keyboard-not-close
- */
 @Composable
 private fun rememberNestedScrollConnection(): NestedScrollConnection {
-
     val keyboardController = LocalSoftwareKeyboardController.current
 
     return remember {
         var shouldBlock = false
 
         object : NestedScrollConnection {
-
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 if (!shouldBlock) keyboardController?.hide()
                 return Offset.Zero
@@ -276,7 +232,6 @@ private fun rememberNestedScrollConnection(): NestedScrollConnection {
                 shouldBlock = false
                 return super.onPostFling(consumed, available)
             }
-
         }
     }
 }

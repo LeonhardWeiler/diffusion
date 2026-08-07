@@ -7,12 +7,7 @@ import io.github.leonhardweiler.diffusion.helper.resolveRepoPath
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/**
- * Where a typed name lands. Renaming and moving are the same act, so this is
- * the whole of what the editor's name field and the folder rename dialog mean.
- */
 class RepoPathTest {
-
     private fun ok(parentPath: String, typed: String): String {
         val resolved = resolveRepoPath(parentPath, typed)
         return (resolved as ResolvedPath.Ok).relativePath
@@ -71,21 +66,16 @@ class RepoPathTest {
 
     @Test
     fun a_path_naming_a_folder_says_that_is_what_it_names() {
-        // a trailing slash names the folder, not a thing in it
         assertEquals(PathProblem.NamesFolder, bad("work", "archive/"))
-        // and this walks back to exactly where it started
         assertEquals(PathProblem.NamesFolder, bad("", "."))
         assertEquals(PathProblem.NamesFolder, bad("work", ".."))
     }
 
     @Test
     fun a_segment_a_file_cannot_be_called_names_the_character() {
-        // which character it was, because a colon in a name reads as ordinary
-        // until somebody points at it
         assertEquals(PathProblem.InvalidCharacter(':'), bad("", "no:colons.md"))
         assertEquals(PathProblem.InvalidCharacter('*'), bad("", "star*.md"))
         assertEquals(PathProblem.InvalidCharacter('?'), bad("", "arch?ive/notes.md"))
-        // the first one, of several
         assertEquals(PathProblem.InvalidCharacter('*'), bad("", "star*and:colon.md"))
     }
 
@@ -103,7 +93,6 @@ class RepoPathTest {
     @Test
     fun a_name_with_a_dot_says_what_the_file_is() {
         assertEquals("notes.txt", keepExtension("notes.txt", "md"))
-        // the dot is the last segment's, so a folder with one changes nothing
         assertEquals("archive.old/notes.md", keepExtension("archive.old/notes", "md"))
     }
 

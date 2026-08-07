@@ -12,21 +12,12 @@ import io.github.leonhardweiler.diffusion.ui.screen.settings.SettingsNav
 import io.github.leonhardweiler.diffusion.ui.utils.crossFade
 import io.github.leonhardweiler.diffusion.ui.utils.slide
 
-
-
 @Composable
 fun AppScreen(
     appDestination: AppDestination,
-    /** The settings' way into the setup, for a repository beside the ones there are. */
     onAddRepo: () -> Unit,
-    /**
-     * Another repository is the one being looked at now — switched to, or the
-     * one this screen was about having been let go of. Either way this screen is
-     * about a repository that is not the current one anymore.
-     */
     onRepoChanged: () -> Unit,
 ) {
-
     val backstack = rememberBackstack(appDestination)
 
     NavHost(
@@ -34,7 +25,6 @@ fun AppScreen(
         transition = ::appTransition,
     ) {
         when (it) {
-
             is AppDestination.Grid -> {
                 GridScreen(
                     onSettingsClick = {
@@ -67,7 +57,6 @@ fun AppScreen(
     }
 }
 
-/** Settings slide in from the side; the editor fades, because it is the note. */
 private fun appTransition(
     from: AppDestination,
     to: AppDestination,

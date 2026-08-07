@@ -11,7 +11,6 @@ import kotlinx.coroutines.launch
 class UiHelper(
     private val context: Context
 ) {
-    // One scope for every toast, instead of a new one per call.
     private val mainScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     fun makeToast(text: String?, duration: Int = Toast.LENGTH_SHORT) {

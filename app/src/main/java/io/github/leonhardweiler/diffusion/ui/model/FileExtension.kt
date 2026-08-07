@@ -3,11 +3,8 @@ package io.github.leonhardweiler.diffusion.ui.model
 import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
 
-
 @Parcelize
 sealed class FileExtension(val text: String) : Parcelable {
-
-
     class Md : FileExtension("md")
     class Txt : FileExtension("txt")
     class Adoc : FileExtension("adoc")
@@ -15,7 +12,6 @@ sealed class FileExtension(val text: String) : Parcelable {
     class Other(private val customText: String) : FileExtension(customText)
 
     companion object {
-
         val entries = arrayListOf(Md(), Txt(), Adoc(), Asciidoc())
         fun match(extension: String): FileExtension {
             entries.forEach {

@@ -41,18 +41,8 @@ import io.github.leonhardweiler.diffusion.manager.SyncState.Pull
 import io.github.leonhardweiler.diffusion.manager.SyncState.Push
 import io.github.leonhardweiler.diffusion.manager.SyncState.Starting
 
-/** The mark that says the notes here have not reached the remote yet. */
 private val ChangeDotSize = 8.dp
 
-/**
- * The one way to reach the remote: it commits, pulls and pushes when tapped and
- * shows how that went. Long pressing it explains the icon, and an error says
- * what went wrong without being asked.
- *
- * @param hasLocalChanges whether anything has been written that the remote has
- * not been told about, which the button carries as a dot — writing a note does
- * not commit it, so otherwise nothing on screen says so.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun SyncButton(
@@ -63,7 +53,6 @@ internal fun SyncButton(
     var iconModifier: Modifier = Modifier
 
     if (state.isLoading()) {
-
         val infiniteTransition = rememberInfiniteTransition()
         val alpha = infiniteTransition.animateFloat(
             initialValue = 0.3f,
@@ -79,9 +68,6 @@ internal fun SyncButton(
 
     val tooltipState = rememberTooltipState(isPersistent = true)
 
-    // Only a sync the user is waiting on answers back on its own. The ones that
-    // run when the app opens and closes leave the icon to say it, so that being
-    // out of signal does not open a tooltip over the list every time.
     if (state is SyncState.Error && state.announce) {
         LaunchedEffect(state) {
             tooltipState.show()
@@ -120,9 +106,6 @@ internal fun SyncButton(
             Box {
                 Icon(
                     painter = icon,
-                    // The dot below is a coloured box and nothing else, so a
-                    // screen reader has no way of finding out about it. What it
-                    // says goes here instead, the same way the tooltip says it.
                     contentDescription = if (hasLocalChanges) {
                         stringResource(
                             R.string.sync_not_committed,
@@ -134,9 +117,6 @@ internal fun SyncButton(
                     modifier = iconModifier,
                 )
 
-                // Not while syncing: the button is already saying something
-                // then, and the dot would be answering a question about a state
-                // that is on its way out.
                 if (hasLocalChanges && !state.isLoading()) {
                     Box(
                         modifier = Modifier

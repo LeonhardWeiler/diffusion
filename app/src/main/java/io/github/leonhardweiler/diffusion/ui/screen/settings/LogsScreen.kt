@@ -44,9 +44,7 @@ import java.io.InputStreamReader
 import kotlin.math.max
 import kotlin.math.min
 
-
 private const val TAG = "LogsScreen"
-
 
 private enum class LogLevel(val logCat: String) {
     ERROR("E"),
@@ -75,12 +73,10 @@ private fun getTextStyleFromInt(id: Int): TextStyle {
     }
 }
 
-
 @Composable
 fun LogsScreen(
     onBackClick: () -> Unit,
 ) {
-
     val logLevel = remember {
         mutableStateOf(LogLevel.ERROR)
     }
@@ -91,11 +87,9 @@ fun LogsScreen(
         mutableStateOf(initTextValue)
     }
 
-
     val scope = rememberCoroutineScope()
 
     SideEffect {
-        // getLogs shells out to logcat and blocks, so not on the main thread
         scope.launch(Dispatchers.IO) {
             logState.value = getLogs(logLevel.value)
         }
@@ -162,7 +156,6 @@ fun LogsScreen(
                         scope.launch {
                             clipboardManager.setClipEntry(ClipEntry(data))
                         }
-
                     }
                 ))
 
@@ -189,7 +182,6 @@ fun LogsScreen(
     }
 }
 
-
 private fun getLogs(logLevel: LogLevel): String {
     try {
         Log.d(TAG, "run logcat")
@@ -205,7 +197,6 @@ private fun getLogs(logLevel: LogLevel): String {
             }
             return log.toString()
         }
-
     } catch (e: IOException) {
         return "Error while try to get the logs: ${e.message}"
     }

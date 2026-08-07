@@ -6,7 +6,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class SshKeyValidationTest {
-
     private val publicKey =
         "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJk8f3q2hZ5Q0mQ8dY6Q1nT2mR7pW9xV4kL0aB3cD5eF Diffusion"
 

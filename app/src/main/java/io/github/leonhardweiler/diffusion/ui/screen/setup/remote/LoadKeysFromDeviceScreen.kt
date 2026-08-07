@@ -25,16 +25,11 @@ import io.github.leonhardweiler.diffusion.ui.component.SetupPage
 import io.github.leonhardweiler.diffusion.ui.model.Cred
 import io.github.leonhardweiler.diffusion.ui.viewmodel.InitState
 
-
-
-
 @Composable
 fun LoadKeysFromDeviceScreen(
     onBackClick: () -> Unit,
     cloneState: InitState,
-    /** See the same parameter on [GenerateNewSshKeysScreen]. */
     alreadyOnDevice: Boolean,
-    /** Starts the clone with these credentials and goes to the clone screen. */
     cloneWith: (Cred) -> Unit,
 ) {
     AppPage(
@@ -43,7 +38,6 @@ fun LoadKeysFromDeviceScreen(
         onBackClick = onBackClick,
         onBackClickEnabled = !cloneState.isLoading()
     ) {
-
         SetupPage {
             val publicKey = rememberSaveable(stateSaver = TextFieldValue.Saver) {
                 mutableStateOf(TextFieldValue())

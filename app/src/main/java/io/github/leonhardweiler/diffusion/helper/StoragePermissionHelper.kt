@@ -9,12 +9,10 @@ import androidx.core.net.toUri
 import io.github.leonhardweiler.diffusion.BuildConfig
 
 object StoragePermissionHelper {
-
     fun isPermissionGranted(): Boolean = Environment.isExternalStorageManager()
 
     val contract: ActivityResultContract<Unit, Boolean> =
         object : ActivityResultContract<Unit, Boolean>() {
-
             override fun createIntent(context: Context, input: Unit): Intent = Intent(
                 Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
                 "package:${BuildConfig.APPLICATION_ID}".toUri()
@@ -22,7 +20,6 @@ object StoragePermissionHelper {
 
             override fun parseResult(resultCode: Int, intent: Intent?) = isPermissionGranted()
 
-            // granted already: no activity to launch, the result stands as it is
             override fun getSynchronousResult(context: Context, input: Unit) =
                 if (isPermissionGranted()) SynchronousResult(true) else null
         }

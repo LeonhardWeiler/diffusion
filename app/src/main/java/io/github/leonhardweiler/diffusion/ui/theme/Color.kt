@@ -2,25 +2,9 @@ package io.github.leonhardweiler.diffusion.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-/*
- * The app is black on white and white on black, with grey for everything that
- * has to be told apart from the page it sits on and nothing else.
- *
- * There is no accent colour and nothing is taken from the wallpaper: a note is
- * text, the list is text, and a blue that appeared on a button here and a
- * heading there said nothing about either. Dark is real black rather than dark
- * grey, which is what an oled screen can switch off — that used to be a setting
- * and is now simply what dark means.
- *
- * Red is the one colour left, and only for errors: it is the one thing on the
- * screen that has to be read as different before it is read at all.
- */
-
 private val White = Color(0xFFFFFFFF)
 private val Black = Color(0xFF000000)
 
-// Light: greys measured off white, dark enough to read on it where they carry
-// text, light enough to stay a background where they do not.
 private val GreyLight0 = Color(0xFFF7F7F7)
 private val GreyLight1 = Color(0xFFF2F2F2)
 private val GreyLight2 = Color(0xFFEBEBEB)
@@ -30,7 +14,6 @@ private val GreyLight5 = Color(0xFFC7C7C7)
 private val GreyMid = Color(0xFF737373)
 private val GreyDarkText = Color(0xFF3D3D3D)
 
-// Dark: the same steps counted up from black.
 private val GreyDark0 = Color(0xFF0D0D0D)
 private val GreyDark1 = Color(0xFF141414)
 private val GreyDark2 = Color(0xFF1F1F1F)

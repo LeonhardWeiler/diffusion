@@ -18,14 +18,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-
 @Composable
 fun SetupPage(
     title: String? = null,
     horizontalAlignment: Alignment.Horizontal = Alignment.Start,
     content: @Composable ColumnScope.() -> Unit
 ) {
-
     Column(
         modifier = Modifier
             .padding(horizontal = 10.dp),
@@ -41,14 +39,12 @@ fun SetupPage(
     }
 }
 
-
 @Composable
 fun SetupLine(
     text: String,
     horizontalAlignment: Alignment.Horizontal = Alignment.Start,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-
     Column(
         modifier = Modifier
             .padding(bottom = 18.dp),
@@ -74,7 +70,6 @@ private fun SetupTitle(
     )
 }
 
-
 @Composable
 fun SetupButton(
     modifier: Modifier = Modifier,
@@ -94,7 +89,6 @@ fun SetupButton(
             Spacer(Modifier.width(5.dp))
             SimpleIcon(
                 imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                // decorative, the button text right before it says where it goes
                 contentDescription = null
             )
         } else {

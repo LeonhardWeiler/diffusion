@@ -32,7 +32,6 @@ import io.github.leonhardweiler.diffusion.ui.viewmodel.InitState
 
 private const val TAG = "CloningScreen"
 
-/** The most of a libgit2 message that is shown before it has to be scrolled. */
 private val MaxDetailHeight = 160.dp
 
 @Composable
@@ -69,25 +68,14 @@ fun CloningScreen(
             Text(
                 if (cloneState is InitState.Error) {
                     stringResource(R.string.go_back)
-
                 } else stringResource(R.string.cancel)
             )
         }
     }
 }
 
-/**
- * What a failed clone looks like.
- *
- * A libgit2 message is a sentence about sockets and classes, and on its own in
- * the middle of an empty screen it reads as if the app had broken. It is still
- * the only thing that says what actually happened, so it stays — under a
- * heading that names the failure, and under the one sentence that says what to
- * do about it when the message is recognisable enough to tell.
- */
 @Composable
 private fun CloneError(detail: String?) {
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -98,14 +86,12 @@ private fun CloneError(detail: String?) {
         )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 SimpleIcon(
                     imageVector = Icons.Outlined.ErrorOutline,
-                    // the heading right next to it says the same thing
                     contentDescription = null,
                 )
                 Text(
@@ -129,8 +115,6 @@ private fun CloneError(detail: String?) {
                     style = MaterialTheme.typography.labelMedium,
                 )
                 Spacer(Modifier.height(4.dp))
-                // selectable, because the one thing to do with a message nobody
-                // can act on is to hand it to somebody who can
                 SelectionContainer {
                     Text(
                         modifier = Modifier
@@ -146,11 +130,6 @@ private fun CloneError(detail: String?) {
     }
 }
 
-/**
- * The one sentence that says what to do, for the two failures that are worth
- * telling apart. Anything else is left to the message itself rather than
- * guessed at.
- */
 @Composable
 private fun hintFor(detail: String?): String? {
     val message = detail?.lowercase() ?: return null
@@ -170,7 +149,6 @@ private fun hintFor(detail: String?): String? {
 @Preview
 @Composable
 private fun CloningScreenPreview() {
-
     CloningScreen(
         cloneState = InitState.Error(
             "can't clone repository: clone: Failed to authenticate SSH session: " +

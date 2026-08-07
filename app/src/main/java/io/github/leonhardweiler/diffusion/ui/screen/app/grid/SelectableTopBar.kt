@@ -36,7 +36,6 @@ import io.github.leonhardweiler.diffusion.ui.component.SimpleIcon
 internal fun SelectableTopBar(
     padding: PaddingValues,
     selectionSize: Int,
-    /** How many of the selected rows are folders, which is what a warning about them goes by. */
     selectedFolderCount: Int,
     unselectAll: () -> Unit,
     selectAll: () -> Unit,
@@ -44,12 +43,6 @@ internal fun SelectableTopBar(
 ) {
     val deleteExpanded = remember { mutableStateOf(false) }
 
-    // A selection can hold folders, and a folder takes everything under it —
-    // so this is the delete that costs the most and says the least about what
-    // it is about to take. Only when one is actually marked, though: warning
-    // about folders over a selection of plain notes is a sentence that does not
-    // match what is on the screen, and a warning nobody can place is one that
-    // stops being read.
     if (deleteExpanded.value) {
         RequestConfirmationDialog(
             expanded = deleteExpanded,
@@ -133,8 +126,6 @@ internal fun SelectableTopBar(
                                 onClick = { selectAll() }
                             ),
                             CustomDropDownModel(
-                                // a selected folder takes everything in it, the
-                                // same way deleting one from its own row does
                                 text = pluralStringResource(
                                     R.plurals.delete_selected_notes,
                                     selectionSize

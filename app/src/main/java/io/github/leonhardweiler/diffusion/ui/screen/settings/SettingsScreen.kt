@@ -43,16 +43,13 @@ fun SettingsScreen(
     onRepoChanged: () -> Unit,
     vm: SettingsViewModel
 ) {
-
     AppPage(
         title = stringResource(id = R.string.settings),
         onBackClick = onBackClick,
     ) {
-
         SettingsSection(
             title = stringResource(R.string.user_interface)
         ) {
-
             val theme by vm.prefs.theme.getAsState()
             MultipleChoiceSettings(
                 title = stringResource(R.string.theme),
@@ -63,17 +60,11 @@ fun SettingsScreen(
                     vm.update { vm.prefs.theme.update(it) }
                 }
             )
-
         }
 
         SettingsSection(
             title = stringResource(R.string.repositories)
         ) {
-
-            // One row per repository: what it is called, its cloud button and
-            // the gear that leads to everything that belongs to it alone.
-            // Tapping the row itself is switching to it, which is the only way
-            // there is — the note list shows one repository and never two.
             val repos by vm.repos.collectAsStateWithLifecycle()
 
             repos.forEach { repository ->
@@ -158,18 +149,6 @@ fun SettingsScreen(
     }
 }
 
-/**
- * One repository in the settings: its name, where it is, and the two things
- * there are to do to it without leaving this screen.
- *
- * The cloud is the same button the note list carries, saying the same things
- * about this repository — how its last sync went, and whether it holds anything
- * the remote has not been told about. Tapping the row is switching to it.
- *
- * @param isActive whether this is the repository being looked at. Its path is
- * shown either way; what marks it is the word under the name, because a tick
- * beside a row that is also a button reads as something to press.
- */
 @Composable
 private fun RepositoryRow(
     repo: RepoSession,

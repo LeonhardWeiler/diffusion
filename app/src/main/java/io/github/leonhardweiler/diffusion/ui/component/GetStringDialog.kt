@@ -32,7 +32,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
-
 private const val TAG = "GetStringDialog"
 
 @Composable
@@ -46,9 +45,7 @@ fun GetStringDialog(
     keyboardType: KeyboardType = KeyboardType.Text,
     onValidation: (String) -> Unit,
 ) {
-
     BaseDialog(expanded = expanded) {
-
         val focusRequester = remember { FocusRequester() }
 
         LaunchedEffect(null) {
@@ -65,7 +62,6 @@ fun GetStringDialog(
         }
 
         var passwordVisible by rememberSaveable { mutableStateOf(false) }
-
 
         OutlinedTextField(
             modifier = Modifier

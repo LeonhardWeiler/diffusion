@@ -1,18 +1,5 @@
 package io.github.leonhardweiler.diffusion.data.repo
 
-/**
- * Everything the app knows about one repository without opening it.
- *
- * There is no display name. A repository is a folder, and what that folder is
- * called is the one name the user already chose for it — a second one, typed in
- * the settings, would be a thing to keep in step with a directory nothing here
- * can rename.
- *
- * @param sshKeyId which of the stored keys this repository authenticates with,
- * empty for one that has no remote to authenticate against. The key itself lives
- * in [SshKeyStore], because two repositories on the same host are usually two
- * repositories with one deploy key.
- */
 data class RepoConfig(
     val id: String,
     val path: String,
@@ -22,17 +9,8 @@ data class RepoConfig(
     val authorEmail: String = "",
     val syncOnOpenAndClose: Boolean = true,
 ) {
-
-    /** The folder the repository is in, which is what a row of the list says. */
     val name: String get() = repoNameOf(path)
 }
 
-/**
- * What a repository is called: the folder it is in.
- *
- * There is no name to type anywhere, so this is the whole of it — and a path
- * that is nothing but slashes is still worth showing as itself rather than as an
- * empty row.
- */
 fun repoNameOf(path: String): String =
     path.trimEnd('/').substringAfterLast('/').ifEmpty { path }

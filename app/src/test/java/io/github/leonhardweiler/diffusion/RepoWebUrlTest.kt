@@ -6,7 +6,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class RepoWebUrlTest {
-
     @Test
     fun the_scp_form_is_the_one_a_provider_offers() {
         assertEquals(
@@ -50,9 +49,7 @@ class RepoWebUrlTest {
     @Test
     fun what_has_no_repository_behind_it_has_no_page() {
         assertNull(repoWebUrl(""))
-        // a folder on the device
         assertNull(repoWebUrl("/storage/emulated/0/notes"))
-        // a host and nothing else
         assertNull(repoWebUrl("git@github.com:"))
         assertNull(repoWebUrl("ssh://git@github.com/"))
     }

@@ -5,8 +5,6 @@ import io.github.leonhardweiler.diffusion.helper.NameValidation
 import kotlin.test.Test
 
 class PlatformTest {
-
-
     @Test
     fun name() {
         assert(NameValidation.check("a"))
@@ -24,5 +22,4 @@ class PlatformTest {
 
         assert(!NameValidation.check("aaf\nef"))
     }
-
 }

@@ -10,10 +10,6 @@ import io.github.leonhardweiler.diffusion.ui.destination.SettingsDestination
 import io.github.leonhardweiler.diffusion.ui.utils.slide
 import io.github.leonhardweiler.diffusion.ui.viewmodel.SettingsViewModel
 
-
-// https://github.com/ReVanced/revanced-manager-compose/blob/dev/app/src/main/java/app/revanced/manager/ui/screen/settings/AboutSettingsScreen.kt
-// https://github.com/ReVanced/revanced-manager-compose/blob/dev/app/src/main/java/app/revanced/manager/ui/screen/settings/LicensesScreen.kt
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsNav(
@@ -22,7 +18,6 @@ fun SettingsNav(
     onAddRepo: () -> Unit,
     onRepoChanged: () -> Unit,
 ) {
-
     val backstack = rememberBackstack(destination)
 
     val vm: SettingsViewModel = viewModel()
@@ -33,7 +28,6 @@ fun SettingsNav(
         transition = { _, _, wentBack -> slide(backWard = wentBack) },
     ) {
         when (it) {
-
             SettingsDestination.Logs -> {
                 LogsScreen(
                     onBackClick = { backstack.pop() },
@@ -52,9 +46,6 @@ fun SettingsNav(
             }
 
             is SettingsDestination.Repo -> {
-                // A repository that is not there anymore is one this screen has
-                // nothing to say about: the row it was reached from is gone, so
-                // the way back is the only thing left.
                 val repo = vm.repoById(it.repoId)
 
                 if (repo == null) {
@@ -63,10 +54,6 @@ fun SettingsNav(
                     RepoSettingsScreen(
                         repo = repo,
                         onBackClick = { backstack.pop() },
-                        // Letting go of a repository that was not the one being
-                        // looked at changes nothing but this list; letting go of
-                        // the one that was leaves the whole app standing on
-                        // another repository, or on the setup.
                         onRemoved = { wasShown ->
                             if (wasShown) onRepoChanged() else backstack.pop()
                         },
@@ -77,5 +64,4 @@ fun SettingsNav(
         }
     }
 }
-
 
