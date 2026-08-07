@@ -6,6 +6,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import io.github.leonhardweiler.diffusion.R
+import io.github.leonhardweiler.diffusion.data.repo.StoredSshKey
+import io.github.leonhardweiler.diffusion.helper.sshKeyLabel
 import io.github.leonhardweiler.diffusion.ui.component.AppPage
 import io.github.leonhardweiler.diffusion.ui.component.SetupButton
 import io.github.leonhardweiler.diffusion.ui.component.SetupLine
@@ -17,9 +19,9 @@ fun SelectGenerateNewSshKeysScreen(
     onBackClick: () -> Unit,
     onGenerate: () -> Unit,
     onCustom: () -> Unit,
-    /** Whether there is a pair in the store to be offered at all. */
-    hasStoredKey: Boolean = false,
-    onUseStored: () -> Unit = {},
+    /** Every pair in the store, since any of them may be the right one. */
+    storedKeys: List<StoredSshKey> = emptyList(),
+    onUseStored: (StoredSshKey) -> Unit = {},
 ) {
 
     AppPage(
@@ -33,22 +35,31 @@ fun SelectGenerateNewSshKeysScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
-            SetupLine(text = "") {
-
-                // First, and only when there is one. A key already on the device
-                // is one the repository probably already trusts, and taking it
-                // costs no further deploy key — which is what both of the other
-                // ways out of this screen do.
-                //
-                // Its fingerprint stood under the button and said nothing: the
-                // key itself, and what to do with it, is on the screen the
-                // button leads to.
-                if (hasStoredKey) {
-                    SetupButton(
-                        onClick = onUseStored,
-                        text = stringResource(R.string.use_stored_key)
-                    )
+            // First, and one button each. A key already on the device is one
+            // some repository already got a deploy key for, and taking it again
+            // costs the remote nothing — which is what both of the other ways
+            // out of this screen do.
+            //
+            // Named by its fingerprint, in the form every host shows beside a
+            // deploy key: with several keys there is a right one, and a row of
+            // identical buttons is no way to find it. There was one button here
+            // saying "Use stored key", back when the app held one key because it
+            // held one repository.
+            if (storedKeys.isNotEmpty()) {
+                SetupLine(
+                    text = stringResource(R.string.keys_on_this_device),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    storedKeys.forEach { key ->
+                        SetupButton(
+                            onClick = { onUseStored(key) },
+                            text = sshKeyLabel(key.publicKey)
+                        )
+                    }
                 }
+            }
+
+            SetupLine(text = "") {
 
                 SetupButton(
                     onClick = onGenerate,
@@ -72,7 +83,14 @@ private fun SelectGenerateNewSshKeysScreenPreview() {
         onBackClick = {},
         onGenerate = {},
         onCustom = {},
-        hasStoredKey = true,
+        storedKeys = listOf(
+            StoredSshKey(
+                id = "a",
+                publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIexample",
+                privateKey = "",
+                passphrase = null,
+            )
+        ),
         onUseStored = {},
     )
 }

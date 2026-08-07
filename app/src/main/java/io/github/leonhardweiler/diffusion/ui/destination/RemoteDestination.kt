@@ -21,14 +21,15 @@ sealed interface RemoteDestination : Parcelable {
 
 
     /**
-     * @param useStored show the pair the app already holds instead of making a
-     * new one. The screen is the same either way — copy the key, add it as a
-     * deploy key, clone — only the first step has usually happened before.
+     * @param storedKeyId which of the pairs the app already holds to show,
+     * instead of making a new one. The screen is the same either way — copy the
+     * key, add it as a deploy key, clone — only the first step has usually
+     * happened before.
      */
     @Parcelize
     data class GenerateNewKeys(
         val url: String,
-        val useStored: Boolean = false,
+        val storedKeyId: String? = null,
     ) : RemoteDestination
 
     @Parcelize

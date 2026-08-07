@@ -63,7 +63,7 @@ fun RemoteScreen(
     }
 
     val initState = vm.initState.collectAsState().value
-    val storedSshKey = vm.storedSshKeys.collectAsState().value.firstOrNull()?.cred()
+    val storedSshKeys = vm.storedSshKeys.collectAsState().value
 
     NavHost(
         backstack = backstack,
@@ -80,12 +80,12 @@ fun RemoteScreen(
 
             is SelectGenerateNewSshKeys -> SelectGenerateNewSshKeysScreen(
                 onBackClick = { back() },
-                hasStoredKey = storedSshKey != null,
-                onUseStored = {
+                storedKeys = storedSshKeys,
+                onUseStored = { key ->
                     backstack.navigate(
                         GenerateNewKeys(
                             url = remoteDestination.url,
-                            useStored = true
+                            storedKeyId = key.id
                         )
                     )
                 },
@@ -112,7 +112,9 @@ fun RemoteScreen(
                 alreadyOnDevice = alreadyOnDevice,
                 generateSshKeys = ::generateSshKeys,
                 cloneWith = { cred -> clone(remoteDestination.url, cred) },
-                storedKey = storedSshKey.takeIf { remoteDestination.useStored },
+                storedKey = remoteDestination.storedKeyId
+                    ?.let { id -> storedSshKeys.firstOrNull { it.id == id } }
+                    ?.cred(),
             )
 
             is RemoteDestination.LoadKeysFromDevice -> LoadKeysFromDeviceScreen(

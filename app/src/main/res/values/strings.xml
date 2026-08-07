@@ -153,7 +153,7 @@
     <string name="clone_failed_detail">What git said</string>
     <string name="we_need_ssh_keys_to_authenticate">Need SSH keys to authenticate</string>
     <string name="generate_new_keys">Generate new keys</string>
-    <string name="use_stored_key">Use the key already on this device</string>
+    <string name="keys_on_this_device">Keys already on this device</string>
     <string name="ssh_keys_stored_title">This key is already on this device. If the repository knows it, cloning works straight away.</string>
     <string name="custom_ssh_keys">Use custom SSH keys</string>
     <string name="loading">Loading…</string>
