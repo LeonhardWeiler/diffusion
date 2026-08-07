@@ -24,6 +24,12 @@ fun generateUid() = Random.nextInt()
  *
  * The root is one of these too, with the empty string for a path — everything
  * else is measured from it.
+ *
+ * Equal to another one when it says the same thing, for the reason a
+ * [io.github.leonhardweiler.diffusion.ui.model.NoteHeader] is: a renamed folder
+ * keeps its id, and a row that compares equal to the one it replaces never
+ * reaches the screen. Which folders are marked is asked of the id
+ * ([io.github.leonhardweiler.diffusion.ui.model.holds]).
  */
 data class NoteFolder(
     val relativePath: String,
@@ -56,14 +62,6 @@ data class NoteFolder(
     fun toFolderFs(rootPath: String): NodeFs.Folder {
         return NodeFs.Folder.fromPath(rootPath, relativePath)
     }
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other == null || this::class != other::class) return false
-        return id == (other as NoteFolder).id
-    }
-
-    override fun hashCode(): Int = id
 }
 
 /**

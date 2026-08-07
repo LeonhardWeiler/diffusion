@@ -24,6 +24,18 @@ data class FolderModel(
  * a name and a date, and a note that is only listed should not carry its whole
  * text through every loaded page. The editor reads the note itself when it
  * opens one.
+ *
+ * **Two of these are equal when they say the same thing**, which is what a data
+ * class means and what the list depends on. It used to compare by [id] alone —
+ * a note that is renamed or written again keeps its id, so the row that
+ * replaced it was equal to the one before it, the [kotlinx.coroutines.flow.StateFlow]
+ * of list rows dropped it as an unchanged value, and the screen kept the old
+ * name and the old date. Renaming `testfile` to `testfile.md` left a row that
+ * still said `testfile` and answered a tap with "this note is no longer there".
+ *
+ * The id is still what a note *is* — it survives a rename, keys the rows and
+ * says which of them are marked (see [holds]) — it is just not what two rows
+ * are compared by.
  */
 data class NoteHeader(
     val relativePath: String,
@@ -43,15 +55,28 @@ data class NoteHeader(
      * editor. The answer is remembered per extension, see [extensionType].
      */
     fun isNote(): Boolean = isExtensionSupported(extension())
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other == null || this::class != other::class) return false
-        return id == (other as NoteHeader).id
-    }
-
-    override fun hashCode(): Int = id
 }
+
+/**
+ * Whether this note is one of the marked ones.
+ *
+ * By id, not by value: the selection is about which notes were tapped, and a row
+ * is handed a new [NoteHeader] whenever anything about the note changes — a save
+ * moves its date, a rename its path. Compared by value, a note that was written
+ * while it stood marked would have lost its mark.
+ */
+fun List<NoteHeader>.holds(note: NoteHeader): Boolean = any { it.id == note.id }
+
+/** The selection without that note, found the way [holds] finds it. */
+fun List<NoteHeader>.without(note: NoteHeader): List<NoteHeader> =
+    filterNot { it.id == note.id }
+
+/** [holds], for the folders of a selection. */
+fun List<NoteFolder>.holds(folder: NoteFolder): Boolean = any { it.id == folder.id }
+
+/** [without], for the folders of a selection. */
+fun List<NoteFolder>.without(folder: NoteFolder): List<NoteFolder> =
+    filterNot { it.id == folder.id }
 
 /**
  * A note plus the one thing the row needs that the note itself cannot say:

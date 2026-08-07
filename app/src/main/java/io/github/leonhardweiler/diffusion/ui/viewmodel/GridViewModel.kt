@@ -24,6 +24,7 @@ import io.github.leonhardweiler.diffusion.ui.model.FileExtension
 import io.github.leonhardweiler.diffusion.ui.model.GridItem
 import io.github.leonhardweiler.diffusion.ui.model.GridNote
 import io.github.leonhardweiler.diffusion.ui.model.NoteHeader
+import io.github.leonhardweiler.diffusion.ui.model.without
 import io.github.leonhardweiler.diffusion.helper.getParentPath
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -163,7 +164,9 @@ class GridViewModel : ViewModel() {
         if (add) {
             selectedNotes.value.plus(note)
         } else {
-            selectedNotes.value.minus(note)
+            // by id, not by value: what is held here is the note as it was when
+            // it was tapped, and a save since then has moved its date
+            selectedNotes.value.without(note)
         }.let {
             _selectedNotes.emit(it)
         }
@@ -173,7 +176,7 @@ class GridViewModel : ViewModel() {
         if (add) {
             selectedFolders.value.plus(folder)
         } else {
-            selectedFolders.value.minus(folder)
+            selectedFolders.value.without(folder)
         }.let {
             _selectedFolders.emit(it)
         }

@@ -8,6 +8,7 @@ import io.github.leonhardweiler.diffusion.data.index.notesIn
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 /**
@@ -182,6 +183,63 @@ class NoteIndexTest {
         assertTrue(index.hasNote("work/notes.md"))
         assertEquals(before.id, index.state.value.notes.getValue("work/notes.md").id)
         assertEquals("notes.md", index.state.value.notes.getValue("work/notes.md").fileName)
+    }
+
+    /**
+     * The list is a [kotlinx.coroutines.flow.StateFlow], which drops a value
+     * equal to the one before it. A row that compares equal to the one it
+     * replaces therefore never reaches the screen — which is what renaming
+     * `testfile` to `testfile.md` used to look like: the row went on saying
+     * `testfile` and answered a tap with "this note is no longer there".
+     */
+    @Test
+    fun a_renamed_note_is_a_row_that_changed() {
+        val index = indexOf("testfile")
+        val before = index.state.value.notesIn("")
+        val row = index.state.value.notes.getValue("testfile")
+
+        index.moveNote(
+            oldRelativePath = "testfile",
+            note = Note(
+                relativePath = "testfile.md",
+                content = "",
+                lastModifiedTimeMillis = row.lastModifiedTimeMillis,
+                // the id survives a rename, which is what used to hide the change
+                id = row.id,
+            )
+        )
+
+        assertNotEquals(before, index.state.value.notesIn(""))
+    }
+
+    /** The same for a save, which is how a new date reaches the list. */
+    @Test
+    fun a_note_written_again_is_a_row_that_changed() {
+        val index = indexOf("notes.md")
+        val before = index.state.value.notesIn("")
+        val row = index.state.value.notes.getValue("notes.md")
+
+        index.putNote(
+            Note(
+                relativePath = "notes.md",
+                content = "",
+                lastModifiedTimeMillis = row.lastModifiedTimeMillis + 5_000L,
+                id = row.id,
+            )
+        )
+
+        assertNotEquals(before, index.state.value.notesIn(""))
+    }
+
+    /** And for a folder, whose row carries its name and nothing else. */
+    @Test
+    fun a_renamed_folder_is_a_row_that_changed() {
+        val index = indexOf("work/b.md")
+        val before = index.state.value.foldersIn("")
+
+        index.moveFolder(index.state.value.folders.getValue("work"), "archive")
+
+        assertNotEquals(before, index.state.value.foldersIn(""))
     }
 
     @Test

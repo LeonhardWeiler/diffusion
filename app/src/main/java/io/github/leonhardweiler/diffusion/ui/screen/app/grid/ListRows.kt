@@ -42,6 +42,7 @@ import io.github.leonhardweiler.diffusion.ui.component.CustomDropDownModel
 import io.github.leonhardweiler.diffusion.ui.model.FolderModel
 import io.github.leonhardweiler.diffusion.ui.model.GridNote
 import io.github.leonhardweiler.diffusion.ui.model.NoteHeader
+import io.github.leonhardweiler.diffusion.ui.model.holds
 import io.github.leonhardweiler.diffusion.ui.viewmodel.GridViewModel
 import java.text.DateFormat
 import java.util.Date
@@ -265,7 +266,7 @@ internal fun NoteListRow(
     // Asked of the selection here rather than folded into the row by the view
     // model: a PagingData may be collected once, and combining the selection
     // into the paged list re-wrapped a stream that had already been read.
-    val selected = selectedNotes.contains(gridNote.note)
+    val selected = selectedNotes.holds(gridNote.note)
 
     val formattedDate = remember(gridNote.note.lastModifiedTimeMillis) {
         dateFormat.format(Date(gridNote.note.lastModifiedTimeMillis))

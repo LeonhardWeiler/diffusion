@@ -14,6 +14,7 @@ import io.github.leonhardweiler.diffusion.data.index.Note
 import io.github.leonhardweiler.diffusion.data.index.NoteFolder
 import io.github.leonhardweiler.diffusion.ui.model.GridItem
 import io.github.leonhardweiler.diffusion.ui.model.NoteHeader
+import io.github.leonhardweiler.diffusion.ui.model.holds
 import io.github.leonhardweiler.diffusion.ui.viewmodel.GridViewModel
 import java.text.DateFormat
 
@@ -64,7 +65,7 @@ internal fun NoteListView(
 
                 is GridItem.Folder -> FolderRow(
                     folder = gridItem.folder,
-                    selected = selectedFolders.contains(gridItem.folder.noteFolder),
+                    selected = selectedFolders.holds(gridItem.folder.noteFolder),
                     isSelecting = isSelecting,
                     onClick = { onFolderClick(gridItem.folder.noteFolder.relativePath) },
                     onSelect = { add -> vm.selectFolder(gridItem.folder.noteFolder, add) },
