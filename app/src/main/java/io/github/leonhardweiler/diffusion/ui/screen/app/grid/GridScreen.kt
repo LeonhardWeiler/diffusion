@@ -37,6 +37,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.leonhardweiler.diffusion.R
 import io.github.leonhardweiler.diffusion.data.index.Note
@@ -75,6 +77,17 @@ fun GridScreen(
         BackHandler {
             vm.openFolder(getParentPath(currentFolderPath))
         }
+    }
+
+    // The list keeps the order it was in while somebody is looking at it, so a
+    // note written now shows its new date where it already stood. Leaving the
+    // app is one of the moments it may be put in order again — ON_STOP rather
+    // than ON_START, because coming back from the editor adds this observer to
+    // a lifecycle that is already started, and that dispatches ON_START to it:
+    // the one return that must not reorder anything would have been the one
+    // that did.
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
+        vm.resort()
     }
 
     val searchFocusRequester = remember { FocusRequester() }

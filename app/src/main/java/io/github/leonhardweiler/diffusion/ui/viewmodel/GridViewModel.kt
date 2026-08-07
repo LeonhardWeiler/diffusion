@@ -10,9 +10,11 @@ import io.github.leonhardweiler.diffusion.data.platform.NodeFs
 import io.github.leonhardweiler.diffusion.data.index.Note
 import io.github.leonhardweiler.diffusion.data.index.NoteFolder
 import io.github.leonhardweiler.diffusion.data.index.LIMIT_FILE_SIZE
+import io.github.leonhardweiler.diffusion.data.index.IndexState
 import io.github.leonhardweiler.diffusion.data.index.foldersIn
 import io.github.leonhardweiler.diffusion.data.index.notesIn
 import io.github.leonhardweiler.diffusion.data.index.search
+import io.github.leonhardweiler.diffusion.data.index.sortDatesNow
 import io.github.leonhardweiler.diffusion.helper.NameValidation
 import io.github.leonhardweiler.diffusion.helper.PathProblem
 import io.github.leonhardweiler.diffusion.helper.ResolvedPath
@@ -33,7 +35,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -102,23 +106,65 @@ class GridViewModel : ViewModel() {
             .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
 
 
+    /**
+     * The dates the list is ordered by, which are the dates the rows carried
+     * when it was last put in order. See [sortDatesNow] and [resort].
+     */
+    private val _sortDates: MutableStateFlow<Map<Int, Long>> = MutableStateFlow(emptyMap())
+
     init {
         Log.d(TAG, "init")
+
+        // A read of the whole repository is a moment the list may be put in
+        // order again: the start, a pull, the reload row of the settings. The
+        // first value that arrives here is the read the app started with.
+        viewModelScope.launch {
+            index.state
+                .map { it.reads }
+                .distinctUntilChanged()
+                .collect { resort() }
+        }
+    }
+
+    /**
+     * Puts the list in order again, and only ever at a moment nobody can see it
+     * happen — a folder opened or left, a search begun or ended, the app closed,
+     * the repository read again.
+     *
+     * A note that is written moves to the top of its folder, and doing that
+     * while the list is on screen means the row somebody came back to has gone
+     * somewhere else. So a write changes the date a row shows and leaves the row
+     * where it is until one of those moments, which is what this is.
+     */
+    fun resort() {
+        _sortDates.value = index.state.value.sortDatesNow()
     }
 
     fun search(query: String) {
+        // Beginning a search and ending one both replace the whole list, so
+        // nobody can tell the rows that stayed from the ones that moved. Not on
+        // every letter: what is typed after the first one only narrows what is
+        // already there, and that is a list being looked at like any other.
+        if (query.isEmpty() != _query.value.isEmpty()) resort()
+
         viewModelScope.launch {
             _query.emit(query)
         }
     }
 
     fun clearQuery() {
+        if (_query.value.isNotEmpty()) resort()
+
         viewModelScope.launch {
             _query.emit("")
         }
     }
 
     fun openFolder(relativePath: String) {
+        // the folder being left is not the folder being opened, so its order is
+        // nothing anybody is about to compare against
+        resort()
+
         viewModelScope.launch {
             _currentNoteFolderRelativePath.emit(relativePath)
         }
@@ -426,13 +472,16 @@ class GridViewModel : ViewModel() {
             index.state,
             currentNoteFolderRelativePath,
             query,
-        ) { state, folderPath, query -> Triple(state, folderPath, query) }
-            .mapLatest { (state, folderPath, query) ->
+            _sortDates,
+        ) { state, folderPath, query, sortDates ->
+            ListInput(state, folderPath, query, sortDates)
+        }
+            .mapLatest { (state, folderPath, query, sortDates) ->
 
                 val notes = if (query.isEmpty()) {
-                    state.notesIn(folderPath)
+                    state.notesIn(folderPath, sortDates)
                 } else {
-                    state.search(folderPath, query)
+                    state.search(folderPath, query, sortDates)
                 }
 
                 // A name that appears once is enough to tell a row by; the
@@ -452,7 +501,8 @@ class GridViewModel : ViewModel() {
                         if (folderPath.isNotEmpty()) {
                             add(GridItem.ParentFolder(getParentPath(folderPath)))
                         }
-                        state.foldersIn(folderPath).forEach { add(GridItem.Folder(it)) }
+                        state.foldersIn(folderPath, sortDates)
+                            .forEach { add(GridItem.Folder(it)) }
                     }
 
                     notes.forEach { note ->
@@ -471,3 +521,14 @@ class GridViewModel : ViewModel() {
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
 }
+
+/**
+ * The four things the list is built from, carried through [Flow.combine] as one
+ * value — Kotlin has a Pair and a Triple and nothing after that.
+ */
+private data class ListInput(
+    val state: IndexState,
+    val folderPath: String,
+    val query: String,
+    val sortDates: Map<Int, Long>,
+)

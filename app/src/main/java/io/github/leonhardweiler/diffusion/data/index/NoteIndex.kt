@@ -34,6 +34,15 @@ data class IndexState(
     val notes: Map<String, NoteHeader> = emptyMap(),
     /** The same, and the root folder — the empty path — is one of them. */
     val folders: Map<String, NoteFolder> = emptyMap(),
+    /**
+     * How often the repository has been read into this index.
+     *
+     * The list is not put in order again while somebody is looking at it (see
+     * [sortDatesNow]), and a read from the files is one of the moments it is —
+     * the start, a pull, the reload row of the settings. A write of this app's
+     * own goes into the rows one at a time and does not move it.
+     */
+    val reads: Int = 0,
 )
 
 /**
@@ -113,7 +122,12 @@ class NoteIndex {
 
         readFolder(rootFs)
 
-        _state.value = IndexState(rootPath = rootPath, notes = notes, folders = folders)
+        _state.value = IndexState(
+            rootPath = rootPath,
+            notes = notes,
+            folders = folders,
+            reads = _state.value.reads + 1,
+        )
 
         Log.i(
             TAG,
@@ -254,15 +268,46 @@ private fun NoteHeader.at(relativePath: String) = NoteHeader(
 )
 
 /**
+ * The dates the list is sorted by as it stands, to be held on to until it may
+ * be put in order again.
+ *
+ * A note shows the date it was last written, and that is not always the date it
+ * stands at. Writing one moves it to the top of its folder, and doing that while
+ * somebody is looking at the list means the row they came back to has moved
+ * somewhere else — so the row is redrawn with its new date and left where it is,
+ * and the order is only taken again at a moment nobody can see it happen: a
+ * folder opened or left, a search begun or ended, the app closed, and a read
+ * from the files (see [IndexState.reads]).
+ *
+ * By id rather than by path, because that is what a note is: one that was
+ * renamed keeps the place it stood in. A note this snapshot has never seen —
+ * just created, just pulled — has no frozen date and stands where its own date
+ * puts it, which is at the top.
+ */
+fun IndexState.sortDatesNow(): Map<Int, Long> =
+    notes.values.associate { it.id to it.lastModifiedTimeMillis }
+
+/** Where a row stands, which is not always the date it shows. */
+private fun NoteHeader.sortDate(sortDates: Map<Int, Long>): Long =
+    sortDates[id] ?: lastModifiedTimeMillis
+
+/**
  * The notes of one folder, the most recently written first.
  *
  * Not recursive: a folder is a row of its own and opening it is what shows what
  * is inside. Only the search reaches further.
+ *
+ * @param sortDates what to order by instead of the dates the rows carry, see
+ * [sortDatesNow]. Empty for everything that wants the order the files are in
+ * rather than the order they are being shown in.
  */
-fun IndexState.notesIn(folderPath: String): List<NoteHeader> =
+fun IndexState.notesIn(
+    folderPath: String,
+    sortDates: Map<Int, Long> = emptyMap()
+): List<NoteHeader> =
     notes.values
         .filter { it.parentPath() == folderPath }
-        .sortedWith(byDate)
+        .sortedWith(byDate(sortDates))
 
 /**
  * The subfolders of one folder, each with how many notes stand under it — its
@@ -271,8 +316,14 @@ fun IndexState.notesIn(folderPath: String): List<NoteHeader> =
  *
  * A folder is where notes are, so the last thing written in it is the only date
  * it has. One with nothing in it has none and goes last.
+ *
+ * @param sortDates see [notesIn]: a folder stands where the notes under it
+ * stand, so it is frozen with them.
  */
-fun IndexState.foldersIn(folderPath: String): List<FolderModel> =
+fun IndexState.foldersIn(
+    folderPath: String,
+    sortDates: Map<Int, Long> = emptyMap()
+): List<FolderModel> =
     folders.values
         .filter { it.relativePath.isNotEmpty() && parentOf(it.relativePath) == folderPath }
         .map { folder ->
@@ -284,7 +335,10 @@ fun IndexState.foldersIn(folderPath: String): List<FolderModel> =
                 if (!note.relativePath.isUnder(folder.relativePath)) return@forEach
 
                 count++
-                newest = maxOf(newest, note.lastModifiedTimeMillis)
+                // where the notes under it stand, not when they were written:
+                // a folder row shows no date, and writing a note in one is not
+                // a reason for the folder to move under a reading eye
+                newest = maxOf(newest, note.sortDate(sortDates))
             }
 
             FolderModel(
@@ -309,13 +363,17 @@ fun IndexState.foldersIn(folderPath: String): List<FolderModel> =
  * is not something to pull into memory for a substring. Suspending on purpose —
  * every keystroke starts this again and the one before it is cancelled.
  */
-suspend fun IndexState.search(folderPath: String, query: String): List<NoteHeader> {
+suspend fun IndexState.search(
+    folderPath: String,
+    query: String,
+    sortDates: Map<Int, Long> = emptyMap()
+): List<NoteHeader> {
     val needle = query.trim()
-    if (needle.isEmpty()) return notesIn(folderPath)
+    if (needle.isEmpty()) return notesIn(folderPath, sortDates)
 
     val under = notes.values
         .filter { folderPath.isEmpty() || it.relativePath.isUnder(folderPath) }
-        .sortedWith(byDate)
+        .sortedWith(byDate(sortDates))
 
     val found = mutableListOf<NoteHeader>()
 
@@ -353,10 +411,12 @@ private fun NoteHeader.holdsText(rootPath: String, needle: String): Boolean {
  * one whose order is only nearly the one expected. A clone dates every file it
  * writes by the commit it came from, so whole folders of them share a minute.
  *
- * The date is the file's mtime, which is what a row shows.
+ * The date is the file's mtime, which is what a row shows — unless [sortDates]
+ * holds another one for it, which is a row that has been written since the list
+ * was last put in order.
  */
-private val byDate =
-    compareByDescending<NoteHeader> { it.lastModifiedTimeMillis }.thenBy { it.relativePath }
+private fun byDate(sortDates: Map<Int, Long>) =
+    compareByDescending<NoteHeader> { it.sortDate(sortDates) }.thenBy { it.relativePath }
 
 /** The same for a folder, whose date is the last thing written inside it. */
 private val byFolderDate = compareByDescending<FolderModel> { it.lastModifiedTimeMillis }
