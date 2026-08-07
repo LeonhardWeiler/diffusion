@@ -132,8 +132,14 @@
     nachgezogen</strong>: sie war ganz Bedienung — Sortierung nach Änderungszeit, eine
     Notiz wird angelegt statt geöffnet, keine Standard-Endung, Lesen oder Schreiben pro
     Notiz — und hat keinen offenen Befund berührt; was daran auf ein Gerät gehört, steht
-    unten in dieser Liste, und PERF-3 ist um die endungslosen Dateien gewachsen
-  </p>
+    unten in dieser Liste, und PERF-3 ist um die endungslosen Dateien gewachsen ·
+    <strong>nach der neunten Liste nachgezogen</strong>: sie war eine einzige Aufgabe
+    über das ganze Repository — toter Code raus, die erzählenden Kommentare raus (2845
+    Kommentarzeilen in <code>app/src/main</code> sind 167, die Begründungen stehen in
+    <code>CLAUDE.md</code>), und die großen Dateien nach Gegenstand geteilt: der
+    Sync-Pfad steht jetzt als <code>RepoSync</code> neben dem <code>StorageManager</code>,
+    was TEST-1 nicht erledigt, aber näher an eine Prüfung rückt
+</p>
 </header>
 
 <div class="counters">
@@ -146,7 +152,7 @@
 
 <div class="note">
   <strong>Gates.</strong> <code>./gradlew assembleDebug lintDebug testDebugUnitTest</code> ist grün:
-  <strong>132 Unit-Tests</strong> in 16 Klassen. Lint meldet <strong>fünf Warnungen und keinen
+  <strong>138 Unit-Tests</strong> in 19 Klassen. Lint meldet <strong>fünf Warnungen und keinen
   Fehler</strong> — drei betreffen neuere Versionen bewusst gepinnter Abhängigkeiten, zwei
   (<code>TrustAllX509TrustManager</code>) stehen in JGits HTTPS-Teil, für den diese App keinen
   Transport baut; <code>abortOnError = true</code> bleibt scharf.
@@ -218,19 +224,23 @@
 
 <div class="finding low" id="test-1">
   <div class="fhead"><span class="fid">TEST-1</span><h3>Der Schreibpfad bleibt ungetestet</h3><span class="tag t-low">niedrig</span></div>
-  <div class="where">app/src/test (138 Tests, 15 Klassen) · manager/StorageManager.kt · manager/git/</div>
+  <div class="where">app/src/test (138 Tests, 19 Klassen) · manager/StorageManager.kt · manager/RepoSync.kt</div>
   <p><strong>Von 99 auf 138 seit der siebten Liste.</strong> Zuletzt kam
   <code>SshKeyLabelTest</code> dazu (5 Fälle): wie ein gespeicherter Schlüssel heißt, wenn
   das Setup mehrere davon zur Auswahl stellt — Fingerabdruck in der Form, die jeder Host
   neben einem Deploy-Key zeigt. Davor sind
-  <code>GitLayerTest</code> (18 Fälle gegen echte lokale Repositories: Commit-Nachricht,
+  <code>GitCommitTest</code>, <code>GitRemoteTest</code> und <code>GitHistoryTest</code>
+  (zusammen 18 Fälle gegen echte lokale Repositories über einer gemeinsamen
+  <code>GitFixture</code>: Commit-Nachricht,
   Fast-Forward, Merge, Konflikt samt Auflösung, abgewiesener Push, Datieren, Öffnen und Klonen),
   <code>SshKeysTest</code> (6, der erzeugte Schlüssel wird von jsch zurückgelesen) und
   <code>CloneUrlTest</code> (7, was die alten Rust-Tests zu <code>parse_url</code> geprüft
   haben). Damit ist der Git-Pfad zum ersten Mal ohne zweite Toolchain belegt — was daran noch
   fehlt, ist der SSH-Transport, und der braucht ein Gerät.</p>
 
-  <p>Davor: von 57 über 88 auf 99. Neu war <code>NoteIndexTest</code> (8 Fälle) — das, was vorher SQL
+  <p>Davor: von 57 über 88 auf 99. Neu waren die Index-Tests (inzwischen
+  <code>IndexListTest</code>, <code>IndexMoveTest</code> und <code>IndexOrderTest</code>
+  über einer <code>IndexFixture</code>) — das, was vorher SQL
   beantwortet hat und was jetzt Funktionen über einen <code>IndexState</code> sind: welche
   Notizen zu einem Ordner gehören und in welcher Reihenfolge, was ein Ordner-Verschieben mit
   den Pfaden darunter macht, was ein Löschen mitnimmt, und dass ein <code>workshop</code> nicht
@@ -243,11 +253,14 @@
   arbeitet auf einem <code>ScrollState</code>, dessen Viewport nur das Layout setzen kann —
   also sind die beiden Fragen, die er beantwortet, jetzt eigene Funktionen und der Test
   braucht keinen Bildschirm.</p>
-  <p>Ungetestet bleibt der <code>StorageManager</code> und mit ihm der Sync-Pfad. Der Grund ist
-  unverändert <code>MyApp.appModule</code>: die Klasse bekommt zwar ihre
-  <code>RepoSession</code> inzwischen übergeben, holt sich aber weiterhin
-  <code>uiHelper</code>, <code>networkMonitor</code> und <code>appScope</code> aus einem
-  globalen Service-Locator, also ist sie ohne laufende Anwendung nicht zu bauen. Ungetestet
+  <p>Ungetestet bleiben der <code>StorageManager</code> und der Sync-Pfad, der inzwischen
+  neben ihm in <code>RepoSync</code> steht. Der Grund ist unverändert
+  <code>MyApp.appModule</code>: beide bekommen ihre <code>RepoSession</code> übergeben,
+  holen sich aber weiterhin <code>uiHelper</code>, <code>appScope</code> beziehungsweise
+  <code>networkMonitor</code> aus einem globalen Service-Locator, also sind sie ohne
+  laufende Anwendung nicht zu bauen. Die Trennung hat den Weg dorthin allerdings verkürzt:
+  <code>RepoSync</code> bekommt schon jetzt alles, was es vom Schreibpfad braucht, als zwei
+  übergebene Aufrufe. Ungetestet
   ist mit ihm der neue <code>RepoStore</code>: welche Vorkonfiguration eines einzelnen
   Repositories in die Liste übernommen wird, hängt an DataStore und damit an einem Gerät. Ebenfalls
   ungetestet ist <code>ui/navigation/NavHost.kt</code> — dessen heikler Teil, wann ein
@@ -259,10 +272,12 @@
   des Room-DAO-Tests keine mehr. <code>NodeFs</code> arbeitet auf <code>java.nio</code> und
   liefe auch auf der JVM, ein Test mit <code>@TempDir</code> wäre also möglich.</p>
   <div class="rec"><strong>Empfehlung</strong>
-  <p><code>StorageManager</code> seine Abhängigkeiten übergeben statt sie sich holen zu lassen.
-  Das ist kein DI-Framework, das sind sechs Konstruktorparameter — und danach ist der
-  Sync-Pfad mit einem Fake-<code>GitManager</code> prüfbar, einschließlich der Reihenfolge
-  „Dateien vor Zeilen“ und des einen Wiederholungsversuchs bei fehlendem Netz. Aufwand: M.</p>
+  <p><code>RepoSync</code> und <code>StorageManager</code> ihre Abhängigkeiten übergeben
+  statt sie sich holen zu lassen. Das ist kein DI-Framework, das sind drei beziehungsweise
+  vier Konstruktorparameter — und danach ist der Sync-Pfad mit einem
+  Fake-<code>GitManager</code> prüfbar, einschließlich der Reihenfolge „Dateien vor Zeilen“
+  und des einen Wiederholungsversuchs bei fehlendem Netz. Aufwand: S für
+  <code>RepoSync</code>, M für beides.</p>
   <p>Für <code>NavHost</code>: <code>androidx.compose.ui:ui-test-junit4</code> als
   <code>testImplementation</code> mit Robolectric wäre der Weg, ein Ziel vom Backstack zu
   nehmen und nachzusehen, dass sein ViewModel danach geleert ist. Eine Abhängigkeit mehr für
@@ -574,7 +589,7 @@ es schiefgehen kann:</p>
   <li><strong>Der ganze Weg durch die Einrichtung</strong>, jetzt ohne Titelleiste und mit dem
   dritten Schlüsselknopf.</li>
   <li><strong>Ein Merge-Konflikt von Anfang bis Ende.</strong> Der Ablauf selbst läuft seit der
-  siebten Liste in <code>GitLayerTest</code> gegen echte Repositories; auf dem Gerät zu sehen
+  siebten Liste in <code>GitRemoteTest</code> gegen echte Repositories; auf dem Gerät zu sehen
   ist, was die App daraus macht.</li>
   <li><strong>Der SSH-Transport, einmal ganz.</strong> Klonen, Pull und Push gegen eine echte
   Gegenstelle, mit einem erzeugten und mit einem geladenen Schlüssel — das ist der eine Teil der
