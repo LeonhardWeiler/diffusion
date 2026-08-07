@@ -100,6 +100,17 @@ a new one, so whoever is drawing a list is drawing one that agrees with itself.
 constructor defaults, so anything that builds one by hand has to leave them
 agreeing (`ModelTest`).
 
+**A row is equal to another one when it says the same thing.** `NoteHeader` and
+`NoteFolder` are data classes and nothing more: they compared themselves by `id`
+alone, and an id survives a rename and a save — so the list of rows the grid
+built was equal to the one before it, the `StateFlow` behind `gridItems` dropped
+it as an unchanged value, and the screen kept the old name and the old date.
+Renaming `testfile` to `testfile.md` left a row still saying `testfile` that
+answered a tap with "this note is no longer there". The id is still what a note
+*is* — it keys the rows, survives a rename and is what the selection asks about
+(`holds`/`without` in `ui/model/Grid.kt`, never `contains`/`minus`) — it is just
+not what two rows are compared by.
+
 Sorting is by date, newest first, and there is nothing to choose. A folder has
 no date of its own and takes the newest note under it, however deep — which is
 what puts the folder somebody is writing in above the ones they are not, and a
@@ -110,6 +121,24 @@ the same way. Folders still come before notes, which is the order
 `GridViewModel.gridItems` builds the rows in. `notesIn`, `foldersIn` and
 `search` are functions over an `IndexState` and are what `NoteIndexTest` pins
 down.
+
+**The date a row shows is current; the place it stands is not.** A save reaches
+the list the moment it is written — that is the point of writing the row rather
+than waiting for a sync — but it must not take the row with it, or the note
+somebody is about to tap jumps to the top of the folder while they look at it.
+So the three functions above take `sortDates`, a snapshot of the dates as they
+were when the list was last put in order (`IndexState.sortDatesNow`, by note id,
+so a rename keeps its place), and `GridViewModel` holds the one in force. A note
+the snapshot has never seen — just created, just pulled — has no frozen date and
+stands where its own puts it, which is at the top. The list is put in order again
+only where nobody can see it happen (`GridViewModel.resort`): a folder opened or
+left, a search begun or ended (not on every letter), the app stopped — `ON_STOP`
+in `GridScreen` rather than `ON_START`, because returning from the editor adds
+the observer to a lifecycle that is already started and that dispatches
+`ON_START` to it, which is the one return that must not reorder anything — and
+every read of the whole repository: the start, a pull, the reload row of the
+settings. `IndexState.reads` counts those and is the only thing that says a read
+happened, since a write of this app's own goes into the rows one at a time.
 
 `StorageManager` holds a `Mutex` around every mutation and is the only thing
 that calls into the index; `GitManager` holds another around every JGit call.
@@ -165,7 +194,7 @@ The list of extensions treated as notes lives in `app/src/main/resources/support
 
 ### Navigation & UI
 
-Navigation is this repository's own (`ui/navigation/NavHost.kt`, ~160 lines): a `Backstack` of `@Parcelize` destinations in `rememberSaveable`, an `AnimatedContent` over its top, and a `BackHandler`. Each entry gets **its own `ViewModelStore`** — without that one store would serve every screen and the second note opened would be handed the first note's `TextVM`, because the factory is only asked when there is none — and its own `SaveableStateProvider`, which is what keeps the note list where it was scrolled. A store is cleared once its destination is neither on the backstack nor still on screen, not when the backstack changes: both screens are on the way through the animation then, and clearing the outgoing one would run `TextVM.onCleared` (which writes the note) while it is still drawn. Two things are easy to break here: the `BackHandler` must be **off** when there is nothing to pop and no `onBack`, or back stops closing the app; and of two back handlers the one composed *last* wins, which is why the one refusing to abandon a running clone sits below the `NavHost` in `RemoteNav`. Destinations live in `ui/destination/`: top-level `Destination.Setup` vs `Destination.App`, then `AppDestination.{Grid, Edit, Settings}` — `Grid` is the note list, the staggered grid it was named after is gone. Folders are rows in that list, and `GridViewModel.currentNoteFolderRelativePath` is what `notesIn` filters on, so the list is never recursive; only the search is. `GridViewModel.gridItems` is one `StateFlow<List<GridItem>>` built from three things — the index, the folder being looked at and the query — with the `..` row and the folder rows at the front and the notes after them. It was a paged query with a second flow of folder rows folded into it, and that was a crash waiting for the second tap of a multiple selection: a `PagingData` may be collected exactly once, so anything combined in before `cachedIn` handed it a stream that had already been read. Whether a row is selected is asked of `selectedNotes`/`selectedFolders` in the row itself, never folded into `GridNote`. The selection holds folders as well as notes (`selectionSize` is the two together), `selectAll()` marks what the list is currently showing, and deleting it takes each folder with everything inside it — notes that stand in one of those folders are dropped from the list first, so nothing complains about a file that is already gone.
+Navigation is this repository's own (`ui/navigation/NavHost.kt`, ~160 lines): a `Backstack` of `@Parcelize` destinations in `rememberSaveable`, an `AnimatedContent` over its top, and a `BackHandler`. Each entry gets **its own `ViewModelStore`** — without that one store would serve every screen and the second note opened would be handed the first note's `TextVM`, because the factory is only asked when there is none — and its own `SaveableStateProvider`, which is what keeps the note list where it was scrolled. A store is cleared once its destination is neither on the backstack nor still on screen, not when the backstack changes: both screens are on the way through the animation then, and clearing the outgoing one would run `TextVM.onCleared` (which writes the note) while it is still drawn. Two things are easy to break here: the `BackHandler` must be **off** when there is nothing to pop and no `onBack`, or back stops closing the app; and of two back handlers the one composed *last* wins, which is why the one refusing to abandon a running clone sits below the `NavHost` in `RemoteNav`. Destinations live in `ui/destination/`: top-level `Destination.Setup` vs `Destination.App`, then `AppDestination.{Grid, Edit, Settings}` — `Grid` is the note list, the staggered grid it was named after is gone. Folders are rows in that list, and `GridViewModel.currentNoteFolderRelativePath` is what `notesIn` filters on, so the list is never recursive; only the search is. `GridViewModel.gridItems` is one `StateFlow<List<GridItem>>` built from four things — the index, the folder being looked at, the query and the dates the list is ordered by — with the `..` row and the folder rows at the front and the notes after them. It was a paged query with a second flow of folder rows folded into it, and that was a crash waiting for the second tap of a multiple selection: a `PagingData` may be collected exactly once, so anything combined in before `cachedIn` handed it a stream that had already been read. Whether a row is selected is asked of `selectedNotes`/`selectedFolders` in the row itself, never folded into `GridNote`, and asked by id (`holds`), because a row is handed a new `NoteHeader` whenever anything about the note changes. The selection holds folders as well as notes (`selectionSize` is the two together), `selectAll()` marks what the list is currently showing, and deleting it takes each folder with everything inside it — notes that stand in one of those folders are dropped from the list first, so nothing complains about a file that is already gone.
 
 A search shows no folder rows at all (it spans subfolders, so they are not what was asked for) and names its results by their full path.
 
