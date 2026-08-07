@@ -15,8 +15,6 @@ class AppPreferences(
 ) : PreferencesManager(context, "settings") {
 
     companion object {
-        const val DEFAULT_USERNAME = "diffusion"
-
         /**
          * How many notes are remembered as being read rather than written. A
          * repository can hold ten thousand of them, and this is one preference
@@ -60,9 +58,15 @@ class AppPreferences(
     val gitAuthorName = stringPreference("gitAuthorName", "")
     val gitAuthorEmail = stringPreference("gitAuthorEmail", "")
 
+    /**
+     * Who to write the commits as. What is missing is filled in where it
+     * reaches git ([GitAuthor.orFallback]) rather than here — the settings show
+     * these two as they are stored, and "none" is the honest word for a field
+     * nobody has filled in.
+     */
     suspend fun gitAuthor(): GitAuthor {
         return GitAuthor(
-            name = gitAuthorName.get().ifEmpty { DEFAULT_USERNAME },
+            name = gitAuthorName.get(),
             email = gitAuthorEmail.get()
         )
     }

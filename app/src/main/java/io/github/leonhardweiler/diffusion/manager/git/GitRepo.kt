@@ -3,6 +3,7 @@ package io.github.leonhardweiler.diffusion.manager.git
 import android.util.Log
 import io.github.leonhardweiler.diffusion.ui.model.Cred
 import io.github.leonhardweiler.diffusion.ui.model.GitAuthor
+import org.eclipse.jgit.api.CommitCommand
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.api.MergeCommand
 import org.eclipse.jgit.api.MergeResult
@@ -167,12 +168,22 @@ internal fun commitAll(git: Git, author: GitAuthor, fallbackMessage: String) {
     val message = commitMessage(repo, fallbackMessage)
 
     git.commit()
-        .setAuthor(author.name, author.email)
-        .setCommitter(author.name, author.email)
+        .setIdent(author)
         .setMessage(message)
         .setAllowEmpty(true)
         .call()
 }
+
+/**
+ * Who the commit is by, and never nobody.
+ *
+ * Here rather than where the author comes from, because this is where it
+ * reaches git: an empty name or address is written as `author  <>` without a
+ * word of complaint, and the repository it lands in is shared with other people
+ * and other devices. See [GitAuthor.orFallback].
+ */
+private fun CommitCommand.setIdent(author: GitAuthor): CommitCommand =
+    author.orFallback().let { setAuthor(it.name, it.email).setCommitter(it.name, it.email) }
 
 internal fun push(git: Git, cred: Cred?) {
     val branch = currentBranch(git.repository)
@@ -307,8 +318,7 @@ private fun commitMerge(git: Git, fetched: ObjectId, author: GitAuthor) {
     val head = git.repository.resolve(Constants.HEAD)
 
     git.commit()
-        .setAuthor(author.name, author.email)
-        .setCommitter(author.name, author.email)
+        .setIdent(author)
         .setMessage("Merge: ${fetched.name} into ${head?.name}")
         .setAllowEmpty(true)
         .call()

@@ -180,6 +180,25 @@ class GitLayerTest {
         assertEquals(author.name to author.email, signature(git.repository))
     }
 
+    /**
+     * A repository with no `user.name` in its config and no commit to read an
+     * author off leaves both fields empty, and so do the settings when they are
+     * cleared. JGit writes `author  <> …` for that without a word — a history
+     * nothing can be attributed in, on a remote shared with other people.
+     */
+    @Test
+    fun aCommitIsNeverByNobody() {
+        git.write("note.md", "one")
+        commitAll(git, GitAuthor(name = "", email = "  "), "fallback")
+
+        val ident = RevWalk(git.repository).use { walk ->
+            walk.parseCommit(git.repository.resolve(Constants.HEAD)).authorIdent
+        }
+
+        assertEquals(GitAuthor.DEFAULT_NAME, ident.name)
+        assertEquals(GitAuthor.DEFAULT_EMAIL, ident.emailAddress)
+    }
+
     @Test
     fun aWrittenNoteIsAChangeUntilItIsCommitted() {
         assertFalse(isChange(git))
