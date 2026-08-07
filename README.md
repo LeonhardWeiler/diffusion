@@ -42,6 +42,12 @@ The editor might change in the future, but the file browser will remain. I belie
 
 To add a repository to Diffusion, you can either clone a repository or open an existing one. You will need to add the generated SSH key as a deploy key on your Git hosting service of choice.
 
+Diffusion holds as many repositories as you set up. They are listed under **Settings → Repositories**, each with its own cloud button — tapping it syncs that repository, and a dot on it means that repository has changes the remote has not seen. The gear beside a repository leads to everything that belongs to it alone: its commit author, its remote, the SSH key it uses (with buttons to copy or replace it), where its folder is, and whether it syncs on its own. The plus under the list adds another one.
+
+The file browser always shows exactly one repository. Tapping a repository in that list switches to it. Closing a repository only makes Diffusion forget where it is; the folder and its notes stay untouched.
+
+SSH keys are kept apart from the repositories, because two repositories on the same host usually share one deploy key. When you set up a repository, every key already on the device is offered, named by its `SHA256:` fingerprint — the same one your Git host shows next to a deploy key. A key is dropped once no repository uses it anymore, unless you have no repositories left at all, so that setting one up again does not cost you another deploy key.
+
 Notes are written directly to the repository as you type, so there is no save button.
 
 Creating a note asks for its name and then leaves it in the list; it is not opened for you. The name is exactly what you type, extension included — a name without one is treated as a plain text note. Renaming or moving a note happens from its row in the list, not from the note itself.
@@ -58,13 +64,14 @@ Nothing is committed until a sync is performed. A sync commits all changes, pull
 
 The cloud button in the search bar starts a sync at any time. A dot on the button indicates that there are local changes that have not yet been pushed to the remote.
 
-By default, the app also syncs automatically when it is opened and when it is closed. This behavior can be disabled under **Settings → Repository** if you prefer to sync only manually.
+By default, the app also syncs automatically when it is opened and when it is closed — every repository that has this enabled, not only the one you are looking at. This behavior can be disabled per repository under **Settings → Repositories → (gear)** if you prefer to sync only manually.
 
 ## Current limitations
 
 - A repository must be stored on shared internal storage. Repositories on SD cards or USB drives cannot be used because Git cannot be pointed to them through Android's storage APIs. The app's private storage is also not supported because other apps would not be able to access the repository there.
 - Android uses a case-insensitive file system, so if your repository contains both a folder named `A` and another named `a`, only one of them will be visible.
 - Notes larger than 2 MB are listed but cannot be opened in the editor, and their contents are not included in search results. Files that large are intentionally not loaded into memory. You should use another editor for them.
+- Only the repository you are looking at has its note list in memory. Switching to another one reads its files first, which for a very large repository is a short wait.
 - The note list is rebuilt from the repository every time the app starts. For very large repositories, this may result in a short delay before all notes appear. Nothing is cached between launches; the repository itself is always treated as the source of truth.
 - Merge conflicts must be resolved manually. If the same note has been modified both locally and remotely, syncing stops and reports the affected files. Git conflict markers (`<<<<<<<`, `=======`, and `>>>>>>>`) are inserted into the note. Edit the file until only the version you want remains, then sync again to complete the merge. Until the conflict is resolved, syncing will not create any new commits, preventing conflict markers from accidentally being committed.
 
