@@ -218,8 +218,11 @@
 
 <div class="finding low" id="test-1">
   <div class="fhead"><span class="fid">TEST-1</span><h3>Der Schreibpfad bleibt ungetestet</h3><span class="tag t-low">niedrig</span></div>
-  <div class="where">app/src/test (132 Tests, 16 Klassen) · manager/StorageManager.kt · manager/git/</div>
-  <p><strong>Von 99 auf 132 seit der siebten Liste.</strong> Neu sind
+  <div class="where">app/src/test (138 Tests, 15 Klassen) · manager/StorageManager.kt · manager/git/</div>
+  <p><strong>Von 99 auf 138 seit der siebten Liste.</strong> Zuletzt kam
+  <code>SshKeyLabelTest</code> dazu (5 Fälle): wie ein gespeicherter Schlüssel heißt, wenn
+  das Setup mehrere davon zur Auswahl stellt — Fingerabdruck in der Form, die jeder Host
+  neben einem Deploy-Key zeigt. Davor sind
   <code>GitLayerTest</code> (18 Fälle gegen echte lokale Repositories: Commit-Nachricht,
   Fast-Forward, Merge, Konflikt samt Auflösung, abgewiesener Push, Datieren, Öffnen und Klonen),
   <code>SshKeysTest</code> (6, der erzeugte Schlüssel wird von jsch zurückgelesen) und
@@ -241,8 +244,12 @@
   also sind die beiden Fragen, die er beantwortet, jetzt eigene Funktionen und der Test
   braucht keinen Bildschirm.</p>
   <p>Ungetestet bleibt der <code>StorageManager</code> und mit ihm der Sync-Pfad. Der Grund ist
-  unverändert <code>MyApp.appModule</code>: die Klasse holt sich ihre Abhängigkeiten aus einem
-  globalen Service-Locator, also ist sie ohne laufende Anwendung nicht zu bauen. Ebenfalls
+  unverändert <code>MyApp.appModule</code>: die Klasse bekommt zwar ihre
+  <code>RepoSession</code> inzwischen übergeben, holt sich aber weiterhin
+  <code>uiHelper</code>, <code>networkMonitor</code> und <code>appScope</code> aus einem
+  globalen Service-Locator, also ist sie ohne laufende Anwendung nicht zu bauen. Ungetestet
+  ist mit ihm der neue <code>RepoStore</code>: welche Vorkonfiguration eines einzelnen
+  Repositories in die Liste übernommen wird, hängt an DataStore und damit an einem Gerät. Ebenfalls
   ungetestet ist <code>ui/navigation/NavHost.kt</code> — dessen heikler Teil, wann ein
   <code>ViewModelStore</code> geleert wird, ist ohne Compose-Test nicht zu prüfen.</p>
   <p><strong>Neu ohne jede Prüfung ist der Durchlauf selbst:</strong>
