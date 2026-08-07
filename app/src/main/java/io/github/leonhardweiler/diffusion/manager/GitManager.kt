@@ -340,17 +340,13 @@ class GitManager {
         }
     }
 
-    fun closeRepoWithoutLock() {
+    private fun closeRepoWithoutLock() {
         git?.close()
         git = null
         isRepoInitialized = false
     }
 
     suspend fun closeRepo() = safelyAccessGit {
-        closeRepoWithoutLock()
-    }
-
-    suspend fun shutdown() = safelyAccessGit {
         closeRepoWithoutLock()
     }
 

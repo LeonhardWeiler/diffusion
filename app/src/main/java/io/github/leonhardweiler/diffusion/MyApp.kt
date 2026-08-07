@@ -19,7 +19,7 @@ class MyApp : Application() {
         super.onCreate()
         Log.d(TAG, "onCreate")
 
-        appModule = AppModuleImpl(this)
+        appModule = AppModule(this)
 
         // The first read of a preference is a read of the disk, and the first
         // two things to ask for one are the theme and the list of repositories,

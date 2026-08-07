@@ -56,11 +56,6 @@ fun NewRepoMethodScreen(
     val repoWithoutRemote: MutableState<StorageConfiguration?> = remember { mutableStateOf(null) }
     val askAboutRemote = remember { mutableStateOf(false) }
 
-    val storagePermissionHelper = remember {
-        StoragePermissionHelper()
-    }
-    val (contract, permissionName) = storagePermissionHelper.permissionContract()
-
     // The system picker only says which folder was chosen; reading and writing it
     // is what the storage permission is for, so both are still needed.
     val folderPicker =
@@ -100,7 +95,7 @@ fun NewRepoMethodScreen(
             }
         }
 
-    val permissionLauncher = rememberLauncherForActivityResult(contract = contract) {
+    val permissionLauncher = rememberLauncherForActivityResult(StoragePermissionHelper.contract) {
         if (it) {
             folderPicker.launch(primaryStorageUri())
         } else {
@@ -112,7 +107,7 @@ fun NewRepoMethodScreen(
         if (StoragePermissionHelper.isPermissionGranted()) {
             folderPicker.launch(primaryStorageUri())
         } else {
-            permissionLauncher.launch(permissionName)
+            permissionLauncher.launch(Unit)
         }
     }
 

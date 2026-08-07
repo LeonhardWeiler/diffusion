@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -42,10 +41,8 @@ fun StoragePermissionScreen(
     onGiveUp: () -> Unit,
 ) {
 
-    val storagePermissionHelper = remember { StoragePermissionHelper() }
-    val (contract, permissionName) = storagePermissionHelper.permissionContract()
-
-    val permissionLauncher = rememberLauncherForActivityResult(contract = contract) { granted ->
+    val permissionLauncher =
+        rememberLauncherForActivityResult(StoragePermissionHelper.contract) { granted ->
         if (granted) onGranted()
     }
 
@@ -73,7 +70,7 @@ fun StoragePermissionScreen(
 
                 SetupButton(
                     text = stringResource(R.string.grant_storage_permission),
-                    onClick = { permissionLauncher.launch(permissionName) }
+                    onClick = { permissionLauncher.launch(Unit) }
                 )
 
                 SetupButton(
