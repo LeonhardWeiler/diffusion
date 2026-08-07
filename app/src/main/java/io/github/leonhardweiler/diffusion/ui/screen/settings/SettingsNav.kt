@@ -2,6 +2,7 @@ package io.github.leonhardweiler.diffusion.ui.screen.settings
 
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.leonhardweiler.diffusion.ui.navigation.NavHost
 import io.github.leonhardweiler.diffusion.ui.navigation.rememberBackstack
@@ -44,9 +45,34 @@ fun SettingsNav(
                     onBackClick = onBackClick,
                     onShowLogs = { backstack.navigate(SettingsDestination.Logs) },
                     onAddRepo = onAddRepo,
+                    onRepoSettings = { backstack.navigate(SettingsDestination.Repo(it.id)) },
                     onRepoChanged = onRepoChanged,
                     vm = vm
                 )
+            }
+
+            is SettingsDestination.Repo -> {
+                // A repository that is not there anymore is one this screen has
+                // nothing to say about: the row it was reached from is gone, so
+                // the way back is the only thing left.
+                val repo = vm.repoById(it.repoId)
+
+                if (repo == null) {
+                    LaunchedEffect(Unit) { backstack.pop() }
+                } else {
+                    RepoSettingsScreen(
+                        repo = repo,
+                        onBackClick = { backstack.pop() },
+                        // Letting go of a repository that was not the one being
+                        // looked at changes nothing but this list; letting go of
+                        // the one that was leaves the whole app standing on
+                        // another repository, or on the setup.
+                        onRemoved = { wasShown ->
+                            if (wasShown) onRepoChanged() else backstack.pop()
+                        },
+                        vm = vm,
+                    )
+                }
             }
         }
     }

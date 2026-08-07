@@ -24,5 +24,15 @@ data class RepoConfig(
 ) {
 
     /** The folder the repository is in, which is what a row of the list says. */
-    val name: String get() = path.trimEnd('/').substringAfterLast('/').ifEmpty { path }
+    val name: String get() = repoNameOf(path)
 }
+
+/**
+ * What a repository is called: the folder it is in.
+ *
+ * There is no name to type anywhere, so this is the whole of it — and a path
+ * that is nothing but slashes is still worth showing as itself rather than as an
+ * empty row.
+ */
+fun repoNameOf(path: String): String =
+    path.trimEnd('/').substringAfterLast('/').ifEmpty { path }

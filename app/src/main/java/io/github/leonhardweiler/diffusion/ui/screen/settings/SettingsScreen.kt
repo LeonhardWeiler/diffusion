@@ -2,37 +2,34 @@ package io.github.leonhardweiler.diffusion.ui.screen.settings
 
 import android.content.ClipData
 import android.content.ClipDescription
+import androidx.compose.foundation.layout.Row
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Article
-import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import io.github.leonhardweiler.diffusion.BuildConfig
 import io.github.leonhardweiler.diffusion.R
-import io.github.leonhardweiler.diffusion.helper.repoWebUrl
+import io.github.leonhardweiler.diffusion.manager.RepoSession
 import io.github.leonhardweiler.diffusion.ui.component.AppPage
 import io.github.leonhardweiler.diffusion.ui.component.DefaultSettingsRow
 import io.github.leonhardweiler.diffusion.ui.component.MultipleChoiceSettings
-import io.github.leonhardweiler.diffusion.ui.component.RequestConfirmationDialog
 import io.github.leonhardweiler.diffusion.ui.component.SettingsSection
 import io.github.leonhardweiler.diffusion.ui.component.SimpleIcon
-import io.github.leonhardweiler.diffusion.ui.component.StringSettings
-import io.github.leonhardweiler.diffusion.ui.component.ToggleableSettings
+import io.github.leonhardweiler.diffusion.ui.screen.app.grid.SyncButton
 import io.github.leonhardweiler.diffusion.ui.theme.Theme
 import io.github.leonhardweiler.diffusion.ui.viewmodel.SettingsViewModel
 import kotlinx.coroutines.launch
@@ -42,10 +39,10 @@ fun SettingsScreen(
     onBackClick: () -> Unit,
     onShowLogs: () -> Unit,
     onAddRepo: () -> Unit,
+    onRepoSettings: (RepoSession) -> Unit,
     onRepoChanged: () -> Unit,
     vm: SettingsViewModel
 ) {
-    val repo = vm.activeRepo
 
     AppPage(
         title = stringResource(id = R.string.settings),
@@ -70,99 +67,29 @@ fun SettingsScreen(
         }
 
         SettingsSection(
-            title = stringResource(R.string.repository)
+            title = stringResource(R.string.repositories)
         ) {
 
-            val gitAuthorName by repo.prefs.authorName.getAsState()
-            StringSettings(
-                title = stringResource(R.string.git_author_name),
-                subtitle = gitAuthorName.ifEmpty { stringResource(id = R.string.none) },
-                stringValue = gitAuthorName,
-                onChange = { updated ->
-                    vm.update { repo.prefs.authorName.update(updated.trim()) }
-                }
-            )
+            // One row per repository: what it is called, its cloud button and
+            // the gear that leads to everything that belongs to it alone.
+            // Tapping the row itself is switching to it, which is the only way
+            // there is — the note list shows one repository and never two.
+            val repos by vm.repos.collectAsStateWithLifecycle()
 
-            val gitAuthorEmail by repo.prefs.authorEmail.getAsState()
-            StringSettings(
-                title = stringResource(R.string.git_author_email),
-                subtitle = gitAuthorEmail.ifEmpty { stringResource(id = R.string.none) },
-                stringValue = gitAuthorEmail,
-                onChange = { updated ->
-                    vm.update { repo.prefs.authorEmail.update(updated.trim()) }
-                },
-                keyboardType = KeyboardType.Email
-            )
-
-            val remoteUrl by repo.prefs.remoteUrl.getAsState()
-            StringSettings(
-                title = stringResource(R.string.remote_url),
-                subtitle = remoteUrl.ifEmpty { stringResource(id = R.string.none) },
-                stringValue = remoteUrl,
-                onChange = { vm.updateRemoteUrl(repo, it) },
-                endContent = {
-                    val uriHandler = LocalUriHandler.current
-                    Button(
-                        onClick = {
-                            // an ssh remote is not an address a browser can
-                            // follow, so it is offered the https form of it
-                            val link = repoWebUrl(remoteUrl)
-                            if (link == null) {
-                                vm.uiHelper.makeToast(vm.uiHelper.getString(R.string.error_invalid_link))
-                                return@Button
-                            }
-                            try {
-                                uriHandler.openUri(link)
-                            } catch (_: Exception) {
-                                vm.uiHelper.makeToast(vm.uiHelper.getString(R.string.error_invalid_link))
-                            }
-                        }
-                    ) {
-                        SimpleIcon(
-                            imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                            contentDescription = stringResource(R.string.open_in_browser)
-                        )
-
-                    }
-                },
-                showFullText = false,
-                keyboardType = KeyboardType.Uri
-            )
-
-            val syncOnOpenAndClose by repo.prefs.syncOnOpenAndClose.getAsState()
-            ToggleableSettings(
-                title = stringResource(R.string.sync_automatically),
-                subtitle = stringResource(R.string.sync_automatically_subtitle),
-                checked = syncOnOpenAndClose,
-                onCheckedChange = {
-                    vm.update { repo.prefs.syncOnOpenAndClose.update(it) }
-                }
-            )
-
-            val expanded = rememberSaveable {
-                mutableStateOf(false)
+            repos.forEach { repository ->
+                RepositoryRow(
+                    repo = repository,
+                    isActive = repository.id == vm.activeRepo.id,
+                    onClick = { vm.switchTo(repository, onRepoChanged) },
+                    onSettingsClick = { onRepoSettings(repository) },
+                    onSyncClick = { vm.sync(repository) },
+                )
             }
 
             DefaultSettingsRow(
                 title = stringResource(R.string.add_repository),
                 startIcon = Icons.Default.Add,
                 onClick = onAddRepo
-            )
-
-            DefaultSettingsRow(
-                title = stringResource(R.string.close_repository),
-                startIcon = Icons.AutoMirrored.Filled.Logout,
-                onClick = {
-                    expanded.value = true
-                }
-            )
-
-            RequestConfirmationDialog(
-                expanded = expanded,
-                text = stringResource(R.string.close_repository_confirmation),
-                onConfirmation = {
-                    vm.removeRepo(repo, onRepoChanged)
-                }
             )
         }
 
@@ -229,4 +156,54 @@ fun SettingsScreen(
             )
         }
     }
+}
+
+/**
+ * One repository in the settings: its name, where it is, and the two things
+ * there are to do to it without leaving this screen.
+ *
+ * The cloud is the same button the note list carries, saying the same things
+ * about this repository — how its last sync went, and whether it holds anything
+ * the remote has not been told about. Tapping the row is switching to it.
+ *
+ * @param isActive whether this is the repository being looked at. Its path is
+ * shown either way; what marks it is the word under the name, because a tick
+ * beside a row that is also a button reads as something to press.
+ */
+@Composable
+private fun RepositoryRow(
+    repo: RepoSession,
+    isActive: Boolean,
+    onClick: () -> Unit,
+    onSettingsClick: () -> Unit,
+    onSyncClick: () -> Unit,
+) {
+    val syncState by repo.storageManager.syncState.collectAsStateWithLifecycle()
+    val hasLocalChanges by repo.storageManager.hasLocalChanges.collectAsStateWithLifecycle()
+
+    DefaultSettingsRow(
+        title = repo.name,
+        subTitle = if (isActive) stringResource(R.string.repository_shown) else repo.path,
+        showFullText = false,
+        onClick = onClick,
+        endContent = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                SyncButton(
+                    state = syncState,
+                    hasLocalChanges = hasLocalChanges,
+                    onClick = onSyncClick,
+                )
+
+                IconButton(onClick = onSettingsClick) {
+                    SimpleIcon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = stringResource(
+                            R.string.repository_settings,
+                            repo.name
+                        )
+                    )
+                }
+            }
+        },
+    )
 }

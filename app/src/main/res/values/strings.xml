@@ -31,8 +31,16 @@
     <string name="git_author_email">Git author email</string>
     <string name="sync_automatically">Sync when opening and closing</string>
     <string name="sync_automatically_subtitle">Commits, pulls and pushes on its own when the app is opened and when it is left. The cloud button does the same at any time.</string>
+    <string name="repositories">Repositories</string>
     <string name="add_repository">Add a repository</string>
+    <!-- said under the name of the repository whose notes the app is showing -->
+    <string name="repository_shown">Shown</string>
+    <string name="repository_settings">Settings of %1$s</string>
+    <string name="repository_folder">Folder</string>
+    <string name="ssh_key">SSH key</string>
+    <string name="regenerate_key_confirmation">Replace this key with a new one? Every repository using it will need the new public key added at its remote before it can sync again.</string>
     <string name="close_repository">Close repository</string>
+    <string name="close_repository_subtitle">The folder and its notes stay where they are</string>
     <string name="close_repository_confirmation">Do you really want to close the repository?</string>
     <string name="version">Version</string>
     <string name="show_logs">Show logs</string>

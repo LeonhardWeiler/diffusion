@@ -7,6 +7,7 @@ import io.github.leonhardweiler.diffusion.data.platform.NodeFs
 import io.github.leonhardweiler.diffusion.data.repo.RepoConfig
 import io.github.leonhardweiler.diffusion.data.repo.RepoStore
 import io.github.leonhardweiler.diffusion.data.repo.SshKeyStore
+import io.github.leonhardweiler.diffusion.data.repo.repoNameOf
 import io.github.leonhardweiler.diffusion.ui.model.Cred
 import io.github.leonhardweiler.diffusion.ui.model.GitAuthor
 
@@ -53,6 +54,9 @@ class RepoSession(
 
     /** Whether this is a repository at all, rather than the placeholder above. */
     val exists: Boolean get() = id.isNotEmpty()
+
+    /** What its row in the settings says: the folder it is in. */
+    val name: String get() = repoNameOf(path)
 
     val prefs: RepoStore.RepoPrefs = store.prefsOf(id)
 
