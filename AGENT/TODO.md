@@ -1,1 +1,0 @@
-- go through the whole repository and look for possible code minimizations to reduce the attack surface and the possibility for buggy code. Remove all the comments that explain how something works, the code should be good enough to do that. Only keep the absolute necessary comments if they explain how somethings working. Split big files into multiple small ones
